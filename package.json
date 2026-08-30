@@ -6,5 +6,8 @@
     "build": "cd web && npm run build",
     "dev": "cd web && npm run dev",
     "start": "cd web && npm run start"
+  },
+  "dependencies": {
+    "next": "14.2.24"
   }
 }
