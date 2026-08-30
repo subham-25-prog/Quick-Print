@@ -22,6 +22,14 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   const pathname = usePathname();
   const router = useRouter();
   const storeName = shopConfig.name;
+  const [dbStatus, setDbStatus] = React.useState<{ connected: boolean; mode: string; message: string } | null>(null);
+
+  React.useEffect(() => {
+    fetch('/api/admin/db-status')
+      .then((res) => res.json())
+      .then((data) => setDbStatus(data))
+      .catch(() => setDbStatus({ connected: false, mode: 'LOCAL_MEMORY', message: 'Offline' }));
+  }, []);
 
   const navItems = [
     { label: 'Orders & History', href: '/admin', icon: '📋' },
@@ -52,8 +60,23 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
               <Zap className="w-4 h-4 text-white" />
             </div>
             <div>
-              <div className="text-xs sm:text-sm font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">
-                {storeName}
+              <div className="flex items-center gap-2">
+                <span className="text-xs sm:text-sm font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">
+                  {storeName}
+                </span>
+                {dbStatus && (
+                  <span
+                    title={dbStatus.message}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      dbStatus.connected
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${dbStatus.connected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                    <span>{dbStatus.connected ? 'Cloud DB Connected' : 'Local Mode'}</span>
+                  </span>
+                )}
               </div>
               <div className="text-[10px] text-slate-400 font-semibold">
                 Shopkeeper Command Center
