@@ -26,6 +26,18 @@ class LocalMemoryStore {
       console.warn('Could not load saved pricing_config.json:', err);
     }
 
+    // Load persisted orders if exists on disk
+    try {
+      const savedOrders = readSavedOrdersFile();
+      for (const o of savedOrders) {
+        if (o && o.id) {
+          this.orders.set(o.id, o);
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load saved orders.json:', err);
+    }
+
     // Seed initial mock agent
     this.agents.set('agent-main-pc', {
       agent_id: 'agent-main-pc',
@@ -142,6 +154,50 @@ function readSavedPricingFile(): any | null {
 function writeSavedPricingFile(pricingData: PricingConfig) {
   const jsonStr = JSON.stringify(pricingData, null, 2);
   const candidatePaths = getPricingConfigFilePaths();
+  for (const p of candidatePaths) {
+    try {
+      const dir = path.dirname(p);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(p, jsonStr, 'utf8');
+    } catch (e) {}
+  }
+}
+
+function getOrdersConfigFilePaths(): string[] {
+  const cwd = process.cwd();
+  const paths = new Set<string>();
+
+  const isWebDir = path.basename(cwd) === 'web';
+  const webRoot = isWebDir ? cwd : path.join(cwd, 'web');
+  const projectRoot = isWebDir ? path.dirname(cwd) : cwd;
+
+  paths.add(path.join(webRoot, 'uploads', 'orders.json'));
+  paths.add(path.join(projectRoot, 'uploads', 'orders.json'));
+
+  return Array.from(paths);
+}
+
+function readSavedOrdersFile(): Order[] {
+  const candidatePaths = getOrdersConfigFilePaths();
+  for (const p of candidatePaths) {
+    try {
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, 'utf8');
+        if (raw && raw.trim()) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            return parsed;
+          }
+        }
+      }
+    } catch (e) {}
+  }
+  return [];
+}
+
+function writeSavedOrdersFile(orders: Order[]) {
+  const jsonStr = JSON.stringify(orders, null, 2);
+  const candidatePaths = getOrdersConfigFilePaths();
   for (const p of candidatePaths) {
     try {
       const dir = path.dirname(p);
@@ -278,8 +334,9 @@ export async function updatePricing(newPricing: Partial<PricingConfig>): Promise
  * Create a new order with pricing snapshot
  */
 export async function createOrder(order: Order): Promise<Order> {
-  // Always save to memory store so it is instantly available and never vanished
+  // Always save to memory store & local disk file so it is instantly available and never vanishes
   localStore.orders.set(order.id, order);
+  writeSavedOrdersFile(Array.from(localStore.orders.values()));
 
   const admin = getAdminClient();
   if (admin) {
@@ -319,6 +376,7 @@ export async function createOrder(order: Order): Promise<Order> {
 
       if (data && !error) {
         localStore.orders.set(order.id, data as Order);
+        writeSavedOrdersFile(Array.from(localStore.orders.values()));
         await recordOrderEvent(order.id, null, order.order_status, 'CUSTOMER', 'Order submitted by customer');
         return data as Order;
       } else if (error) {
@@ -482,6 +540,7 @@ export async function updateOrderStatus(
     } as Order;
 
     localStore.orders.set(orderId, updated);
+    writeSavedOrdersFile(Array.from(localStore.orders.values()));
     await recordOrderEvent(orderId, prevStatus, newStatus, actor, extraData?.customer_notes || `Status changed to ${newStatus}`);
     return updated;
   }

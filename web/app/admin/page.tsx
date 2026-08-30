@@ -57,13 +57,41 @@ export default function AdminLiveOrdersPage() {
     }, 2000);
   };
 
+  // Load cached orders from localStorage on mount so UI doesn't clear on refresh
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem('qp_admin_cached_orders');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setOrders(parsed);
+          setLoading(false);
+        }
+      }
+    } catch (e) {}
+  }, []);
+
   const fetchOrders = useCallback(async (isManual = false) => {
     if (isManual) setIsRefreshing(true);
     try {
       const res = await fetch('/api/orders', { cache: 'no-store' });
       const data = await res.json();
-      if (data.orders) {
-        setOrders(data.orders);
+      if (Array.isArray(data.orders)) {
+        if (data.orders.length > 0) {
+          setOrders(data.orders);
+          try {
+            localStorage.setItem('qp_admin_cached_orders', JSON.stringify(data.orders));
+          } catch (e) {}
+        } else {
+          // If server returned 0 items but we have cached orders, don't wipe local state
+          const cached = localStorage.getItem('qp_admin_cached_orders');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setOrders(parsed);
+            }
+          }
+        }
       }
     } catch (err) {
       console.error('Error fetching orders:', err);
