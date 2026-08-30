@@ -1,0 +1,5 @@
+{
+  "framework": "nextjs",
+  "installCommand": "if [ -d \"web\" ]; then cd web; fi && npm install --no-audit",
+  "buildCommand": "if [ -d \"web\" ]; then cd web; fi && npm run build"
+}
