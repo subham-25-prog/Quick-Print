@@ -33,6 +33,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
   const navItems = [
     { label: 'Orders & History', href: '/admin', icon: '📋' },
+    { label: 'Digital Printer Simulator', href: '/simulator', icon: '🖨️' },
     { label: 'Shop QR Code', href: '/admin/poster', icon: '📱' },
   ];
 
