@@ -442,9 +442,61 @@ export async function getOrderByNumber(orderNumber: string): Promise<Order | nul
 }
 
 /**
+ * Automatically cleanup/delete orders and files older than retentionDays (default: 3 days)
+ */
+export async function cleanupOldOrders(retentionDays = 3): Promise<{ deletedCount: number }> {
+  const cutoffTime = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000).toISOString();
+  const admin = getAdminClient();
+  let deletedCount = 0;
+
+  if (admin) {
+    try {
+      const { data: oldOrders } = await admin
+        .from('orders')
+        .select('id, storage_path')
+        .lt('created_at', cutoffTime);
+
+      if (oldOrders && oldOrders.length > 0) {
+        const filePaths = oldOrders
+          .map((o) => (o.storage_path || '').replace(/^shop-documents\//, ''))
+          .filter(Boolean);
+
+        if (filePaths.length > 0) {
+          try {
+            await admin.storage.from('shop-documents').remove(filePaths);
+          } catch {}
+        }
+
+        const { count } = await admin
+          .from('orders')
+          .delete({ count: 'exact' })
+          .lt('created_at', cutoffTime);
+
+        deletedCount = count || oldOrders.length;
+      }
+    } catch (err) {
+      console.warn('Supabase cleanup error:', err);
+    }
+  }
+
+  for (const [id, order] of Array.from(localStore.orders.entries())) {
+    if (new Date(order.created_at).getTime() < new Date(cutoffTime).getTime()) {
+      localStore.orders.delete(id);
+      deletedCount++;
+    }
+  }
+  writeSavedOrdersFile(Array.from(localStore.orders.values()));
+
+  return { deletedCount };
+}
+
+/**
  * Get all orders with optional status filter
  */
 export async function getAllOrders(statusFilter?: string): Promise<Order[]> {
+  // Asynchronously trigger 3-day auto-cleanup without blocking request
+  cleanupOldOrders(3).catch(() => {});
+
   const admin = getAdminClient();
   const orderMap = new Map<string, Order>();
 
