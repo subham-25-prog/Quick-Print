@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Next.js build output
+.next/
+*/.next/
+out/
+build/
+dist/
+
+# Local Tarballs & Binaries
+*.tgz
+*.zip
+*.tar.gz
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Local upload / temp job directories
+web/uploads/*
+!web/uploads/pricing_config.json
+print-agent/temp_jobs/*
+!print-agent/temp_jobs/.gitkeep
+
+# Logs & scratch files
+*.log
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
