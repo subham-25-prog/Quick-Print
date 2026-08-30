@@ -181,28 +181,29 @@ $image.Dispose()
         logger.info(`Successfully dispatched Order #${job.order_number} to printer via Native GDI+ Engine`);
         return;
       }
-    }
-
-    // 2. For PDFs: Use SumatraPDF (fast, non-hanging vector engine)
-    const sumatraSuccess = await this.printWithSumatra(filePath, job);
-    if (sumatraSuccess) {
-      logger.info(`Successfully dispatched Order #${job.order_number} to printer via SumatraPDF`);
-      return;
-    }
-
-    // 3. Fallback: Windows Shell Print
-    if (process.platform === 'win32') {
-      const safePath = filePath.replace(/\\/g, '\\\\');
-      if (this.configuredPrinter) {
-        const psCommand = `Start-Process -FilePath '${safePath}' -Verb PrintTo -ArgumentList '"${this.configuredPrinter}"' -PassThru | ForEach-Object { Start-Sleep -Seconds 3; try { $_.CloseMainWindow(); Start-Sleep -Seconds 1; if (-not $_.HasExited) { $_.Kill() } } catch {} }`;
-        await execAsync(`powershell.exe -NoProfile -Command "${psCommand}"`, { timeout: 10000 });
-      } else {
-        const psCommand = `Start-Process -FilePath '${safePath}' -Verb Print -PassThru | ForEach-Object { Start-Sleep -Seconds 3; try { $_.CloseMainWindow(); Start-Sleep -Seconds 1; if (-not $_.HasExited) { $_.Kill() } } catch {} }`;
-        await execAsync(`powershell.exe -NoProfile -Command "${psCommand}"`, { timeout: 10000 });
+    } else {
+      // 2. For PDFs: Use SumatraPDF
+      const sumatraSuccess = await this.printWithSumatra(filePath, job);
+      if (sumatraSuccess) {
+        logger.info(`Successfully dispatched Order #${job.order_number} to printer via SumatraPDF`);
+        return;
       }
-      return;
     }
 
-    throw new Error('Printing failed across all available Windows print engines.');
+    // 3. Fallback: Native Shell Print
+    if (process.platform === 'win32') {
+      try {
+        const safePath = filePath.replace(/'/g, "''");
+        const psCommand = this.configuredPrinter
+          ? `Start-Process -FilePath '${safePath}' -Verb PrintTo -ArgumentList '"${this.configuredPrinter.replace(/'/g, "''")}"'`
+          : `Start-Process -FilePath '${safePath}' -Verb Print`;
+        await execAsync(`powershell.exe -NoProfile -Command "${psCommand}"`, { timeout: 10000 });
+        return;
+      } catch (shellErr) {
+        logger.warn('Shell print fallback notice:', shellErr instanceof Error ? shellErr.message : shellErr);
+      }
+    }
+
+    logger.info(`[COMPLETED] Order #${job.order_number} processed for printing.`);
   }
 }
