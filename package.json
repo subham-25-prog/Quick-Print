@@ -2,6 +2,12 @@
   "name": "quickprint",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "web"
+  ],
+  "dependencies": {
+    "next": "^14.2.25"
+  },
   "scripts": {
     "build": "cd web && npm run build",
     "dev": "cd web && npm run dev",
