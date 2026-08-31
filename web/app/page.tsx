@@ -262,6 +262,7 @@ export default function CustomerHomePage() {
             paperSize={paperSize}
             colorMode={colorMode}
             printSides={printSides}
+            addOns={addOns}
           />
         </section>
 
