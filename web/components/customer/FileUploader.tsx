@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Eye, ExternalLink, CheckCircle2 } from '@/components/ui/Icons';
+import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Eye, ExternalLink } from '@/components/ui/Icons';
 import { formatBytes } from '@/lib/utils';
 import { getPdfPageCount } from '@/lib/pdf';
+import { PaperSize, ColorMode, PrintSides } from '@/types';
 
 export interface UploadedFileState {
   file: File;
@@ -19,9 +20,18 @@ export interface UploadedFileState {
 interface FileUploaderProps {
   onFileUploaded: (fileData: UploadedFileState | null) => void;
   uploadedFile: UploadedFileState | null;
+  paperSize?: PaperSize;
+  colorMode?: ColorMode;
+  printSides?: PrintSides;
 }
 
-export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uploadedFile }) => {
+export const FileUploader: React.FC<FileUploaderProps> = ({
+  onFileUploaded,
+  uploadedFile,
+  paperSize = 'A4',
+  colorMode = 'BW',
+  printSides = 'SINGLE',
+}) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,6 +154,18 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
 
   const previewSource = localBlobUrl || uploadedFile?.signedUrl || uploadedFile?.previewUrl;
 
+  // Determine Paper Label & Aspect Ratio classes
+  const getPaperDetails = () => {
+    if (paperSize === 'A4') return { label: 'A4 (210×297 mm)', aspect: 'aspect-[210/297]' };
+    if (paperSize === 'A3') return { label: 'A3 Poster (297×420 mm)', aspect: 'aspect-[297/420]' };
+    if (paperSize === 'LEGAL') return { label: 'Legal Paper (216×356 mm)', aspect: 'aspect-[216/356]' };
+    if (paperSize === 'PHOTO') return { label: 'Photo Glossy (4×6 in)', aspect: 'aspect-[4/6]' };
+    return { label: `${paperSize} Custom`, aspect: 'aspect-[210/297]' };
+  };
+
+  const paperDetails = getPaperDetails();
+  const isBw = colorMode === 'BW';
+
   return (
     <div className="w-full space-y-3">
       <input
@@ -246,16 +268,31 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
             </div>
           </div>
 
-          {/* Inline Document Preview Box */}
+          {/* Inline Document Preview Box - Dynamically standardizes according to Print Options */}
           {showPreview && previewSource && (
             <div className="rounded-2xl border border-slate-200 bg-slate-900 overflow-hidden shadow-inner space-y-0">
               {/* Preview Header Bar */}
-              <div className="bg-slate-800/90 px-3.5 py-2 flex items-center justify-between border-b border-slate-700/60">
-                <div className="flex items-center gap-2 text-slate-300 text-xs font-semibold">
-                  <Eye className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>Document Live Preview</span>
+              <div className="bg-slate-800/90 px-3.5 py-2 flex flex-wrap items-center justify-between gap-2 border-b border-slate-700/60">
+                <div className="flex items-center gap-1.5">
+                  <Eye className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span className="text-slate-300 text-xs font-semibold">Live Print Simulation</span>
                 </div>
-                <div className="flex items-center gap-2">
+
+                {/* Print Options Badges */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="bg-indigo-950 text-indigo-200 border border-indigo-700/50 px-2 py-0.5 rounded-md text-[10px] font-bold">
+                    📄 {paperDetails.label}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                    isBw
+                      ? 'bg-slate-800 text-slate-200 border-slate-600'
+                      : 'bg-emerald-950 text-emerald-200 border-emerald-700/50'
+                  }`}>
+                    {isBw ? '⚫ Black & White' : '🎨 Full Color'}
+                  </span>
+                  <span className="bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-md text-[10px] font-semibold">
+                    {printSides === 'DOUBLE' ? '↔ Double Sided' : '1️⃣ Single Sided'}
+                  </span>
                   <button
                     type="button"
                     onClick={() => setIsFullScreenPreview(true)}
@@ -267,27 +304,31 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
                 </div>
               </div>
 
-              {/* Preview Frame Container */}
-              <div className="relative w-full h-64 sm:h-80 bg-slate-950 flex items-center justify-center overflow-hidden">
-                {isImageFile ? (
-                  <img
-                    src={previewSource}
-                    alt={uploadedFile.fileName}
-                    className="max-h-full max-w-full object-contain p-2"
-                  />
-                ) : (
-                  <object
-                    data={`${previewSource}#toolbar=0&navpanes=0`}
-                    type="application/pdf"
-                    className="w-full h-full"
-                  >
-                    <iframe
-                      src={`${previewSource}#toolbar=0&navpanes=0`}
-                      title="PDF Preview"
-                      className="w-full h-full border-0"
+              {/* Preview Frame Container with Dynamic Paper Framing & Color Filter */}
+              <div className="relative w-full py-4 px-2 bg-slate-950 flex items-center justify-center overflow-hidden min-h-[280px]">
+                <div className={`relative max-h-72 w-full max-w-[260px] sm:max-w-[300px] ${paperDetails.aspect} bg-white rounded-sm shadow-2xl overflow-hidden transition-all duration-300 ${
+                  isBw ? 'grayscale contrast-[1.1]' : ''
+                }`}>
+                  {isImageFile ? (
+                    <img
+                      src={previewSource}
+                      alt={uploadedFile.fileName}
+                      className="w-full h-full object-contain p-1"
                     />
-                  </object>
-                )}
+                  ) : (
+                    <object
+                      data={`${previewSource}#toolbar=0&navpanes=0`}
+                      type="application/pdf"
+                      className="w-full h-full"
+                    >
+                      <iframe
+                        src={`${previewSource}#toolbar=0&navpanes=0`}
+                        title="PDF Preview"
+                        className="w-full h-full border-0"
+                      />
+                    </object>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -296,38 +337,49 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
 
       {/* Modal Overlay for Full Screen Preview */}
       {isFullScreenPreview && previewSource && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-4xl h-[85vh] flex flex-col overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-4xl h-[88vh] flex flex-col overflow-hidden shadow-2xl">
             {/* Modal Header */}
-            <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center justify-between">
+            <div className="bg-slate-800 px-4 py-3 border-b border-slate-700 flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-white text-sm font-bold truncate">
-                {isImageFile ? <ImageIcon className="w-4 h-4 text-indigo-400" /> : <FileText className="w-4 h-4 text-indigo-400" />}
+                {isImageFile ? <ImageIcon className="w-4 h-4 text-indigo-400 shrink-0" /> : <FileText className="w-4 h-4 text-indigo-400 shrink-0" />}
                 <span className="truncate">{uploadedFile?.fileName}</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsFullScreenPreview(false)}
-                className="p-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+
+              {/* Print settings badge summary */}
+              <div className="flex items-center gap-2">
+                <span className="bg-indigo-900/80 text-indigo-200 text-xs px-2.5 py-1 rounded-lg font-bold border border-indigo-700/50">
+                  {paperDetails.label} • {isBw ? 'B&W' : 'Full Color'} • {printSides === 'DOUBLE' ? 'Double Sided' : 'Single Sided'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsFullScreenPreview(false)}
+                  className="p-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Body */}
-            <div className="flex-1 bg-slate-950 p-2 flex items-center justify-center overflow-auto">
-              {isImageFile ? (
-                <img
-                  src={previewSource}
-                  alt={uploadedFile?.fileName}
-                  className="max-h-full max-w-full object-contain rounded-lg shadow-lg"
-                />
-              ) : (
-                <iframe
-                  src={previewSource}
-                  title="Full PDF Preview"
-                  className="w-full h-full rounded-lg border-0 bg-white"
-                />
-              )}
+            <div className="flex-1 bg-slate-950 p-4 flex items-center justify-center overflow-auto">
+              <div className={`relative max-h-full max-w-full ${paperDetails.aspect} bg-white rounded-md shadow-2xl overflow-hidden transition-all duration-300 ${
+                isBw ? 'grayscale contrast-[1.1]' : ''
+              }`}>
+                {isImageFile ? (
+                  <img
+                    src={previewSource}
+                    alt={uploadedFile?.fileName}
+                    className="w-full h-full object-contain p-2"
+                  />
+                ) : (
+                  <iframe
+                    src={previewSource}
+                    title="Full PDF Preview"
+                    className="w-full h-full rounded-lg border-0 bg-white"
+                  />
+                )}
+              </div>
             </div>
           </div>
         </div>

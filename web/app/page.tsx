@@ -259,6 +259,9 @@ export default function CustomerHomePage() {
           <FileUploader
             uploadedFile={uploadedFile}
             onFileUploaded={setUploadedFile}
+            paperSize={paperSize}
+            colorMode={colorMode}
+            printSides={printSides}
           />
         </section>
 
