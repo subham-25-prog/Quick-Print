@@ -54,21 +54,32 @@ export async function GET(
       }
     }
 
-    // 2. Check Supabase Cloud Storage
+    // 2. Check Supabase Cloud Storage with multiple path candidates
     const admin = getAdminClient();
-    if (admin && order.storage_path) {
-      try {
-        const cleanPath = order.storage_path.replace(/^shop-documents\//, '');
-        const { data, error } = await admin.storage.from('shop-documents').download(cleanPath);
-        if (data && !error) {
-          const arrayBuffer = await data.arrayBuffer();
-          const buf = Buffer.from(arrayBuffer);
-          if (buf.length > 0) {
-            return createBufferResponse(buf);
+    if (admin) {
+      const pathsToTry = Array.from(
+        new Set([
+          (order.storage_path || '').replace(/^shop-documents\//, ''),
+          order.storage_path,
+          order.id,
+          order.file_name,
+          `${order.id}.pdf`,
+          `${order.id}.png`,
+          `${order.id}.jpg`,
+        ].filter(Boolean))
+      );
+
+      for (const pathCandidate of pathsToTry) {
+        try {
+          const { data, error } = await admin.storage.from('shop-documents').download(pathCandidate);
+          if (data && !error) {
+            const arrayBuffer = await data.arrayBuffer();
+            const buf = Buffer.from(arrayBuffer);
+            if (buf.length > 0) {
+              return createBufferResponse(buf);
+            }
           }
-        }
-      } catch (sErr) {
-        console.warn('Supabase storage download notice:', sErr);
+        } catch (sErr) {}
       }
     }
 

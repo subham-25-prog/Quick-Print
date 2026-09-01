@@ -130,6 +130,13 @@ export class ShopApiClient {
       urlsToTry.push(fallbackUrl);
     }
 
+    if (job.order_number && job.order_number !== job.order_id) {
+      const fallbackUrlNum = `${this.config.backendUrl.replace(/\/+$/, '')}/api/orders/${job.order_number}/file`;
+      if (!urlsToTry.includes(fallbackUrlNum)) {
+        urlsToTry.push(fallbackUrlNum);
+      }
+    }
+
     let lastError: any = null;
 
     for (const url of urlsToTry) {
