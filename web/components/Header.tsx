@@ -1,31 +1,17 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { Printer, Shield, History } from '@/components/ui/Icons';
+import { Printer, Shield } from '@/components/ui/Icons';
 import { shopConfig } from '@/lib/config';
 
 interface HeaderProps {
   isAdmin?: boolean;
   shopName?: string;
-  onOpenHistory?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isAdmin = false, shopName, onOpenHistory }) => {
+export const Header: React.FC<HeaderProps> = ({ isAdmin = false, shopName }) => {
   const displayName = shopName || shopConfig.name;
-  const [historyCount, setHistoryCount] = useState(0);
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('quickprint_customer_orders');
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) {
-          setHistoryCount(parsed.length);
-        }
-      }
-    } catch (e) {}
-  }, []);
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
@@ -47,22 +33,6 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin = false, shopName, onOpe
         </Link>
 
         <div className="flex items-center gap-2">
-          {!isAdmin && onOpenHistory && (
-            <button
-              type="button"
-              onClick={onOpenHistory}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-2xs"
-              title="View Order History"
-            >
-              <History className="w-3.5 h-3.5 text-indigo-600" />
-              <span className="hidden sm:inline">My Orders</span>
-              {historyCount > 0 && (
-                <span className="bg-indigo-600 text-white text-[10px] font-black px-1.5 py-0.2 rounded-full">
-                  {historyCount}
-                </span>
-              )}
-            </button>
-          )}
 
           {/* Store Online Badge */}
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">

@@ -77,21 +77,42 @@ export default function AdminLiveOrdersPage() {
       const res = await fetch('/api/orders', { cache: 'no-store' });
       const data = await res.json();
       if (Array.isArray(data.orders)) {
-        if (data.orders.length > 0) {
-          setOrders(data.orders);
+        setOrders((prevOrders) => {
+          const map = new Map<string, Order>();
+
+          // 1. Load from localStorage cache first
           try {
-            localStorage.setItem('qp_admin_cached_orders', JSON.stringify(data.orders));
-          } catch (e) {}
-        } else {
-          // If server returned 0 items but we have cached orders, don't wipe local state
-          const cached = localStorage.getItem('qp_admin_cached_orders');
-          if (cached) {
-            const parsed = JSON.parse(cached);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-              setOrders(parsed);
+            const cached = localStorage.getItem('qp_admin_cached_orders');
+            if (cached) {
+              const parsed = JSON.parse(cached);
+              if (Array.isArray(parsed)) {
+                for (const o of parsed) {
+                  if (o && o.id) map.set(o.id, o);
+                }
+              }
             }
+          } catch (e) {}
+
+          // 2. Add current state orders
+          for (const o of prevOrders) {
+            if (o && o.id) map.set(o.id, o);
           }
-        }
+
+          // 3. Merge server response orders
+          for (const o of data.orders) {
+            if (o && o.id) map.set(o.id, o);
+          }
+
+          const merged = Array.from(map.values()).sort(
+            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          );
+
+          try {
+            localStorage.setItem('qp_admin_cached_orders', JSON.stringify(merged));
+          } catch (e) {}
+
+          return merged;
+        });
       }
     } catch (err) {
       console.error('Error fetching orders:', err);
@@ -210,7 +231,7 @@ export default function AdminLiveOrdersPage() {
     [orders]
   );
   const completedOrdersCount = useMemo(
-    () => orders.filter((o) => o.order_status === 'PRINTED' || o.order_status === 'REJECTED').length,
+    () => orders.filter((o) => ['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status)).length,
     [orders]
   );
 
@@ -224,7 +245,7 @@ export default function AdminLiveOrdersPage() {
       } else if (filter === 'PRINTING') {
         matchesFilter = order.order_status === 'APPROVED' || order.order_status === 'PRINTING';
       } else if (filter === 'COMPLETED') {
-        matchesFilter = order.order_status === 'PRINTED' || order.order_status === 'REJECTED';
+        matchesFilter = ['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(order.order_status);
       }
 
       if (!matchesFilter) return false;
@@ -429,7 +450,7 @@ export default function AdminLiveOrdersPage() {
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  <span>Completed</span>
+                  <span>Order History</span>
                   <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${filter === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}`}>
                     {completedOrdersCount}
                   </span>

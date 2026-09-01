@@ -7,7 +7,6 @@ import { FileUploader, UploadedFileState } from '@/components/customer/FileUploa
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
 import { PaymentModal } from '@/components/customer/PaymentModal';
-import { OrderHistoryModal } from '@/components/customer/OrderHistoryModal';
 import { calculateOrderPrice } from '@/lib/pricing';
 import { formatCurrency, generateOrderNumber } from '@/lib/utils';
 import { defaultPricingConfig } from '@/lib/config';
@@ -35,9 +34,8 @@ export default function CustomerHomePage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
-  // Payment modal, history modal & order submission
+  // Payment modal & order submission
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [tempOrderNumber, setTempOrderNumber] = useState<string>('QP-PREV');
 
@@ -246,10 +244,7 @@ export default function CustomerHomePage() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-28">
       {/* 1. Header */}
-      <Header
-        shopName={pricing.shop_name}
-        onOpenHistory={() => setIsHistoryModalOpen(true)}
-      />
+      <Header shopName={pricing.shop_name} />
 
       <main className="max-w-xl mx-auto w-full px-4 pt-4 space-y-4">
         {/* Top Notice Banner */}
@@ -409,12 +404,6 @@ export default function CustomerHomePage() {
         onConfirmPayment={handleConfirmOrder}
         submitting={submitting}
         pricing={pricing}
-      />
-
-      {/* Customer Order History Modal */}
-      <OrderHistoryModal
-        isOpen={isHistoryModalOpen}
-        onClose={() => setIsHistoryModalOpen(false)}
       />
     </div>
   );
