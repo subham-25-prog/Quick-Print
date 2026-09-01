@@ -210,6 +210,8 @@ export default function AdminLiveOrdersPage() {
 
     if (action === 'APPROVE_PRINT') {
       showToast('Payment verified & Print job spooled to agent!', 'success');
+    } else if (action === 'RETRY_PRINT') {
+      showToast('Reprint requested! Job spooled to agent.', 'success');
     } else if (action === 'MARK_PRINTED') {
       showToast('Order marked as Completed!', 'success');
     } else if (action === 'REJECT') {
@@ -787,7 +789,11 @@ export default function AdminLiveOrdersPage() {
                             style={{ touchAction: 'manipulation' }}
                             className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 active:scale-95 disabled:opacity-50 cursor-pointer transition-all border border-slate-200/80 shadow-2xs"
                           >
-                            <Printer className="w-3.5 h-3.5" />
+                            {isRetrying ? (
+                              <div className="w-3.5 h-3.5 border-2 border-slate-600/40 border-t-slate-800 rounded-full animate-spin" />
+                            ) : (
+                              <Printer className="w-3.5 h-3.5" />
+                            )}
                             <span>Reprint</span>
                           </button>
                         )}

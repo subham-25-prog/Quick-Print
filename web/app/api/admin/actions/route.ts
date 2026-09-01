@@ -52,6 +52,9 @@ export async function POST(req: NextRequest) {
 
       case 'RETRY_PRINT':
         targetStatus = 'APPROVED';
+        extraData.payment_status = 'VERIFIED';
+        extraData.approved_at = new Date().toISOString();
+        extraData.printed_at = null;
         extraData.failure_reason = null;
         break;
 
