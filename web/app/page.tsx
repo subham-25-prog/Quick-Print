@@ -429,7 +429,9 @@ export default function CustomerHomePage() {
         fileName={uploadedFile?.fileName || 'Document_Preview.pdf'}
         pageCount={uploadedFile?.pageCount || 1}
         fileSignedUrl={uploadedFile?.signedUrl}
+        previewUrl={uploadedFile?.previewUrl}
         fileType={uploadedFile?.fileType}
+        uploadedFile={uploadedFile}
         paperSize={paperSize}
         colorMode={colorMode}
         printSides={printSides}

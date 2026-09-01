@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AdvancedPrintConfig, PaperSize, ColorMode, PrintSides } from '@/types';
+import { UploadedFileState } from './FileUploader';
 import {
   X,
   FileText,
@@ -24,7 +25,9 @@ interface AdobePrintPreviewModalProps {
   fileName?: string;
   pageCount?: number;
   fileSignedUrl?: string;
+  previewUrl?: string;
   fileType?: string;
+  uploadedFile?: UploadedFileState | null;
   paperSize: PaperSize;
   colorMode: ColorMode;
   printSides: PrintSides;
@@ -38,7 +41,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   fileName = 'Uploaded_Document.pdf',
   pageCount = 1,
   fileSignedUrl,
+  previewUrl,
   fileType,
+  uploadedFile,
   paperSize,
   colorMode,
   printSides,
@@ -56,12 +61,32 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     watermark: advancedConfig.watermark || 'NONE',
   });
 
+  // Local object URL for real-time file preview
+  const [localObjectUrl, setLocalObjectUrl] = useState<string | null>(null);
+
   // Preview Canvas States
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [rotationAngle, setRotationAngle] = useState<number>(0);
 
+  useEffect(() => {
+    if (uploadedFile?.file) {
+      try {
+        const url = URL.createObjectURL(uploadedFile.file);
+        setLocalObjectUrl(url);
+        return () => URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error('Failed to create local object URL for preview:', e);
+      }
+    }
+  }, [uploadedFile]);
+
   if (!isOpen) return null;
+
+  const activePreviewUrl = localObjectUrl || previewUrl || fileSignedUrl || uploadedFile?.previewUrl || uploadedFile?.signedUrl;
+  const activeFileType = fileType || uploadedFile?.fileType || (fileName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+  const isImage = activeFileType.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(fileName);
+  const isPdf = activeFileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
 
   const totalDocPages = pageCount > 0 ? pageCount : 1;
 
@@ -75,6 +100,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   };
 
   const isLandscape = config.orientation === 'LANDSCAPE';
+  const isBw = colorMode === 'BW';
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 overflow-y-auto font-sans">
@@ -95,7 +121,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 font-medium">
-                Adobe Acrobat Advanced Print Engine & Live Page Preview
+                Adobe Acrobat Advanced Print Engine & Live Document Preview
               </p>
             </div>
           </div>
@@ -172,66 +198,106 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             {/* Document Render Box */}
             <div className="flex-1 w-full flex items-center justify-center overflow-auto p-4 relative">
               <div
-                className="bg-white text-slate-900 shadow-2xl rounded-sm transition-all duration-200 flex flex-col justify-between relative overflow-hidden select-none border border-slate-300"
+                className="bg-white text-slate-900 shadow-2xl rounded-xs transition-all duration-200 flex flex-col justify-between relative overflow-hidden select-none border border-slate-300"
                 style={{
-                  width: isLandscape ? `${280 * (zoomLevel / 100)}px` : `${200 * (zoomLevel / 100)}px`,
-                  height: isLandscape ? `${200 * (zoomLevel / 100)}px` : `${280 * (zoomLevel / 100)}px`,
+                  width: isLandscape ? `${320 * (zoomLevel / 100)}px` : `${230 * (zoomLevel / 100)}px`,
+                  height: isLandscape ? `${230 * (zoomLevel / 100)}px` : `${320 * (zoomLevel / 100)}px`,
                   transform: `rotate(${rotationAngle}deg)`,
+                  filter: isBw ? 'grayscale(100%)' : 'none',
                 }}
               >
                 {/* Watermark Overlay */}
                 {config.watermark && config.watermark !== 'NONE' && (
-                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                    <span className="text-3xl font-black text-rose-500/25 -rotate-45 tracking-widest uppercase border-4 border-rose-500/25 px-4 py-2 rounded-xl">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+                    <span className="text-3xl font-black text-rose-500/30 -rotate-45 tracking-widest uppercase border-4 border-rose-500/30 px-4 py-2 rounded-xl">
                       {config.watermark}
                     </span>
                   </div>
                 )}
 
                 {/* Top Document Simulation Header */}
-                <div className="p-3 border-b border-slate-200/80 flex items-center justify-between text-[9px] text-slate-400 font-mono">
-                  <span>QUICKPRINT ADOBE PREVIEW</span>
-                  <span>{paperSize} | {colorMode}</span>
+                <div className="px-3 py-1.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between text-[9px] text-slate-500 font-mono z-20 shrink-0">
+                  <span className="font-bold truncate max-w-[120px]">{fileName}</span>
+                  <span>{paperSize} | {isBw ? 'B&W' : 'COLOR'}</span>
                 </div>
 
-                {/* Body Content Representation */}
-                <div className="p-4 flex-1 flex flex-col justify-center gap-2">
-                  {config.pagesPerSheet === '2' ? (
-                    <div className="grid grid-cols-2 gap-2 h-full">
-                      <div className="bg-slate-100 rounded border border-slate-300 p-2 flex flex-col gap-1">
-                        <div className="h-1.5 bg-slate-300 rounded w-3/4" />
-                        <div className="h-1 bg-slate-200 rounded w-full" />
-                        <div className="h-1 bg-slate-200 rounded w-5/6" />
-                      </div>
-                      <div className="bg-slate-100 rounded border border-slate-300 p-2 flex flex-col gap-1">
-                        <div className="h-1.5 bg-slate-300 rounded w-3/4" />
-                        <div className="h-1 bg-slate-200 rounded w-full" />
-                        <div className="h-1 bg-slate-200 rounded w-5/6" />
-                      </div>
-                    </div>
-                  ) : config.pagesPerSheet === '4' ? (
-                    <div className="grid grid-cols-2 grid-rows-2 gap-1.5 h-full">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="bg-slate-100 rounded border border-slate-300 p-1">
-                          <div className="h-1 bg-slate-300 rounded w-2/3 mb-1" />
-                          <div className="h-0.5 bg-slate-200 rounded w-full mb-0.5" />
+                {/* Actual Image / PDF Document Display */}
+                <div className="flex-1 w-full h-full p-2 flex items-center justify-center relative overflow-hidden bg-slate-50">
+                  {activePreviewUrl ? (
+                    isImage ? (
+                      config.pagesPerSheet === '2' ? (
+                        <div className="grid grid-cols-2 gap-1.5 w-full h-full items-center">
+                          <img src={activePreviewUrl} alt="Preview 1" className="w-full h-full object-contain rounded-xs border border-slate-200" />
+                          <img src={activePreviewUrl} alt="Preview 2" className="w-full h-full object-contain rounded-xs border border-slate-200" />
                         </div>
-                      ))}
-                    </div>
+                      ) : config.pagesPerSheet === '4' ? (
+                        <div className="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full items-center">
+                          {[1, 2, 3, 4].map((i) => (
+                            <img key={i} src={activePreviewUrl} alt={`Preview ${i}`} className="w-full h-full object-contain rounded-xs border border-slate-200" />
+                          ))}
+                        </div>
+                      ) : (
+                        <img
+                          src={activePreviewUrl}
+                          alt="Uploaded Document Live Preview"
+                          className="w-full h-full object-contain max-h-full transition-transform"
+                        />
+                      )
+                    ) : isPdf ? (
+                      <div className="w-full h-full flex flex-col items-center justify-center relative">
+                        <iframe
+                          src={`${activePreviewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                          className="w-full h-full border-none pointer-events-none rounded-xs"
+                          title="PDF Preview"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-slate-400 p-4 text-center">
+                        <FileText className="w-10 h-10 text-slate-300" />
+                        <span className="text-xs font-bold text-slate-700">{fileName}</span>
+                      </div>
+                    )
                   ) : (
-                    <div className="space-y-2">
-                      <div className="h-3 bg-slate-800/80 rounded-xs w-3/4" />
-                      <div className="h-2 bg-slate-300 rounded-xs w-full" />
-                      <div className="h-2 bg-slate-300 rounded-xs w-5/6" />
-                      <div className="h-2 bg-slate-300 rounded-xs w-4/5" />
-                      <div className="h-2 bg-slate-200 rounded-xs w-full" />
-                      <div className="h-2 bg-slate-200 rounded-xs w-2/3" />
+                    /* Fallback Page Outline */
+                    <div className="p-4 flex-1 flex flex-col justify-center gap-2 w-full">
+                      {config.pagesPerSheet === '2' ? (
+                        <div className="grid grid-cols-2 gap-2 h-full">
+                          <div className="bg-slate-100 rounded border border-slate-300 p-2 flex flex-col gap-1">
+                            <div className="h-1.5 bg-slate-300 rounded w-3/4" />
+                            <div className="h-1 bg-slate-200 rounded w-full" />
+                            <div className="h-1 bg-slate-200 rounded w-5/6" />
+                          </div>
+                          <div className="bg-slate-100 rounded border border-slate-300 p-2 flex flex-col gap-1">
+                            <div className="h-1.5 bg-slate-300 rounded w-3/4" />
+                            <div className="h-1 bg-slate-200 rounded w-full" />
+                            <div className="h-1 bg-slate-200 rounded w-5/6" />
+                          </div>
+                        </div>
+                      ) : config.pagesPerSheet === '4' ? (
+                        <div className="grid grid-cols-2 grid-rows-2 gap-1.5 h-full">
+                          {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="bg-slate-100 rounded border border-slate-300 p-1">
+                              <div className="h-1 bg-slate-300 rounded w-2/3 mb-1" />
+                              <div className="h-0.5 bg-slate-200 rounded w-full mb-0.5" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="h-3 bg-slate-800/80 rounded-xs w-3/4" />
+                          <div className="h-2 bg-slate-300 rounded-xs w-full" />
+                          <div className="h-2 bg-slate-300 rounded-xs w-5/6" />
+                          <div className="h-2 bg-slate-300 rounded-xs w-4/5" />
+                          <div className="h-2 bg-slate-200 rounded-xs w-full" />
+                          <div className="h-2 bg-slate-200 rounded-xs w-2/3" />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
                 {/* Footer Page Number */}
-                <div className="p-2 border-t border-slate-200/80 flex items-center justify-between text-[9px] text-slate-400 font-mono bg-slate-50">
+                <div className="px-3 py-1.5 border-t border-slate-200 bg-slate-100 flex items-center justify-between text-[9px] text-slate-500 font-mono z-20 shrink-0">
                   <span>{fileName.substring(0, 18)}</span>
                   <span>Page {currentPage} of {totalDocPages}</span>
                 </div>
