@@ -414,24 +414,50 @@ export async function createOrder(order: Order): Promise<Order> {
  * Get order by ID
  */
 export async function getOrderById(id: string): Promise<Order | null> {
-  const local = localStore.orders.get(id);
+  if (!id) return null;
+  const cleanId = id.trim();
+
+  // 1. Direct map lookup
+  const local = localStore.orders.get(cleanId);
   if (local) return local;
 
-  ensureDiskOrdersLoaded();
-  const loaded = localStore.orders.get(id);
-  if (loaded) return loaded;
+  // 2. Search local memory values by id or order_number
+  for (const o of Array.from(localStore.orders.values())) {
+    if (o && (o.id === cleanId || o.order_number?.toUpperCase() === cleanId.toUpperCase())) {
+      return o;
+    }
+  }
 
+  // 3. Ensure disk orders loaded & search
+  ensureDiskOrdersLoaded();
+  for (const o of Array.from(localStore.orders.values())) {
+    if (o && (o.id === cleanId || o.order_number?.toUpperCase() === cleanId.toUpperCase())) {
+      return o;
+    }
+  }
+
+  // 4. Query Supabase Cloud DB by ID or order_number
   const admin = getAdminClient();
   if (admin) {
     try {
-      const { data, error } = await admin
+      let { data, error } = await admin
         .from('orders')
         .select('*')
-        .eq('id', id)
-        .single();
+        .eq('id', cleanId)
+        .maybeSingle();
+
+      if (!data) {
+        const res = await admin
+          .from('orders')
+          .select('*')
+          .eq('order_number', cleanId)
+          .maybeSingle();
+        data = res.data;
+        error = res.error;
+      }
 
       if (data && !error) {
-        localStore.orders.set(id, data as Order);
+        localStore.orders.set(data.id, data as Order);
         return data as Order;
       }
     } catch {}
