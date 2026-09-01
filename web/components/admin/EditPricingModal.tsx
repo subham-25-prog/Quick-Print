@@ -235,6 +235,27 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
                 />
               </div>
             </div>
+
+            <div className="pt-2 border-t border-indigo-100 flex items-center justify-between">
+              <div>
+                <span className="font-bold text-slate-800 text-xs">Auto-Start Printing for UPI</span>
+                <p className="text-[10px] text-slate-500 font-medium">Automatically spool UPI orders to printer without waiting for counter tap</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={form.form_fields?.autoApproveUpiOrders !== false}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    form_fields: {
+                      ...(prev.form_fields || {}),
+                      autoApproveUpiOrders: e.target.checked,
+                    },
+                  }))
+                }
+                className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+            </div>
           </div>
 
           {/* Action Buttons */}

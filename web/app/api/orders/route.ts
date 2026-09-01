@@ -64,12 +64,12 @@ export async function POST(req: NextRequest) {
     const orderId = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const orderNumber = generateOrderNumber();
 
-    // 4. Safe Payment Verification Security Gate:
-    // By default, ALL orders (UPI and Cash) require shopkeeper verification before printing.
-    // This prevents fake UPI taps / cancelled bank payments from spooling wasted paper.
+    // 4. Payment Verification Security Gate:
+    // UPI orders auto-approve immediately so printing starts automatically.
+    // Cash orders require manual shopkeeper verification at counter after receiving cash.
     const pMethod = paymentMethod as PaymentMethod;
     const isUpi = pMethod === 'UPI' || (pMethod as string) === 'ONLINE_UPI';
-    const autoApprove = Boolean(activePricing.form_fields?.autoApproveUpiOrders && isUpi);
+    const autoApprove = isUpi && activePricing.form_fields?.autoApproveUpiOrders !== false;
 
     const initialPaymentStatus = autoApprove ? 'VERIFIED' : 'AWAITING_VERIFICATION';
     const initialOrderStatus = autoApprove ? 'APPROVED' : 'PAYMENT_VERIFICATION_PENDING';
