@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PricingConfig, CustomAddon, CustomPaperType } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
+import { formatCurrency } from '@/lib/utils';
 import {
   Save,
   CheckCircle2,
@@ -14,8 +15,10 @@ import {
   CreditCard,
   Plus,
   Trash2,
-  Settings,
-  Tag,
+  User,
+  Phone,
+  MessageSquare,
+  Zap,
 } from '@/components/ui/Icons';
 
 export default function AdminSettingsPage() {
@@ -218,7 +221,7 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 flex flex-col font-sans pb-24">
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-28">
       <AdminHeader showSave={true} onSave={handleSave} saving={saving} saveButtonText="Save Settings" />
 
       {/* Floating Action Toast Notification */}
@@ -245,18 +248,16 @@ export default function AdminSettingsPage() {
         </div>
       )}
 
-      <main className="max-w-4xl mx-auto px-4 py-6 sm:py-8 flex-1 w-full space-y-6">
-        {/* Page Title Header */}
-        <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <main className="max-w-xl mx-auto w-full px-4 pt-4 space-y-4 flex-1">
+        {/* Page Title & Save Header Card */}
+        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs">
-              <Layers className="w-6 h-6" />
+            <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs shrink-0">
+              <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-xl font-extrabold text-slate-900">Shop Customization & Rates</h1>
-              <p className="text-xs text-slate-500 font-medium">
-                Reconfigure every section of the customer page: enable/disable options & set live rates
-              </p>
+              <h1 className="text-base font-bold text-slate-900">Customize Client Page</h1>
+              <p className="text-[11px] text-slate-500 font-medium">Reconfigure customer steps, rates & active options</p>
             </div>
           </div>
 
@@ -264,7 +265,727 @@ export default function AdminSettingsPage() {
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="px-5 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+          >
+            {saving ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <Save className="w-3.5 h-3.5" />
+                <span>Save All</span>
+              </>
+            )}
+          </button>
+        </div>
+
+        {/* Section 1: Store Branding & Customer Info Controls */}
+        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900">
+              1. Store Branding & Customer Info
+            </h2>
+            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
+              Client Header
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                Shop Name (Header Title)
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. Subham Cyber Cafe"
+                value={form.shop_name || ''}
+                onChange={(e) => handleChange('shop_name', e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
+              />
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+              <div className="text-[11px] font-bold text-slate-600">Customer Identification Form Fields:</div>
+
+              {/* Require Name */}
+              <label
+                onClick={() => toggleFormField('requireCustomerName')}
+                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                  form.form_fields?.requireCustomerName !== false
+                    ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <User className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">Customer Name Field</div>
+                    <div className="text-[10px] text-slate-400 font-medium">Require customer to enter full name</div>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.form_fields?.requireCustomerName !== false}
+                  onChange={() => {}}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+                />
+              </label>
+
+              {/* Require Phone */}
+              <label
+                onClick={() => toggleFormField('requireCustomerPhone')}
+                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                  form.form_fields?.requireCustomerPhone !== false
+                    ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Phone className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">WhatsApp / Mobile Number Field</div>
+                    <div className="text-[10px] text-slate-400 font-medium">Require mobile number for order pickup</div>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.form_fields?.requireCustomerPhone !== false}
+                  onChange={() => {}}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+                />
+              </label>
+
+              {/* Allow Notes */}
+              <label
+                onClick={() => toggleFormField('allowCustomerNotes')}
+                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                  form.form_fields?.allowCustomerNotes !== false
+                    ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <MessageSquare className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">Special Instructions / Notes Field</div>
+                    <div className="text-[10px] text-slate-400 font-medium">Allow customers to write print notes</div>
+                  </div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.form_fields?.allowCustomerNotes !== false}
+                  onChange={() => {}}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+                />
+              </label>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 2: Paper Sizes & Per-Page Rates (Customer Step 1) */}
+        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900">
+              2. Paper Sizes & Per-Page Rates
+            </h2>
+            <span className="text-[10px] font-bold text-slate-400">
+              Customer Step 1
+            </span>
+          </div>
+
+          {/* A4 Paper */}
+          <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-900">📄 A4 Standard Paper</span>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <span className="text-[11px] font-bold text-slate-600">Enabled</span>
+                <input
+                  type="checkbox"
+                  checked={form.enabled_papers?.a4 !== false}
+                  onChange={() => toggleEnabledPaper('a4')}
+                  className="w-4 h-4 rounded text-indigo-600"
+                />
+              </label>
+            </div>
+
+            {form.enabled_papers?.a4 !== false && (
+              <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-slate-200/60 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Single (₹/pg)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={form.a4_bw_per_page}
+                    onChange={(e) => handleChange('a4_bw_per_page', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Duplex (₹/pg)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={form.a4_bw_double_per_page || 3}
+                    onChange={(e) => handleChange('a4_bw_double_per_page', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Single (₹/pg)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={form.a4_color_per_page}
+                    onChange={(e) => handleChange('a4_color_per_page', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Duplex (₹/pg)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={form.a4_color_double_per_page || 18}
+                    onChange={(e) => handleChange('a4_color_double_per_page', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* A3 Paper */}
+          <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-extrabold text-slate-900">📑 A3 Large Paper</span>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <span className="text-[11px] font-bold text-slate-600">Enabled</span>
+                <input
+                  type="checkbox"
+                  checked={form.enabled_papers?.a3 !== false}
+                  onChange={() => toggleEnabledPaper('a3')}
+                  className="w-4 h-4 rounded text-indigo-600"
+                />
+              </label>
+            </div>
+
+            {form.enabled_papers?.a3 !== false && (
+              <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-slate-200/60 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">A3 B&W (₹/pg)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={form.a3_bw_per_page}
+                    onChange={(e) => handleChange('a3_bw_per_page', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">A3 Color (₹/pg)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={form.a3_color_per_page}
+                    onChange={(e) => handleChange('a3_color_per_page', parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Legal & Photo Paper Switches */}
+          <div className="grid grid-cols-2 gap-3">
+            <label
+              onClick={() => toggleEnabledPaper('legal')}
+              className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                form.enabled_papers?.legal !== false
+                  ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <span className="text-xs font-bold">Legal Size Paper</span>
+              <input
+                type="checkbox"
+                checked={form.enabled_papers?.legal !== false}
+                onChange={() => {}}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0"
+              />
+            </label>
+
+            <label
+              onClick={() => toggleEnabledPaper('photo')}
+              className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                form.enabled_papers?.photo !== false
+                  ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <span className="text-xs font-bold">Glossy Photo Paper</span>
+              <input
+                type="checkbox"
+                checked={form.enabled_papers?.photo !== false}
+                onChange={() => {}}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0"
+              />
+            </label>
+          </div>
+
+          {/* Custom Paper Sizes */}
+          <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-200 space-y-3">
+            <div className="font-extrabold text-indigo-900 text-xs flex items-center justify-between">
+              <span>✨ Custom Paper Sizes</span>
+              <span className="text-[10px] text-indigo-600 font-mono font-bold">
+                {(form.custom_papers || []).length} Sizes
+              </span>
+            </div>
+
+            {(form.custom_papers || []).length > 0 && (
+              <div className="space-y-2">
+                {form.custom_papers!.map((paper) => (
+                  <div key={paper.id} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200 text-xs">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={paper.enabled}
+                        onChange={() => toggleCustomPaper(paper.id)}
+                        className="w-4 h-4 rounded text-indigo-600"
+                      />
+                      <span className="font-bold text-slate-900">{paper.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold text-slate-700">B&W ₹{paper.bw_single}</span>
+                      <span className="font-semibold text-indigo-700">Color ₹{paper.color_single}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCustomPaper(paper.id)}
+                        className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Custom Paper Form */}
+            <div className="p-3 rounded-xl bg-white border border-indigo-200 space-y-2 text-xs">
+              <div className="font-bold text-slate-800 text-[11px]">+ Add Custom Paper Size</div>
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  placeholder="Paper Name (A5)"
+                  value={newPaperName}
+                  onChange={(e) => setNewPaperName(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold"
+                />
+                <input
+                  type="number"
+                  placeholder="B&W (₹/pg)"
+                  value={newPaperBwSingle}
+                  onChange={(e) => setNewPaperBwSingle(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold"
+                />
+                <input
+                  type="number"
+                  placeholder="Color (₹/pg)"
+                  value={newPaperColorSingle}
+                  onChange={(e) => setNewPaperColorSingle(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleAddCustomPaper}
+                disabled={!newPaperName.trim() || newPaperBwSingle === ''}
+                className="w-full py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs flex items-center justify-center gap-1 disabled:opacity-40"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Paper Option</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 3: Print Options (Customer Step 2) */}
+        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900">
+              3. Color & Duplex Options
+            </h2>
+            <span className="text-[10px] font-bold text-slate-400">
+              Customer Step 2
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            <label
+              onClick={() => toggleFormField('allowColorPrinting')}
+              className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                form.form_fields?.allowColorPrinting !== false
+                  ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <div>
+                <div className="text-xs font-bold text-slate-900">Color Printing Option</div>
+                <div className="text-[10px] text-slate-400 font-medium">Turn OFF if color printer is out of ink</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={form.form_fields?.allowColorPrinting !== false}
+                onChange={() => {}}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+              />
+            </label>
+
+            <label
+              onClick={() => toggleFormField('allowDoubleSided')}
+              className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                form.form_fields?.allowDoubleSided !== false
+                  ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+              }`}
+            >
+              <div>
+                <div className="text-xs font-bold text-slate-900">Double-Sided (Duplex) Option</div>
+                <div className="text-[10px] text-slate-400 font-medium">Turn OFF if printer only supports single-sided</div>
+              </div>
+              <input
+                type="checkbox"
+                checked={form.form_fields?.allowDoubleSided !== false}
+                onChange={() => {}}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+              />
+            </label>
+          </div>
+        </section>
+
+        {/* Section 4: Finishing & Add-ons (Customer Step 3) */}
+        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900">
+              4. Finishing & Add-on Services
+            </h2>
+            <span className="text-[10px] font-bold text-slate-400">
+              Customer Step 3
+            </span>
+          </div>
+
+          {/* Standard Finishing Options */}
+          <div className="space-y-2">
+            <div className="text-[11px] font-bold text-slate-600">Standard Services:</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {/* Spiral Binding */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.enabled_addons?.spiralBinding !== false}
+                    onChange={() => toggleEnabledAddon('spiralBinding')}
+                    className="w-4 h-4 rounded text-indigo-600"
+                  />
+                  <span className="text-xs font-bold text-slate-900">Spiral Binding</span>
+                </label>
+                <input
+                  type="number"
+                  disabled={form.enabled_addons?.spiralBinding === false}
+                  value={form.addon_spiral_binding}
+                  onChange={(e) => handleChange('addon_spiral_binding', parseFloat(e.target.value) || 0)}
+                  className="w-16 px-2 py-1 rounded-lg border border-slate-300 text-right font-bold text-xs"
+                  placeholder="₹30"
+                />
+              </div>
+
+              {/* Hard Cover Binding */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.enabled_addons?.hardBinding !== false}
+                    onChange={() => toggleEnabledAddon('hardBinding')}
+                    className="w-4 h-4 rounded text-indigo-600"
+                  />
+                  <span className="text-xs font-bold text-slate-900">Hard Cover</span>
+                </label>
+                <input
+                  type="number"
+                  disabled={form.enabled_addons?.hardBinding === false}
+                  value={form.addon_hard_binding}
+                  onChange={(e) => handleChange('addon_hard_binding', parseFloat(e.target.value) || 0)}
+                  className="w-16 px-2 py-1 rounded-lg border border-slate-300 text-right font-bold text-xs"
+                  placeholder="₹120"
+                />
+              </div>
+
+              {/* Soft Binding */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.enabled_addons?.softBinding !== false}
+                    onChange={() => toggleEnabledAddon('softBinding')}
+                    className="w-4 h-4 rounded text-indigo-600"
+                  />
+                  <span className="text-xs font-bold text-slate-900">Soft Cover</span>
+                </label>
+                <input
+                  type="number"
+                  disabled={form.enabled_addons?.softBinding === false}
+                  value={form.addon_soft_binding}
+                  onChange={(e) => handleChange('addon_soft_binding', parseFloat(e.target.value) || 0)}
+                  className="w-16 px-2 py-1 rounded-lg border border-slate-300 text-right font-bold text-xs"
+                  placeholder="₹40"
+                />
+              </div>
+
+              {/* Stapling */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.enabled_addons?.stapling !== false}
+                    onChange={() => toggleEnabledAddon('stapling')}
+                    className="w-4 h-4 rounded text-indigo-600"
+                  />
+                  <span className="text-xs font-bold text-slate-900">Stapling</span>
+                </label>
+                <input
+                  type="number"
+                  disabled={form.enabled_addons?.stapling === false}
+                  value={form.addon_stapling}
+                  onChange={(e) => handleChange('addon_stapling', parseFloat(e.target.value) || 0)}
+                  className="w-16 px-2 py-1 rounded-lg border border-slate-300 text-right font-bold text-xs"
+                  placeholder="₹5"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Custom Options List & Add New Form */}
+          <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-200 space-y-3">
+            <div className="font-extrabold text-indigo-900 text-xs flex items-center justify-between">
+              <span>✨ Custom Extra Options</span>
+              <span className="text-[10px] text-indigo-600 font-mono font-bold">
+                {(form.custom_addons || []).length} Options
+              </span>
+            </div>
+
+            {(form.custom_addons || []).length > 0 && (
+              <div className="space-y-2">
+                {form.custom_addons!.map((addon) => (
+                  <div key={addon.id} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200 text-xs">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={addon.enabled}
+                        onChange={() => toggleCustomOption(addon.id)}
+                        className="w-4 h-4 rounded text-indigo-600"
+                      />
+                      <div>
+                        <span className="font-bold text-slate-900">{addon.name}</span>
+                        {addon.description && <p className="text-[10px] text-slate-400">{addon.description}</p>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-slate-900">₹{addon.price}</span>
+                      <span className="text-[10px] text-slate-400 font-mono">({addon.unit.replace('_', ' ')})</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCustomOption(addon.id)}
+                        className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Custom Option Form */}
+            <div className="p-3 rounded-xl bg-white border border-indigo-200 space-y-2 text-xs">
+              <div className="font-bold text-slate-800 text-[11px]">+ Add Custom Option / Extra Service</div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="Option Name (Scan)"
+                  value={newAddonName}
+                  onChange={(e) => setNewAddonName(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-medium"
+                />
+                <input
+                  type="number"
+                  placeholder="Price (₹)"
+                  value={newAddonPrice}
+                  onChange={(e) => setNewAddonPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={newAddonUnit}
+                  onChange={(e) => setNewAddonUnit(e.target.value as any)}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold bg-white text-slate-800"
+                >
+                  <option value="per_copy">Per Copy / Book</option>
+                  <option value="per_page">Per Page</option>
+                  <option value="per_order">Flat Fee (Order)</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Description"
+                  value={newAddonDesc}
+                  onChange={(e) => setNewAddonDesc(e.target.value)}
+                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-slate-900"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleAddCustomOption}
+                disabled={!newAddonName.trim() || newAddonPrice === ''}
+                className="w-full py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs flex items-center justify-center gap-1 disabled:opacity-40"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Extra Option</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 5: Payment & Checkout Options (Customer Step 4) */}
+        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 className="text-sm font-bold text-slate-900">
+              5. Payment & Checkout Settings
+            </h2>
+            <span className="text-[10px] font-bold text-slate-400">
+              Customer Step 4
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2.5 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">Shopkeeper UPI VPA (ID)</label>
+                <input
+                  type="text"
+                  placeholder="shop@okaxis"
+                  value={form.shop_upi_id || ''}
+                  onChange={(e) => handleChange('shop_upi_id', e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono font-bold text-indigo-700 bg-slate-50/60 focus:bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">Payee Name</label>
+                <input
+                  type="text"
+                  placeholder="Royal Xerox"
+                  value={form.shop_upi_name || ''}
+                  onChange={(e) => handleChange('shop_upi_name', e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50/60 focus:bg-white"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2.5 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">Min Order Amount (₹)</label>
+                <input
+                  type="number"
+                  placeholder="5"
+                  value={form.form_fields?.minOrderAmount || 0}
+                  onChange={(e) => handleFormFieldChange('minOrderAmount', parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50/60 focus:bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 mb-1">Express / Urgent Fee (₹)</label>
+                <input
+                  type="number"
+                  placeholder="10"
+                  value={form.form_fields?.urgentFee || 0}
+                  onChange={(e) => handleFormFieldChange('urgentFee', parseFloat(e.target.value) || 0)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50/60 focus:bg-white"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 space-y-2">
+              <label
+                onClick={() => toggleFormField('allowUpiPayment')}
+                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                  form.form_fields?.allowUpiPayment !== false
+                    ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="text-xs font-bold text-slate-900">1-Tap UPI Payment (GPay / PhonePe / Paytm)</div>
+                  <div className="text-[10px] text-slate-400 font-medium">Show UPI payment link on customer checkout</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.form_fields?.allowUpiPayment !== false}
+                  onChange={() => {}}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0"
+                />
+              </label>
+
+              <label
+                onClick={() => toggleFormField('allowCashPayment')}
+                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                  form.form_fields?.allowCashPayment !== false
+                    ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="text-xs font-bold text-slate-900">Pay Cash at Counter Option</div>
+                  <div className="text-[10px] text-slate-400 font-medium">Show counter cash option for walk-in customers</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.form_fields?.allowCashPayment !== false}
+                  onChange={() => {}}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0"
+                />
+              </label>
+
+              <label
+                onClick={() => toggleFormField('autoApproveUpiOrders')}
+                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                  form.form_fields?.autoApproveUpiOrders !== false
+                    ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="text-xs font-bold text-slate-900">Auto-Start Printing for UPI Orders</div>
+                  <div className="text-[10px] text-slate-400 font-medium">Auto-spool UPI orders to printer without waiting for counter tap</div>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.form_fields?.autoApproveUpiOrders !== false}
+                  onChange={() => {}}
+                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0"
+                />
+              </label>
+            </div>
+          </div>
+        </section>
+
+        {/* Bottom Floating Save Bar */}
+        <div className="pt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all cursor-pointer disabled:opacity-50"
           >
             {saving ? (
               <>
@@ -274,669 +995,7 @@ export default function AdminSettingsPage() {
             ) : (
               <>
                 <Save className="w-4 h-4" />
-                <span>Save All Settings</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Section 1: Store Banner & Customer Info Controls */}
-        <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🏪</span>
-              <h2 className="text-base font-extrabold text-slate-900">1. Store Branding & Customer Info Controls</h2>
-            </div>
-            <span className="text-xs text-slate-400 font-medium">Header title, announcement & form rules</span>
-          </div>
-
-          <div className="space-y-3.5">
-            <div>
-              <label className="block text-slate-700 font-bold mb-1 text-xs">Shop Name (Displayed on Customer Page)</label>
-              <input
-                type="text"
-                placeholder="e.g. Subham Cyber Cafe"
-                value={form.shop_name || ''}
-                onChange={(e) => handleChange('shop_name', e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-              />
-            </div>
-
-
-
-            <div className="pt-2 border-t border-slate-200 space-y-2">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <div>
-                  <span className="font-bold text-slate-800 text-xs">Require Customer Name</span>
-                  <p className="text-[10px] text-slate-500 font-medium">Customer must enter their name before checkout</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.requireCustomerName !== false}
-                  onChange={() => toggleFormField('requireCustomerName')}
-                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <div>
-                  <span className="font-bold text-slate-800 text-xs">Require Customer Phone Number</span>
-                  <p className="text-[10px] text-slate-500 font-medium">Customer must enter their mobile number for SMS/WhatsApp pickup</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.requireCustomerPhone !== false}
-                  onChange={() => toggleFormField('requireCustomerPhone')}
-                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <div>
-                  <span className="font-bold text-slate-800 text-xs">Allow Customer Special Instructions / Notes</span>
-                  <p className="text-[10px] text-slate-500 font-medium">Show custom instruction field on customer order form</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.allowCustomerNotes !== false}
-                  onChange={() => toggleFormField('allowCustomerNotes')}
-                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 2: Paper Sizes & Per-Page Rates */}
-        <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
-          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">📄</span>
-              <h2 className="text-base font-extrabold text-slate-900">2. Paper Sizes & Per-Page Rates (Customer Step 1)</h2>
-            </div>
-            <span className="text-xs text-slate-400 font-medium">Enable stock & set rates in ₹</span>
-          </div>
-
-          {/* A4 Paper */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-extrabold text-slate-900 text-xs">A4 Paper (Standard)</span>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <span className="text-xs font-bold text-slate-600">Available on Customer Page</span>
-                <input
-                  type="checkbox"
-                  checked={form.enabled_papers?.a4 !== false}
-                  onChange={() => toggleEnabledPaper('a4')}
-                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                />
-              </label>
-            </div>
-
-            {form.enabled_papers?.a4 !== false && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-slate-200/80">
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1 text-[11px]">B&W Single-Sided (₹/pg)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.a4_bw_per_page}
-                    onChange={(e) => handleChange('a4_bw_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1 text-[11px]">B&W Duplex (₹/pg)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.a4_bw_double_per_page || 3}
-                    onChange={(e) => handleChange('a4_bw_double_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1 text-[11px]">Color Single-Sided (₹/pg)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.a4_color_per_page}
-                    onChange={(e) => handleChange('a4_color_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1 text-[11px]">Color Duplex (₹/pg)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.a4_color_double_per_page || 18}
-                    onChange={(e) => handleChange('a4_color_double_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* A3 Paper */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-extrabold text-slate-900 text-xs">A3 Paper (Large Format)</span>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <span className="text-xs font-bold text-slate-600">Available on Customer Page</span>
-                <input
-                  type="checkbox"
-                  checked={form.enabled_papers?.a3 !== false}
-                  onChange={() => toggleEnabledPaper('a3')}
-                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                />
-              </label>
-            </div>
-
-            {form.enabled_papers?.a3 !== false && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-200/80">
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1 text-[11px]">A3 B&W (₹/pg)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.a3_bw_per_page}
-                    onChange={(e) => handleChange('a3_bw_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-600 font-bold mb-1 text-[11px]">A3 Color (₹/pg)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.a3_color_per_page}
-                    onChange={(e) => handleChange('a3_color_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Legal & Photo */}
-          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-900 text-xs">Legal Size Paper</span>
-              <input
-                type="checkbox"
-                checked={form.enabled_papers?.legal !== false}
-                onChange={() => toggleEnabledPaper('legal')}
-                className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-bold text-slate-900 text-xs">Glossy Photo Paper</span>
-              <input
-                type="checkbox"
-                checked={form.enabled_papers?.photo !== false}
-                onChange={() => toggleEnabledPaper('photo')}
-                className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-              />
-            </div>
-          </div>
-
-          {/* Custom Paper Sizes */}
-          <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200 space-y-3">
-            <div className="font-extrabold text-indigo-900 text-xs flex items-center justify-between">
-              <span>✨ Custom Paper Sizes</span>
-              <span className="text-[10px] text-indigo-600 font-bold font-mono">
-                {(form.custom_papers || []).length} Custom Sizes
-              </span>
-            </div>
-
-            {(form.custom_papers || []).length > 0 ? (
-              <div className="space-y-2">
-                {form.custom_papers!.map((paper) => (
-                  <div key={paper.id} className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={paper.enabled}
-                        onChange={() => toggleCustomPaper(paper.id)}
-                        className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                      />
-                      <span className="font-bold text-slate-900 text-xs">{paper.name}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-xs">
-                      <span>B&W: ₹{paper.bw_single}</span>
-                      <span>Color: ₹{paper.color_single}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCustomPaper(paper.id)}
-                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-500 italic text-center py-1">
-                No custom paper sizes added. Add custom paper sizes below!
-              </p>
-            )}
-
-            {/* Add Custom Paper Form */}
-            <div className="p-3.5 rounded-xl bg-white border border-indigo-200 space-y-2.5">
-              <div className="font-extrabold text-slate-800 text-xs">+ Add New Custom Paper Size</div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <input
-                  type="text"
-                  placeholder="Paper Name (e.g. A5, Cardstock, Letter)"
-                  value={newPaperName}
-                  onChange={(e) => setNewPaperName(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
-                />
-                <input
-                  type="number"
-                  placeholder="B&W Rate (₹/pg)"
-                  value={newPaperBwSingle}
-                  onChange={(e) => setNewPaperBwSingle(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
-                />
-                <input
-                  type="number"
-                  placeholder="Color Rate (₹/pg)"
-                  value={newPaperColorSingle}
-                  onChange={(e) => setNewPaperColorSingle(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleAddCustomPaper}
-                disabled={!newPaperName.trim() || newPaperBwSingle === ''}
-                className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Custom Paper Size</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 3: Print Options (Customer Step 2) */}
-        <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🎨</span>
-              <h2 className="text-base font-extrabold text-slate-900">3. Print Options & Features (Customer Step 2)</h2>
-            </div>
-            <span className="text-xs text-slate-400 font-medium">Enable / Disable color & duplex</span>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-              <div>
-                <span className="font-bold text-slate-900 text-xs">Allow Color Printing Option</span>
-                <p className="text-[11px] text-slate-500 font-medium">Turn OFF if color printer is empty or undergoing maintenance</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={form.form_fields?.allowColorPrinting !== false}
-                onChange={() => toggleFormField('allowColorPrinting')}
-                className="w-5 h-5 rounded text-indigo-600 cursor-pointer"
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-              <div>
-                <span className="font-bold text-slate-900 text-xs">Allow Double-Sided (Duplex) Printing Option</span>
-                <p className="text-[11px] text-slate-500 font-medium">Turn OFF if printer only supports single-sided printing</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={form.form_fields?.allowDoubleSided !== false}
-                onChange={() => toggleFormField('allowDoubleSided')}
-                className="w-5 h-5 rounded text-indigo-600 cursor-pointer"
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* Section 4: Add-on Services & Custom Extra Options (Customer Step 3) */}
-        <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
-          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">📚</span>
-              <h2 className="text-base font-extrabold text-slate-900">4. Binding & Custom Options (Customer Step 3)</h2>
-            </div>
-            <span className="text-xs text-slate-400 font-medium">Enable/disable options & set rates</span>
-          </div>
-
-          {/* Standard Finishing Services */}
-          <div className="space-y-3">
-            <div className="font-extrabold text-slate-800 text-xs">Standard Finishing Services</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* Spiral Binding */}
-              <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.enabled_addons?.spiralBinding !== false}
-                    onChange={() => toggleEnabledAddon('spiralBinding')}
-                    className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-bold text-slate-800 text-xs">Spiral Binding</span>
-                    <p className="text-[10px] text-slate-400">Plastic coil binding</p>
-                  </div>
-                </div>
-                <input
-                  type="number"
-                  disabled={form.enabled_addons?.spiralBinding === false}
-                  value={form.addon_spiral_binding}
-                  onChange={(e) => handleChange('addon_spiral_binding', parseFloat(e.target.value) || 0)}
-                  className="w-20 px-2 py-1 rounded-lg border border-slate-300 text-right font-bold text-slate-900 text-xs"
-                  placeholder="₹30"
-                />
-              </div>
-
-              {/* Hard Cover Binding */}
-              <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.enabled_addons?.hardBinding !== false}
-                    onChange={() => toggleEnabledAddon('hardBinding')}
-                    className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-bold text-slate-800 text-xs">Hard Cover Binding</span>
-                    <p className="text-[10px] text-slate-400">Project / thesis book</p>
-                  </div>
-                </div>
-                <input
-                  type="number"
-                  disabled={form.enabled_addons?.hardBinding === false}
-                  value={form.addon_hard_binding}
-                  onChange={(e) => handleChange('addon_hard_binding', parseFloat(e.target.value) || 0)}
-                  className="w-20 px-2 py-1 rounded-lg border border-slate-300 text-right font-bold text-slate-900 text-xs"
-                  placeholder="₹120"
-                />
-              </div>
-
-              {/* Soft Binding */}
-              <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.enabled_addons?.softBinding !== false}
-                    onChange={() => toggleEnabledAddon('softBinding')}
-                    className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-bold text-slate-800 text-xs">Soft Cover Binding</span>
-                    <p className="text-[10px] text-slate-400">Paperback binding</p>
-                  </div>
-                </div>
-                <input
-                  type="number"
-                  disabled={form.enabled_addons?.softBinding === false}
-                  value={form.addon_soft_binding}
-                  onChange={(e) => handleChange('addon_soft_binding', parseFloat(e.target.value) || 0)}
-                  className="w-20 px-2 py-1 rounded-lg border border-slate-300 text-right font-bold text-slate-900 text-xs"
-                  placeholder="₹40"
-                />
-              </div>
-
-              {/* Stapling */}
-              <div className="flex items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.enabled_addons?.stapling !== false}
-                    onChange={() => toggleEnabledAddon('stapling')}
-                    className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                  />
-                  <div>
-                    <span className="font-bold text-slate-800 text-xs">Stapling</span>
-                    <p className="text-[10px] text-slate-400">Corner staple</p>
-                  </div>
-                </div>
-                <input
-                  type="number"
-                  disabled={form.enabled_addons?.stapling === false}
-                  value={form.addon_stapling}
-                  onChange={(e) => handleChange('addon_stapling', parseFloat(e.target.value) || 0)}
-                  className="w-20 px-2 py-1 rounded-lg border border-slate-300 text-right font-bold text-slate-900 text-xs"
-                  placeholder="₹5"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Custom Options List & Add New Form */}
-          <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200 space-y-3">
-            <div className="font-extrabold text-indigo-900 text-xs flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <span>✨ Custom Options & Extra Services</span>
-              </span>
-              <span className="text-[10px] text-indigo-600 font-bold font-mono">
-                {(form.custom_addons || []).length} Active
-              </span>
-            </div>
-
-            {/* List */}
-            {(form.custom_addons || []).length > 0 ? (
-              <div className="space-y-2">
-                {form.custom_addons!.map((addon) => (
-                  <div
-                    key={addon.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <input
-                        type="checkbox"
-                        checked={addon.enabled}
-                        onChange={() => toggleCustomOption(addon.id)}
-                        className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                      />
-                      <div>
-                        <span className="font-bold text-slate-900 text-xs">{addon.name}</span>
-                        {addon.description && (
-                          <p className="text-[10px] text-slate-400">{addon.description}</p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2.5">
-                      <span className="font-black text-slate-900 text-xs">₹{addon.price}</span>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        ({addon.unit.replace('_', ' ')})
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCustomOption(addon.id)}
-                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="Delete custom option"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-500 italic text-center py-2">
-                No custom extra options added yet. Add custom options below!
-              </p>
-            )}
-
-            {/* Add New Form */}
-            <div className="p-3.5 rounded-xl bg-white border border-indigo-200 space-y-3">
-              <div className="font-extrabold text-slate-800 text-xs">+ Add New Custom Option</div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <input
-                  type="text"
-                  placeholder="Option Name (e.g. Document Scanning, ID Cover)"
-                  value={newAddonName}
-                  onChange={(e) => setNewAddonName(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-900"
-                />
-                <input
-                  type="number"
-                  placeholder="Price (₹)"
-                  value={newAddonPrice}
-                  onChange={(e) => setNewAddonPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                <select
-                  value={newAddonUnit}
-                  onChange={(e) => setNewAddonUnit(e.target.value as any)}
-                  className="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 bg-white"
-                >
-                  <option value="per_copy">Per Copy / Book</option>
-                  <option value="per_page">Per Page</option>
-                  <option value="per_order">Flat Fee (Per Order)</option>
-                </select>
-                <input
-                  type="text"
-                  placeholder="Description (Optional)"
-                  value={newAddonDesc}
-                  onChange={(e) => setNewAddonDesc(e.target.value)}
-                  className="px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-900"
-                />
-              </div>
-              <button
-                type="button"
-                onClick={handleAddCustomOption}
-                disabled={!newAddonName.trim() || newAddonPrice === ''}
-                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-40"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Custom Option to Shop</span>
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 5: Payment Options & UPI VPA (Customer Step 4) */}
-        <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">💳</span>
-              <h2 className="text-base font-extrabold text-slate-900">5. Payment Options & UPI Details (Customer Step 4)</h2>
-            </div>
-            <span className="text-xs text-slate-400 font-medium">Counter cash & mobile UPI settings</span>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-200 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-600 font-bold mb-1 text-xs">Shopkeeper UPI VPA (ID)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. shop@okaxis"
-                  value={form.shop_upi_id || ''}
-                  onChange={(e) => handleChange('shop_upi_id', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white font-mono font-bold text-indigo-700 text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-600 font-bold mb-1 text-xs">Payee Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Royal Xerox"
-                  value={form.shop_upi_name || ''}
-                  onChange={(e) => handleChange('shop_upi_name', e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-indigo-100">
-              <div>
-                <label className="block text-slate-600 font-bold mb-1 text-xs">Minimum Order Total (₹)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 5"
-                  value={form.form_fields?.minOrderAmount || 0}
-                  onChange={(e) => handleFormFieldChange('minOrderAmount', parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-600 font-bold mb-1 text-xs">Urgent / Express Fee (₹)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 10"
-                  value={form.form_fields?.urgentFee || 0}
-                  onChange={(e) => handleFormFieldChange('urgentFee', parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-2 border-t border-indigo-100">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-indigo-100">
-                <div>
-                  <span className="font-bold text-slate-800 text-xs">Allow UPI Mobile Payment</span>
-                  <p className="text-[10px] text-slate-500">Show 1-tap GPay / PhonePe / Paytm payment on mobile</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.allowUpiPayment !== false}
-                  onChange={() => toggleFormField('allowUpiPayment')}
-                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-indigo-100">
-                <div>
-                  <span className="font-bold text-slate-800 text-xs">Allow Cash at Counter</span>
-                  <p className="text-[10px] text-slate-500">Show Pay Cash at Counter option for walk-in customers</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.allowCashPayment !== false}
-                  onChange={() => toggleFormField('allowCashPayment')}
-                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-indigo-100">
-                <div>
-                  <span className="font-bold text-slate-900 text-xs">Auto-Start Printing for UPI</span>
-                  <p className="text-[10px] text-slate-500 font-medium">Automatically send UPI orders to printer without waiting for counter tap</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.autoApproveUpiOrders !== false}
-                  onChange={() => toggleFormField('autoApproveUpiOrders')}
-                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Bottom Save Action */}
-        <div className="flex items-center justify-end pt-2">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/25 transition-all cursor-pointer disabled:opacity-50"
-          >
-            {saving ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Saving All Settings...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Save All Shop Settings & Rates</span>
+                <span>Save All Shop Settings & Live Rates</span>
               </>
             )}
           </button>
