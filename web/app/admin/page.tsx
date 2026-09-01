@@ -211,7 +211,10 @@ export default function AdminLiveOrdersPage() {
     if (action === 'APPROVE_PRINT') {
       showToast('Payment verified & Print job spooled to agent!', 'success');
     } else if (action === 'RETRY_PRINT') {
-      showToast('Reprint requested! Job spooled to agent.', 'success');
+      showToast('Reprint spooled! Order moved to Printing queue.', 'success');
+      if (filter === 'COMPLETED') {
+        setFilter('PRINTING');
+      }
     } else if (action === 'MARK_PRINTED') {
       showToast('Order marked as Completed!', 'success');
     } else if (action === 'REJECT') {
