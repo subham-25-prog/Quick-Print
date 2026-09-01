@@ -4,11 +4,16 @@ import { loadConfig } from './config';
 import { logger } from './logger';
 import { ShopApiClient } from './client';
 import { WindowsPrinterService } from './printer';
+import { AgentHealthServer } from './server';
 
 async function main() {
   const config = loadConfig();
   const client = new ShopApiClient(config);
   const printer = new WindowsPrinterService(config.printerName, config.simulatePrint);
+  const healthServer = new AgentHealthServer(config);
+
+  // Start local HTTP dashboard on port 9191
+  healthServer.start(9191);
 
   const defaultPrinter = await printer.getDefaultPrinterName();
   const activePrinter = config.printerName || defaultPrinter || '(None Detected)';
@@ -21,6 +26,7 @@ async function main() {
   logger.info(`Target Printer:     ${activePrinter} ${config.printerName ? '(Configured in .env)' : '(Auto-detected Windows Default)'}`);
   logger.info(`Simulation Mode:    ${config.simulatePrint ? 'ENABLED (Dry run)' : 'DISABLED (Real printer)'}`);
   logger.info(`Polling Interval:   ${config.pollIntervalMs} ms`);
+  logger.info(`Health Dashboard:   http://localhost:9191`);
   console.log('======================================================\n');
 
   // Ensure download temp folder exists
@@ -30,19 +36,27 @@ async function main() {
 
   // Check installed printers
   const printers = await printer.getInstalledPrinters();
+  healthServer.updatePrinters(printers, activePrinter);
   if (printers.length > 0) {
     logger.info(`Detected Windows Printers: ${printers.join(', ')}`);
   }
 
-  // Initial heartbeat
-  await client.sendHeartbeat(config.printerName);
+  // Heartbeat helper
+  const doHeartbeat = async () => {
+    try {
+      await client.sendHeartbeat(activePrinter);
+      healthServer.recordHeartbeat();
+    } catch (err) {
+      logger.warn('Heartbeat notice:', err instanceof Error ? err.message : err);
+    }
+  };
 
-  // Heartbeat timer
-  setInterval(async () => {
-    await client.sendHeartbeat(config.printerName);
-  }, config.heartbeatIntervalMs);
+  await doHeartbeat();
+  setInterval(doHeartbeat, config.heartbeatIntervalMs);
 
   let isProcessing = false;
+  let currentJobOrderNum = '';
+  let currentJobFileName = '';
 
   // Main polling loop
   const pollJobs = async () => {
@@ -54,6 +68,9 @@ async function main() {
       if (!job) return;
 
       isProcessing = true;
+      currentJobOrderNum = job.order_number;
+      currentJobFileName = job.file_name;
+
       logger.job(job.order_number, `Claimed job! File: ${job.file_name} (${job.page_count} pages, ${job.copies} copies)`);
 
       // 2. Download document
@@ -90,6 +107,7 @@ async function main() {
 
       // 4. Mark job as printed in shop backend
       await client.reportJobCompletion(job.order_id, true);
+      healthServer.recordJobSuccess(job.order_number, job.file_name);
       logger.success(`[JOB:${job.order_number}] Successfully printed and marked as PRINTED!`);
 
       // 5. Clean up local temp file after 25 second delay
@@ -99,14 +117,18 @@ async function main() {
             fs.unlinkSync(actualFilePath);
             logger.info(`[CLEANUP] Deleted temporary spooler file: ${path.basename(actualFilePath)}`);
           }
-        } catch (cleanErr) {
-          // Ignore cleanup errors
-        }
+        } catch (cleanErr) {}
       }, 25000);
     } catch (err) {
-      logger.error('Error processing print job:', err);
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      logger.error('Error processing print job:', errorMsg);
+      if (currentJobOrderNum) {
+        healthServer.recordJobFailure(currentJobOrderNum, currentJobFileName, errorMsg);
+      }
     } finally {
       isProcessing = false;
+      currentJobOrderNum = '';
+      currentJobFileName = '';
     }
   };
 

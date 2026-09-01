@@ -148,7 +148,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 {copied ? (
                   <>
                     <Check className="w-3.5 h-3.5 text-emerald-600" />
-                    <span className="font-bold text-emerald-700">Copied!</span>
+                    <span className="font-bold text-emerald-700">Copied VPA!</span>
                   </>
                 ) : (
                   <>
@@ -164,22 +164,29 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-indigo-600 text-[11px] font-bold border border-indigo-200 transition-colors cursor-pointer"
               >
                 <QrCode className="w-3.5 h-3.5" />
-                <span>{showQr ? 'Hide QR' : 'Show QR Code'}</span>
+                <span>{showQr ? 'Hide QR' : 'Show QR / Manual Pay'}</span>
               </button>
             </div>
 
-            {/* Scannable QR Code (Merchant Standee Image or Auto-Generated) */}
+            {/* Manual UPI Fallback Box for Scan / Manual App Transfer */}
             {showQr && (
-              <div className="p-3.5 bg-white rounded-2xl border border-slate-200 shadow-2xs flex flex-col items-center justify-center space-y-2 animate-in fade-in zoom-in-95 duration-200">
+              <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-2xs space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200/80 text-[11px] text-amber-900 font-medium flex items-start gap-2">
+                  <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <strong>If UPI app doesn't open:</strong> Copy VPA <code>{activeUpi}</code> or scan QR below in any UPI app, enter exact amount <strong>{formatCurrency(amount)}</strong>, and submit.
+                  </div>
+                </div>
+
                 {pricing?.shop_merchant_qr_image && pricing?.shop_qr_mode === 'CUSTOM_IMAGE' ? (
                   <div className="space-y-1.5 text-center">
                     <img
                       src={pricing.shop_merchant_qr_image}
                       alt="Shopkeeper Official Merchant QR"
-                      className="w-48 h-48 object-contain mx-auto rounded-xl border border-slate-100 p-1"
+                      className="w-44 h-44 object-contain mx-auto rounded-xl border border-slate-100 p-1"
                     />
                     <div className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full inline-block">
-                      Official Merchant Standee QR Code
+                      Official Merchant QR Code
                     </div>
                   </div>
                 ) : qrDataUrl ? (
@@ -188,9 +195,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
                     <p className="text-[10px] text-slate-500 font-medium">Scan with PhonePe, GPay, Paytm, BHIM</p>
                   </div>
                 ) : null}
-                <div className="text-[11px] font-bold text-slate-900 font-mono">
-                  Amount to Pay: {formatCurrency(amount)}
-                </div>
               </div>
             )}
 

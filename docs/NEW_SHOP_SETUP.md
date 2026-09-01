@@ -1,6 +1,6 @@
-# QuickPrint – New Shop Onboarding & Deployment Guide
+# QuickPrint – Production New Shop Onboarding & Deployment Guide
 
-This guide describes the complete, repeatable **15-minute onboarding process** for deploying a new customized QuickPrint instance for a specific print shop (e.g. *Royal Xerox*, *Quick Print*, *College Xerox*).
+This guide describes the plug-and-play **10-minute onboarding process** for deploying a production-grade QuickPrint instance for a new print shop (e.g. *Royal Xerox*, *Quick Print*, *College Xerox*).
 
 ---
 
@@ -24,14 +24,15 @@ Each print shop receives its own isolated stack:
 ┌─────────────────────────────────────────────────────────────┐
 │ Dedicated Supabase Project                                  │
 │ - PostgreSQL DB & Row Level Security                        │
-│ - Private Bucket: `shop-documents`                          │
+│ - Private Bucket: `shop-documents` (Signed URL Access)     │
 │ - Supabase Auth (Shopkeeper Login)                          │
 └───────────────────────────┬─────────────────────────────────┘
                             │ (Encrypted Token Auth)
                             ▼
 ┌─────────────────────────────────────────────────────────────┐
 │ Shop PC: Windows Print Agent (Node.js Daemon)               │
-│ - Checks for APPROVED print jobs                            │
+│ - Auto-detects connected Windows printers                  │
+│ - Serves Health Dashboard at http://localhost:9191          │
 │ - Downloads file & dispatches to local printer              │
 │ - Marks order as PRINTED                                    │
 └─────────────────────────────────────────────────────────────┘
@@ -39,115 +40,57 @@ Each print shop receives its own isolated stack:
 
 ---
 
-## Step-by-Step Setup Checklist
+## ⚡ 1-Command Automated Onboarding
 
-### Step 1: Create a Dedicated Supabase Project
-1. Log in to [Supabase](https://supabase.com) and click **New Project**.
-2. Name the project after the shop (e.g., `quickprint-royal-xerox`).
-3. Set a secure database password and choose the nearest region (e.g., *Mumbai / ap-south-1*).
-4. Go to **SQL Editor** -> Click **New query**.
-5. Copy and execute [`supabase/schema.sql`](file:///supabase/schema.sql).
-6. Copy and execute [`supabase/storage.sql`](file:///supabase/storage.sql).
-7. Go to **Project Settings** -> **API** and copy:
-   - **Project URL** (`NEXT_PUBLIC_SUPABASE_URL`)
-   - **anon / public key** (`NEXT_PUBLIC_SUPABASE_ANON_KEY`)
-   - **service_role key** (`SUPABASE_SERVICE_ROLE_KEY`)
+On the shop PC or developer terminal, run the automated setup wizard:
 
----
-
-### Step 2: Create the Shopkeeper Admin Account
-1. In Supabase Dashboard, navigate to **Authentication** -> **Users**.
-2. Click **Add user** -> **Create user**.
-3. Enter the shopkeeper's email (e.g., `admin@royalxerox.com`) and set a secure initial password.
-4. Toggle **Auto Confirm User?** to `ON`.
-
----
-
-### Step 3: Configure Shop Environment Variables
-Create a `.env.production` file for the shop:
-
-```env
-# --- Shop Identity ---
-NEXT_PUBLIC_SHOP_NAME="Royal Xerox & Cyber Cafe"
-NEXT_PUBLIC_SHOP_TAGLINE="Scan, Upload & Print in 30 Seconds"
-NEXT_PUBLIC_SHOP_ADDRESS="Shop #4, College Gate Road, Bengaluru, KA 560001"
-NEXT_PUBLIC_SHOP_PHONE="+91 98765 43210"
-NEXT_PUBLIC_CURRENCY_SYMBOL="₹"
-NEXT_PUBLIC_CURRENCY_CODE="INR"
-
-# --- Shopkeeper UPI Details ---
-NEXT_PUBLIC_SHOP_UPI_ID="royalxerox@oksbi"
-NEXT_PUBLIC_SHOP_UPI_NAME="Royal Xerox"
-
-# --- Supabase Credentials ---
-NEXT_PUBLIC_SUPABASE_URL="https://xxxxxxxx.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6..."
-
-# --- Print Agent Shared Secret ---
-PRINT_AGENT_SECRET="qp_sec_live_royal_98a72b1c4e5f"
-
-# --- Production URL ---
-NEXT_PUBLIC_APP_URL="https://royal-xerox.quickprint.app"
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup.ps1
 ```
 
----
-
-### Step 4: Deploy the Web Application to Vercel
-1. Push the repository to GitHub under a dedicated branch or repository for that shop.
-2. In [Vercel](https://vercel.com), click **Add New** -> **Project**.
-3. Set the Root Directory to `web`.
-4. Add all environment variables from Step 3 into the Vercel project settings.
-5. Click **Deploy**.
-6. Assign a custom domain or Vercel subdomain (e.g. `royal-xerox.quickprint.app`).
+### What `setup.ps1` Configures Automatically:
+1. Prompts for Shop Name, Tagline, Address, Phone, UPI ID, Payee Name, Supabase URL, and API Keys.
+2. Generates `web/.env.local`, `web/.env.production`, and `print-agent/.env`.
+3. Updates `shop.config.json` with shopkeeper details.
+4. Verifies database connectivity.
+5. Installs all required NPM dependencies for the web app and Print Agent.
 
 ---
 
-### Step 5: Generate & Print the Permanent Static QR Code
-1. Open any QR generator (or use the built-in QR tool in the admin portal) pointing to `https://royal-xerox.quickprint.app`.
-2. Print a laminated poster for the shop counter / wall displaying:
-   - Shop Name
-   - "Scan to Print Documents"
-   - The Static QR Code
-   - Simple 3-step guide: *1. Scan QR -> 2. Upload Document -> 3. Pay & Collect Prints*
+## Step-by-Step Manual Deployment Checklist
+
+### Step 1: Create Supabase Project & Run Migrations
+1. Log in to [Supabase](https://supabase.com) and click **New Project**.
+2. Go to **SQL Editor** -> Execute [`supabase/schema.sql`](file:///supabase/schema.sql).
+3. Execute [`supabase/storage.sql`](file:///supabase/storage.sql).
+4. Copy Project URL, Anon Key, and Service Role Key.
 
 ---
 
-### Step 6: Install the Windows Print Agent on the Shop PC
-1. Copy the `print-agent/` directory to `C:\QuickPrint-Agent` on the shopkeeper's Windows PC.
-2. Open PowerShell as Administrator and run:
+### Step 2: Deploy Web App to Vercel
+1. Push repository to GitHub.
+2. In [Vercel](https://vercel.com), click **Add New Project**, set root to `web`.
+3. Paste all environment variables from `web/.env.production`.
+4. Click **Deploy**.
+
+---
+
+### Step 3: Configure Print Agent on Shop PC
+1. Copy `print-agent/` to `C:\QuickPrint-Agent`.
+2. Run automated service installer:
    ```powershell
-   cd C:\QuickPrint-Agent
-   npm install
+   powershell -ExecutionPolicy Bypass -File .\install_service.ps1
    ```
-3. Create `.env` in `C:\QuickPrint-Agent`:
-   ```env
-   BACKEND_URL=https://royal-xerox.quickprint.app
-   PRINT_AGENT_SECRET=qp_sec_live_royal_98a72b1c4e5f
-   AGENT_ID=counter-pc-01
-   PRINTER_NAME=
-   POLL_INTERVAL_MS=3000
-   SIMULATE_PRINT=false
-   ```
-   *(Note: Leave `PRINTER_NAME=` empty to use the Windows Default Printer, or type the exact name from Windows Printers).*
-
-4. Set the agent to start automatically with Windows using PM2:
-   ```powershell
-   npm install -g pm2 pm2-windows-startup
-   pm2-startup install
-   pm2 start dist/index.js --name "quickprint-agent"
-   pm2 save
-   ```
+3. Verify agent dashboard at **`http://localhost:9191`**.
 
 ---
 
-### Step 7: Onboarding Verification Checklist
+## Onboarding Verification Checklist
 
-- [ ] **Customer Upload**: Open the shop URL on a mobile phone and upload a test PDF and test image.
-- [ ] **Page Detection**: Verify page count auto-detects accurately.
-- [ ] **Live Pricing**: Verify option toggles (B&W / Color, Single / Double sided, Copies, Add-ons) calculate rates correctly.
-- [ ] **UPI Payment Flow**: Click "Pay via UPI App" and verify it opens GPay / PhonePe with the exact calculated amount and order note.
-- [ ] **Admin Queue**: Log in to `/admin` and verify the new order appears in the *Needs Verification* tab.
-- [ ] **Approve & Print**: Click *Verify & Approve Print*.
-- [ ] **Automatic Print**: Verify the Windows Print Agent claims the job, downloads the PDF, sends it to the printer, and changes status to `PRINTED`.
-- [ ] **Customer Status Screen**: Verify the customer's phone updates to `PRINTED & READY`.
+- [ ] **Automated Onboarding**: Run `setup.ps1` and verify `.env` files are generated cleanly.
+- [ ] **Pricing Unit Test**: Run `npx tsx lib/__tests__/pricing.test.ts` in `web/` to confirm rate calculations and snapshot immutability.
+- [ ] **Customer Upload**: Upload test PDF on mobile. Verify page count detection.
+- [ ] **UPI Payment**: Test UPI deep links & manual VPA copy fallback card.
+- [ ] **Admin Verification**: Approve print in `/admin`.
+- [ ] **Automatic Spooling**: Verify Print Agent prints document and updates status to `PRINTED`.
+- [ ] **Health Dashboard**: Open `http://localhost:9191` to confirm active printer health & log telemetry.
