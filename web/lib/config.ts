@@ -2,7 +2,7 @@ import { PricingConfig } from '@/types';
 import shopTemplate from '../public/config/pricing_config.json';
 
 export const shopConfig = {
-  name: shopTemplate.shop_name || process.env.NEXT_PUBLIC_SHOP_NAME || 'QuickPrint Digital Xerox & Cyber Hub',
+  name: shopTemplate.shop_name || process.env.NEXT_PUBLIC_SHOP_NAME || 'Cyber Cafe',
   tagline: process.env.NEXT_PUBLIC_SHOP_TAGLINE || 'Self-Service Express Print',
   address: shopTemplate.shop_address || process.env.NEXT_PUBLIC_SHOP_ADDRESS || 'Main Market Road',
   phone: shopTemplate.shop_phone || process.env.NEXT_PUBLIC_SHOP_PHONE || '9144457475',

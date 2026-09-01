@@ -299,7 +299,7 @@ export default function AdminSettingsPage() {
               </label>
               <input
                 type="text"
-                placeholder="e.g. Subham Cyber Cafe"
+                placeholder="e.g. Cyber Cafe"
                 value={form.shop_name || ''}
                 onChange={(e) => handleChange('shop_name', e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
