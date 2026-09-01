@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
-import { Order, OrderStatus } from '@/types';
+import { EditPricingModal } from '@/components/admin/EditPricingModal';
+import { Order, OrderStatus, PricingConfig } from '@/types';
+import { defaultPricingConfig } from '@/lib/config';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
   Printer,
@@ -28,10 +30,13 @@ import {
   Zap,
   RotateCcw,
   X,
+  Tag,
 } from '@/components/ui/Icons';
 
 export default function AdminLiveOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [pricing, setPricing] = useState<PricingConfig>(defaultPricingConfig);
+  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'PRINTING' | 'COMPLETED'>('ALL');
@@ -57,7 +62,7 @@ export default function AdminLiveOrdersPage() {
     }, 2000);
   };
 
-  // Load cached orders from localStorage on mount so UI doesn't clear on refresh
+  // Load cached orders and pricing on mount
   useEffect(() => {
     try {
       const cached = localStorage.getItem('qp_admin_cached_orders');
@@ -69,6 +74,13 @@ export default function AdminLiveOrdersPage() {
         }
       }
     } catch (e) {}
+
+    fetch('/api/admin/pricing')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.pricing) setPricing(data.pricing);
+      })
+      .catch(() => {});
   }, []);
 
   const fetchOrders = useCallback(async (isManual = false) => {
@@ -300,7 +312,7 @@ export default function AdminLiveOrdersPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 flex flex-col font-sans pb-24">
-      <AdminHeader />
+      <AdminHeader onOpenPricing={() => setIsPricingModalOpen(true)} />
 
       {/* Floating Action Toast Notification */}
       {toastMessage && (
@@ -859,6 +871,17 @@ export default function AdminLiveOrdersPage() {
           )}
         </section>
       </main>
+
+      {/* Edit Shop Pricing & Rates Modal */}
+      <EditPricingModal
+        isOpen={isPricingModalOpen}
+        onClose={() => setIsPricingModalOpen(false)}
+        currentPricing={pricing}
+        onPricingUpdated={(updated) => {
+          setPricing(updated);
+          showToast('Shop rates and pricing updated successfully!', 'success');
+        }}
+      />
     </div>
   );
 }
