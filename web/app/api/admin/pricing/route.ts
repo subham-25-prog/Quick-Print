@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { getActivePricing, updatePricing } from '@/lib/db';
 import { defaultPricingConfig } from '@/lib/config';
 
@@ -39,6 +40,13 @@ export async function POST(req: NextRequest) {
     const payload = body.pricing || body;
 
     const updated = await updatePricing(payload);
+
+    // Explicitly revalidate Next.js cache paths & tags
+    try {
+      revalidatePath('/');
+      revalidatePath('/admin');
+      revalidateTag('pricing');
+    } catch (e) {}
 
     return NextResponse.json(
       {

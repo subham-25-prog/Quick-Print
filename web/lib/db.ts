@@ -300,9 +300,30 @@ function cleanConfigObject(saved: any): PricingConfig {
 }
 
 /**
- * Get active pricing configuration (Codebase-driven)
+ * Get active pricing configuration (Single Source of Truth from Supabase Cloud DB)
  */
 export async function getActivePricing(): Promise<PricingConfig> {
+  // 1. Try fetching from Supabase Cloud DB shop_settings table first
+  const admin = getAdminClient();
+  if (admin) {
+    try {
+      const { data, error } = await admin
+        .from('shop_settings')
+        .select('pricing')
+        .eq('id', 'default_shop')
+        .maybeSingle();
+
+      if (data?.pricing && !error) {
+        localStore.pricing = cleanConfigObject(data.pricing);
+        writeSavedPricingFile(localStore.pricing);
+        return localStore.pricing;
+      }
+    } catch (err) {
+      console.warn('Notice querying Supabase shop_settings:', err);
+    }
+  }
+
+  // 2. Fall back to saved local disk file if offline or unconfigured
   try {
     const saved = readSavedPricingFile();
     if (saved) {
@@ -318,7 +339,7 @@ export async function getActivePricing(): Promise<PricingConfig> {
 }
 
 /**
- * Update pricing configuration
+ * Update pricing configuration (Saves to Supabase & disk)
  */
 export async function updatePricing(newPricing: Partial<PricingConfig>): Promise<PricingConfig> {
   const current = await getActivePricing();
@@ -341,6 +362,20 @@ export async function updatePricing(newPricing: Partial<PricingConfig>): Promise
 
   // Write to local disk files
   writeSavedPricingFile(localStore.pricing);
+
+  // Persist to Supabase Cloud DB shop_settings table
+  const admin = getAdminClient();
+  if (admin) {
+    try {
+      await admin.from('shop_settings').upsert({
+        id: 'default_shop',
+        pricing: localStore.pricing,
+        updated_at: new Date().toISOString(),
+      });
+    } catch (dbErr) {
+      console.warn('Notice upserting Supabase shop_settings:', dbErr);
+    }
+  }
 
   return localStore.pricing;
 }

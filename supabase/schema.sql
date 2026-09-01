@@ -68,7 +68,24 @@ CREATE POLICY "Allow public read on orders" ON public.orders FOR SELECT USING (t
 CREATE POLICY "Allow public insert on orders" ON public.orders FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public update on orders" ON public.orders FOR UPDATE USING (true);
 
--- 3. Storage Bucket for uploaded documents
+-- 3. Shop Pricing & Configuration Table (Single Source of Truth)
+CREATE TABLE IF NOT EXISTS public.shop_settings (
+    id VARCHAR(50) PRIMARY KEY DEFAULT 'default_shop',
+    pricing JSONB NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.shop_settings ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read on shop_settings" ON public.shop_settings;
+DROP POLICY IF EXISTS "Allow public insert on shop_settings" ON public.shop_settings;
+DROP POLICY IF EXISTS "Allow public update on shop_settings" ON public.shop_settings;
+
+CREATE POLICY "Allow public read on shop_settings" ON public.shop_settings FOR SELECT USING (true);
+CREATE POLICY "Allow public insert on shop_settings" ON public.shop_settings FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update on shop_settings" ON public.shop_settings FOR UPDATE USING (true);
+
+-- 4. Storage Bucket for uploaded documents
 INSERT INTO storage.buckets (id, name, public, file_size_limit) 
 VALUES ('shop-documents', 'shop-documents', true, 52428800)
 ON CONFLICT (id) DO UPDATE SET public = true;

@@ -79,7 +79,7 @@ export default function CustomerHomePage() {
       }
     };
 
-    // Load from local storage first for fast response
+    // Load cached pricing first for instant initial render
     try {
       const cached = localStorage.getItem('quickprint_live_pricing');
       if (cached) {
@@ -90,26 +90,25 @@ export default function CustomerHomePage() {
       }
     } catch {}
 
-    fetch('/api/admin/pricing?t=' + Date.now(), { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.pricing) {
-          const cached = localStorage.getItem('quickprint_live_pricing');
-          let chosenPricing = data.pricing as PricingConfig;
-          if (cached) {
-            try {
-              const parsed = JSON.parse(cached);
-              const localTime = parsed.updated_at ? new Date(parsed.updated_at).getTime() : 0;
-              const serverTime = data.pricing.updated_at ? new Date(data.pricing.updated_at).getTime() : 0;
-              if (localTime > serverTime) {
-                chosenPricing = parsed;
-              }
-            } catch {}
+    // Fetch fresh pricing from server (Single Source of Truth)
+    const fetchFreshPricing = async () => {
+      try {
+        const res = await fetch('/api/admin/pricing?t=' + Date.now(), { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.pricing) {
+            applyPricingConfig(data.pricing);
           }
-          applyPricingConfig(chosenPricing);
         }
-      })
-      .catch((err) => console.error('Failed to load shop pricing:', err));
+      } catch (err) {
+        console.error('Failed to load fresh shop pricing:', err);
+      }
+    };
+
+    fetchFreshPricing();
+
+    // Auto-sync pricing every 5s so customer page updates live if shopkeeper changes rates
+    const syncInterval = setInterval(fetchFreshPricing, 5000);
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'quickprint_live_pricing' && e.newValue) {
@@ -124,6 +123,7 @@ export default function CustomerHomePage() {
     setTempOrderNumber(generateOrderNumber());
 
     return () => {
+      clearInterval(syncInterval);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
