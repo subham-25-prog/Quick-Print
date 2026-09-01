@@ -129,6 +129,13 @@ export default function AdminLiveOrdersPage() {
             (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
           );
 
+          // Deep stringify check: if fetched data is identical to current state, keep existing array identity to prevent DOM re-renders
+          const currentJson = JSON.stringify(prevOrders);
+          const mergedJson = JSON.stringify(merged);
+          if (currentJson === mergedJson) {
+            return prevOrders;
+          }
+
           try {
             localStorage.setItem('qp_admin_cached_orders', JSON.stringify(merged));
           } catch (e) {}
@@ -714,8 +721,12 @@ export default function AdminLiveOrdersPage() {
                           <>
                             <button
                               type="button"
-                              onClick={() => handleOrderAction(order.id, 'APPROVE_PRINT')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOrderAction(order.id, 'APPROVE_PRINT');
+                              }}
                               disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
+                              style={{ touchAction: 'manipulation' }}
                               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50 cursor-pointer transition-all"
                             >
                               {isApproving ? (
@@ -728,8 +739,12 @@ export default function AdminLiveOrdersPage() {
 
                             <button
                               type="button"
-                              onClick={() => handleOrderAction(order.id, 'REJECT')}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOrderAction(order.id, 'REJECT');
+                              }}
                               disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
+                              style={{ touchAction: 'manipulation' }}
                               className="px-2.5 py-2 rounded-xl bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs active:scale-95 disabled:opacity-50 cursor-pointer transition-all"
                             >
                               {isRejecting ? (
@@ -744,8 +759,12 @@ export default function AdminLiveOrdersPage() {
                         {isPrinting && (
                           <button
                             type="button"
-                            onClick={() => handleOrderAction(order.id, 'MARK_PRINTED')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOrderAction(order.id, 'MARK_PRINTED');
+                            }}
                             disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
+                            style={{ touchAction: 'manipulation' }}
                             className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-500/20 active:scale-95 disabled:opacity-50 cursor-pointer transition-all"
                           >
                             {isCompleting ? (
@@ -760,8 +779,12 @@ export default function AdminLiveOrdersPage() {
                         {(isPrinted || isRejected) && (
                           <button
                             type="button"
-                            onClick={() => handleOrderAction(order.id, 'RETRY_PRINT')}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOrderAction(order.id, 'RETRY_PRINT');
+                            }}
                             disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
+                            style={{ touchAction: 'manipulation' }}
                             className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 active:scale-95 disabled:opacity-50 cursor-pointer transition-all border border-slate-200/80 shadow-2xs"
                           >
                             <Printer className="w-3.5 h-3.5" />
