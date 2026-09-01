@@ -558,6 +558,44 @@ export async function cleanupOldOrders(retentionDays = 3): Promise<{ deletedCoun
   return { deletedCount: 0 };
 }
 
+export function normalizeOrder(raw: any): Order {
+  if (!raw) return raw;
+  const idStr = String(raw.id || raw.orderId || raw.order_id || '');
+  const orderNumStr = String(raw.order_number || raw.orderNumber || idStr || 'QP-0000');
+  const fileNameStr = String(raw.file_name || raw.fileName || raw.filename || 'document.pdf');
+  const storagePathStr = String(raw.storage_path || raw.storagePath || fileNameStr || '');
+
+  return {
+    ...raw,
+    id: idStr,
+    order_number: orderNumStr,
+    file_name: fileNameStr,
+    storage_path: storagePathStr,
+    file_type: String(raw.file_type || raw.fileType || 'application/pdf'),
+    file_size_bytes: Number(raw.file_size_bytes ?? raw.fileSizeBytes ?? 0),
+    page_count: Math.max(1, parseInt(String(raw.page_count ?? raw.pageCount ?? 1), 10) || 1),
+    paper_size: String(raw.paper_size || raw.paperSize || 'A4'),
+    color_mode: String(raw.color_mode || raw.colorMode || 'BW'),
+    print_sides: String(raw.print_sides || raw.printSides || 'SINGLE'),
+    copies: Math.max(1, parseInt(String(raw.copies ?? 1), 10) || 1),
+    add_ons: raw.add_ons || raw.addOns || {},
+    per_page_rate: Number(raw.per_page_rate ?? raw.perPageRate ?? 0),
+    print_subtotal: Number(raw.print_subtotal ?? raw.printSubtotal ?? 0),
+    addons_subtotal: Number(raw.addons_subtotal ?? raw.addonsSubtotal ?? 0),
+    total_amount: Number(raw.total_amount ?? raw.totalAmount ?? raw.total_price ?? 0),
+    currency: String(raw.currency || 'INR'),
+    pricing_snapshot: raw.pricing_snapshot || raw.pricingSnapshot || {},
+    payment_method: String(raw.payment_method || raw.paymentMethod || 'UPI'),
+    payment_status: String(raw.payment_status || raw.paymentStatus || 'AWAITING_VERIFICATION'),
+    order_status: String(raw.order_status || raw.orderStatus || 'PENDING_PAYMENT'),
+    customer_name: raw.customer_name || raw.customerName || raw.name || undefined,
+    customer_phone: raw.customer_phone || raw.customerPhone || raw.phone || undefined,
+    customer_notes: raw.customer_notes || raw.customerNotes || raw.notes || undefined,
+    created_at: String(raw.created_at || raw.createdAt || raw.timestamp || new Date().toISOString()),
+    updated_at: String(raw.updated_at || raw.updatedAt || new Date().toISOString()),
+  } as Order;
+}
+
 /**
  * Get all orders with optional status filter
  */
@@ -570,7 +608,8 @@ export async function getAllOrders(statusFilter?: string): Promise<Order[]> {
 
   // 1. First add all local in-memory orders
   for (const [id, order] of Array.from(localStore.orders.entries())) {
-    orderMap.set(id, order);
+    const norm = normalizeOrder(order);
+    orderMap.set(id, norm);
   }
 
   // 2. Fetch all cloud orders from Supabase and merge
@@ -583,8 +622,9 @@ export async function getAllOrders(statusFilter?: string): Promise<Order[]> {
       const { data, error } = await query;
       if (data && !error) {
         for (const o of data) {
-          orderMap.set(o.id, o as Order);
-          localStore.orders.set(o.id, o as Order);
+          const norm = normalizeOrder(o);
+          orderMap.set(norm.id, norm);
+          localStore.orders.set(norm.id, norm);
         }
         writeSavedOrdersFile(Array.from(localStore.orders.values()));
       } else if (error) {
@@ -595,9 +635,11 @@ export async function getAllOrders(statusFilter?: string): Promise<Order[]> {
     }
   }
 
-  const all = Array.from(orderMap.values()).sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  );
+  const all = Array.from(orderMap.values())
+    .map((o) => normalizeOrder(o))
+    .sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
   if (statusFilter && statusFilter !== 'ALL') {
     return all.filter((o) => o.order_status === statusFilter);

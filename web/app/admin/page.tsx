@@ -550,7 +550,24 @@ export default function AdminLiveOrdersPage() {
                 <div className="w-[150px] text-right">Action</div>
               </div>
 
-              {filteredOrders.map((order) => {
+              {filteredOrders.map((rawOrder) => {
+                const order = {
+                  ...rawOrder,
+                  id: String(rawOrder.id || (rawOrder as any).orderId || (rawOrder as any).order_id || ''),
+                  order_number: String(rawOrder.order_number || (rawOrder as any).orderNumber || (rawOrder as any).order_id || rawOrder.id || 'QP-0000'),
+                  customer_name: rawOrder.customer_name || (rawOrder as any).customerName || (rawOrder as any).name || undefined,
+                  customer_phone: rawOrder.customer_phone || (rawOrder as any).customerPhone || (rawOrder as any).phone || undefined,
+                  file_name: String(rawOrder.file_name || (rawOrder as any).fileName || (rawOrder as any).filename || 'document.pdf'),
+                  paper_size: String(rawOrder.paper_size || (rawOrder as any).paperSize || 'A4'),
+                  color_mode: String(rawOrder.color_mode || (rawOrder as any).colorMode || 'BW'),
+                  print_sides: String(rawOrder.print_sides || (rawOrder as any).printSides || 'SINGLE'),
+                  page_count: Math.max(1, parseInt(String(rawOrder.page_count ?? (rawOrder as any).pageCount ?? 1), 10) || 1),
+                  copies: Math.max(1, parseInt(String(rawOrder.copies ?? 1), 10) || 1),
+                  total_amount: Number(rawOrder.total_amount ?? (rawOrder as any).totalAmount ?? (rawOrder as any).total_price ?? 0),
+                  payment_method: String(rawOrder.payment_method || (rawOrder as any).paymentMethod || 'UPI'),
+                  created_at: String(rawOrder.created_at || (rawOrder as any).createdAt || (rawOrder as any).timestamp || ''),
+                };
+
                 const isPending = order.order_status === 'PAYMENT_VERIFICATION_PENDING' || order.order_status === 'PENDING_PAYMENT';
                 const isPrinting = order.order_status === 'APPROVED' || order.order_status === 'PRINTING';
                 const isPrinted = order.order_status === 'PRINTED';
