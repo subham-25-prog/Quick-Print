@@ -14,7 +14,6 @@ import {
   CreditCard,
   Plus,
   Trash2,
-  Sliders,
   Settings,
   Tag,
 } from '@/components/ui/Icons';
