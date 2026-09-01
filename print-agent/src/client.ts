@@ -115,24 +115,46 @@ export class ShopApiClient {
    * Download job document to local disk
    */
   async downloadDocument(job: ClaimedJob, destinationPath: string): Promise<string> {
-    let url = job.download_url;
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      url = `${this.config.backendUrl.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`;
+    const urlsToTry: string[] = [];
+
+    if (job.download_url) {
+      let mainUrl = job.download_url;
+      if (!mainUrl.startsWith('http://') && !mainUrl.startsWith('https://')) {
+        mainUrl = `${this.config.backendUrl.replace(/\/+$/, '')}/${mainUrl.replace(/^\/+/, '')}`;
+      }
+      urlsToTry.push(mainUrl);
     }
 
-    const response = await axios({
-      url,
-      method: 'GET',
-      responseType: 'arraybuffer',
-      headers: {
-        Authorization: `Bearer ${this.config.agentSecret}`,
-        'x-agent-secret': this.config.agentSecret,
-      },
-      timeout: 60000,
-    });
+    const fallbackUrl = `${this.config.backendUrl.replace(/\/+$/, '')}/api/orders/${job.order_id}/file`;
+    if (!urlsToTry.includes(fallbackUrl)) {
+      urlsToTry.push(fallbackUrl);
+    }
 
-    await fs.promises.writeFile(destinationPath, Buffer.from(response.data));
-    return destinationPath;
+    let lastError: any = null;
+
+    for (const url of urlsToTry) {
+      try {
+        const response = await axios({
+          url,
+          method: 'GET',
+          responseType: 'arraybuffer',
+          headers: {
+            Authorization: `Bearer ${this.config.agentSecret}`,
+            'x-agent-secret': this.config.agentSecret,
+          },
+          timeout: 60000,
+        });
+
+        if (response.data && response.data.byteLength > 0) {
+          await fs.promises.writeFile(destinationPath, Buffer.from(response.data));
+          return destinationPath;
+        }
+      } catch (err) {
+        lastError = err;
+      }
+    }
+
+    throw lastError || new Error(`Failed to download document for job ${job.order_id}`);
   }
 
   /**
