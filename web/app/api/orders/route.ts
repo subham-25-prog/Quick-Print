@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
       customer_name: customerName,
       customer_phone: customerPhone,
       customer_notes: customerNotes,
+      advanced_config: body.advancedConfig || body.advanced_config,
       transaction_ref: transactionRef ? String(transactionRef).trim() : undefined,
     };
 

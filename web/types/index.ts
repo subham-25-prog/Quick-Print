@@ -197,6 +197,7 @@ export interface Order {
   customer_name?: string;
   customer_phone?: string;
   customer_notes?: string;
+  advanced_config?: AdvancedPrintConfig;
   transaction_ref?: string;
   rejection_reason?: string;
   failure_reason?: string;

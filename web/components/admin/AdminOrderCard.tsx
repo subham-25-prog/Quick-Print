@@ -187,6 +187,26 @@ export const AdminOrderCard: React.FC<AdminOrderCardProps> = ({ order, onAction,
         </div>
       )}
 
+      {order.advanced_config && (
+        <div className="p-2.5 rounded-xl bg-red-950/40 border border-red-800/50 text-xs text-red-200 space-y-1">
+          <div className="flex items-center justify-between font-bold text-[11px] text-red-400">
+            <span className="flex items-center gap-1.5">
+              <span className="w-4 h-4 bg-red-600 text-white rounded text-[9px] font-black flex items-center justify-center">PDF</span>
+              <span>Adobe Advanced Print Options</span>
+            </span>
+            <span className="font-mono text-[10px] text-slate-400">{order.advanced_config.pagesPerSheet}-Up Layout</span>
+          </div>
+          <div className="text-[11px] text-slate-300 font-mono flex flex-wrap gap-x-3 gap-y-1 pt-0.5">
+            <span>Range: <strong>{order.advanced_config.pageRangeMode === 'RANGE' ? order.advanced_config.customPageRange : order.advanced_config.pageRangeMode}</strong></span>
+            <span>Scaling: <strong>{order.advanced_config.pageScaling} ({order.advanced_config.customScalePercent}%)</strong></span>
+            <span>Orient: <strong>{order.advanced_config.orientation}</strong></span>
+            {order.advanced_config.watermark && order.advanced_config.watermark !== 'NONE' && (
+              <span className="text-rose-400 font-bold">Watermark: {order.advanced_config.watermark}</span>
+            )}
+          </div>
+        </div>
+      )}
+
       {order.transaction_ref && (
         <div className="p-2.5 rounded-xl bg-indigo-950/50 border border-indigo-800/60 text-xs text-indigo-200 flex items-center justify-between">
           <span><strong className="text-white">⚡ UPI Ref / UTR:</strong> <span className="font-mono text-indigo-300 font-bold">{order.transaction_ref}</span></span>
