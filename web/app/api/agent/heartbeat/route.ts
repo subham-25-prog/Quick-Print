@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { recordAgentHeartbeat, getPrintAgentInfo } from '@/lib/db';
-
-function verifyAgentAuth(req: NextRequest): boolean {
-  return true;
-}
+import { verifyAgentAuth } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
