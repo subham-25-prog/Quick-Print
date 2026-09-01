@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PricingConfig } from '@/types';
+import { PricingConfig, CustomAddon } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
-import { X, CheckCircle2, Save, Tag, RefreshCw, Layers, CreditCard, FileText } from '@/components/ui/Icons';
+import { X, CheckCircle2, Save, Tag, RefreshCw, Layers, CreditCard, FileText, Plus, Trash2 } from '@/components/ui/Icons';
 
 interface EditPricingModalProps {
   isOpen: boolean;
@@ -22,6 +22,12 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'paper' | 'features' | 'addons' | 'payment'>('paper');
+
+  // New Custom Addon Form State
+  const [newAddonName, setNewAddonName] = useState('');
+  const [newAddonPrice, setNewAddonPrice] = useState<number | ''>('');
+  const [newAddonUnit, setNewAddonUnit] = useState<'per_copy' | 'per_page' | 'per_order'>('per_copy');
+  const [newAddonDesc, setNewAddonDesc] = useState('');
 
   useEffect(() => {
     if (currentPricing) {
@@ -68,6 +74,47 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
     }));
   };
 
+  // Add Custom Option
+  const handleAddCustomOption = () => {
+    if (!newAddonName.trim() || newAddonPrice === '' || isNaN(Number(newAddonPrice))) return;
+
+    const newAddon: CustomAddon = {
+      id: `custom_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: newAddonName.trim(),
+      description: newAddonDesc.trim() || undefined,
+      price: Number(newAddonPrice),
+      unit: newAddonUnit,
+      enabled: true,
+    };
+
+    setForm((prev) => ({
+      ...prev,
+      custom_addons: [...(prev.custom_addons || []), newAddon],
+    }));
+
+    setNewAddonName('');
+    setNewAddonPrice('');
+    setNewAddonDesc('');
+  };
+
+  // Toggle Custom Option
+  const toggleCustomOption = (addonId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      custom_addons: (prev.custom_addons || []).map((a) =>
+        a.id === addonId ? { ...a, enabled: !a.enabled } : a
+      ),
+    }));
+  };
+
+  // Delete Custom Option
+  const handleDeleteCustomOption = (addonId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      custom_addons: (prev.custom_addons || []).filter((a) => a.id !== addonId),
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -83,7 +130,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
       const data = await res.json();
       if (res.ok && data.pricing) {
         onPricingUpdated(data.pricing);
-        setNotice('Shop customization & rates saved! Customer page updated live.');
+        setNotice('Shop customization & custom options saved! Customer page updated live.');
         setTimeout(() => {
           setNotice(null);
           onClose();
@@ -109,7 +156,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
             </div>
             <div>
               <h3 className="text-base font-extrabold text-slate-900">Customize Shop Options & Rates</h3>
-              <p className="text-[11px] text-slate-500 font-medium">Turn services ON/OFF & set prices for customer page</p>
+              <p className="text-[11px] text-slate-500 font-medium">Turn services ON/OFF, set rates & add custom options</p>
             </div>
           </div>
           <button
@@ -147,7 +194,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
               activeTab === 'addons' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            📚 Add-ons
+            📚 Add-ons & Extra
           </button>
           <button
             type="button"
@@ -342,12 +389,13 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
             </div>
           )}
 
-          {/* TAB 3: Binding & Add-ons */}
+          {/* TAB 3: Standard & Custom Add-ons */}
           {activeTab === 'addons' && (
             <div className="space-y-4">
+              {/* Standard Add-ons */}
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
                 <div className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
-                  <span>📚 Binding & Finishing Services</span>
+                  <span>📚 Standard Finishing Services</span>
                 </div>
 
                 <div className="space-y-3">
@@ -454,6 +502,111 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
                       />
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Custom Extra Options & Services List */}
+              <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200 space-y-3">
+                <div className="font-extrabold text-indigo-900 text-xs flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <span>✨</span> Custom Options & Extra Services
+                  </span>
+                  <span className="text-[10px] text-indigo-600 font-bold font-mono">
+                    {(form.custom_addons || []).length} Custom
+                  </span>
+                </div>
+
+                {/* Existing Custom Options */}
+                {(form.custom_addons || []).length > 0 ? (
+                  <div className="space-y-2">
+                    {form.custom_addons!.map((addon) => (
+                      <div
+                        key={addon.id}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200"
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={addon.enabled}
+                            onChange={() => toggleCustomOption(addon.id)}
+                            className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                          />
+                          <div>
+                            <span className="font-bold text-slate-800">{addon.name}</span>
+                            {addon.description && (
+                              <p className="text-[10px] text-slate-400">{addon.description}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-slate-900">₹{addon.price}</span>
+                          <span className="text-[10px] text-slate-500 font-mono">
+                            ({addon.unit.replace('_', ' ')})
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteCustomOption(addon.id)}
+                            className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors"
+                            title="Delete custom option"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-500 italic text-center py-2">
+                    No custom options added yet. Create custom services below!
+                  </p>
+                )}
+
+                {/* Add New Custom Option Form */}
+                <div className="p-3 rounded-xl bg-white border border-indigo-200 space-y-2.5">
+                  <div className="font-bold text-slate-800 text-[11px]">Add New Custom Option</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Service Name (e.g. Scanning, ID Card Cover)"
+                      value={newAddonName}
+                      onChange={(e) => setNewAddonName(e.target.value)}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-medium text-slate-900 text-xs"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Price (₹)"
+                      value={newAddonPrice}
+                      onChange={(e) => setNewAddonPrice(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold text-slate-900 text-xs"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={newAddonUnit}
+                      onChange={(e) => setNewAddonUnit(e.target.value as any)}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 bg-white"
+                    >
+                      <option value="per_copy">Per Copy / Book</option>
+                      <option value="per_page">Per Page</option>
+                      <option value="per_order">Flat Fee (Per Order)</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Short Description (Optional)"
+                      value={newAddonDesc}
+                      onChange={(e) => setNewAddonDesc(e.target.value)}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs text-slate-900 font-medium"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleAddCustomOption}
+                    disabled={!newAddonName.trim() || newAddonPrice === ''}
+                    className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-40"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Custom Option to Shop</span>
+                  </button>
                 </div>
               </div>
             </div>
