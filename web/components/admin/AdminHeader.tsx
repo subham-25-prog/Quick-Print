@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Zap, Lock, Save, Check } from '@/components/ui/Icons';
+import { Zap, Lock, Save } from '@/components/ui/Icons';
 import { shopConfig } from '@/lib/config';
 
 interface AdminHeaderProps {
@@ -11,7 +11,6 @@ interface AdminHeaderProps {
   saving?: boolean;
   saveButtonText?: string;
   showSave?: boolean;
-  onOpenPricing?: () => void;
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({
@@ -19,7 +18,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   saving = false,
   saveButtonText = 'Save Changes',
   showSave = false,
-  onOpenPricing,
 }) => {
   const pathname = usePathname();
   const router = useRouter();

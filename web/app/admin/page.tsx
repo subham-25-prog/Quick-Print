@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
-import { EditPricingModal } from '@/components/admin/EditPricingModal';
 import { Order, OrderStatus, PricingConfig } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -36,7 +35,6 @@ import {
 export default function AdminLiveOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [pricing, setPricing] = useState<PricingConfig>(defaultPricingConfig);
-  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'PRINTING' | 'COMPLETED'>('ALL');
@@ -871,17 +869,6 @@ export default function AdminLiveOrdersPage() {
           )}
         </section>
       </main>
-
-      {/* Edit Shop Pricing & Rates Modal */}
-      <EditPricingModal
-        isOpen={isPricingModalOpen}
-        onClose={() => setIsPricingModalOpen(false)}
-        currentPricing={pricing}
-        onPricingUpdated={(updated) => {
-          setPricing(updated);
-          showToast('Shop rates and pricing updated successfully!', 'success');
-        }}
-      />
     </div>
   );
 }

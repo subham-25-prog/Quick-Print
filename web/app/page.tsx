@@ -8,10 +8,10 @@ import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
 import { PaymentModal } from '@/components/customer/PaymentModal';
 import { calculateOrderPrice } from '@/lib/pricing';
-import { formatCurrency, generateOrderNumber } from '@/lib/utils';
+import { generateOrderNumber } from '@/lib/utils';
 import { defaultPricingConfig } from '@/lib/config';
 import { PaperSize, ColorMode, PrintSides, AddOnOptions, PricingConfig, PaymentMethod } from '@/types';
-import { User, Phone, MessageSquare } from '@/components/ui/Icons';
+import { User, Phone } from '@/components/ui/Icons';
 
 export default function CustomerHomePage() {
   const router = useRouter();
