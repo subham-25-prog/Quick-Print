@@ -257,34 +257,36 @@ export default function AdminLiveOrdersPage() {
     [orders]
   );
 
-  // Filtered and searched orders
+  // Filtered and searched orders (Newest orders sorted at the top)
   const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      // 1. Status Filter
-      let matchesFilter = true;
-      if (filter === 'PENDING') {
-        matchesFilter = order.order_status === 'PAYMENT_VERIFICATION_PENDING' || order.order_status === 'PENDING_PAYMENT';
-      } else if (filter === 'PRINTING') {
-        matchesFilter = order.order_status === 'APPROVED' || order.order_status === 'PRINTING';
-      } else if (filter === 'COMPLETED') {
-        matchesFilter = ['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(order.order_status);
-      }
+    return orders
+      .filter((order) => {
+        // 1. Status Filter
+        let matchesFilter = true;
+        if (filter === 'PENDING') {
+          matchesFilter = order.order_status === 'PAYMENT_VERIFICATION_PENDING' || order.order_status === 'PENDING_PAYMENT';
+        } else if (filter === 'PRINTING') {
+          matchesFilter = order.order_status === 'APPROVED' || order.order_status === 'PRINTING';
+        } else if (filter === 'COMPLETED') {
+          matchesFilter = ['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(order.order_status);
+        }
 
-      if (!matchesFilter) return false;
+        if (!matchesFilter) return false;
 
-      // 2. Search Query Filter
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim();
-        const nameMatch = (order.customer_name || '').toLowerCase().includes(query);
-        const orderNumMatch = (order.order_number || '').toLowerCase().includes(query);
-        const phoneMatch = (order.customer_phone || '').toLowerCase().includes(query);
-        const fileMatch = (order.file_name || '').toLowerCase().includes(query);
-        const noteMatch = (order.customer_notes || '').toLowerCase().includes(query);
-        return nameMatch || orderNumMatch || phoneMatch || fileMatch || noteMatch;
-      }
+        // 2. Search Query Filter
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase().trim();
+          const nameMatch = (order.customer_name || '').toLowerCase().includes(query);
+          const orderNumMatch = (order.order_number || '').toLowerCase().includes(query);
+          const phoneMatch = (order.customer_phone || '').toLowerCase().includes(query);
+          const fileMatch = (order.file_name || '').toLowerCase().includes(query);
+          const noteMatch = (order.customer_notes || '').toLowerCase().includes(query);
+          return nameMatch || orderNumMatch || phoneMatch || fileMatch || noteMatch;
+        }
 
-      return true;
-    });
+        return true;
+      })
+      .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
   }, [orders, filter, searchQuery]);
 
   // Helper for initials
@@ -530,7 +532,7 @@ export default function AdminLiveOrdersPage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+            <div className="space-y-2.5 overflow-x-auto pb-2">
               {filteredOrders.map((order) => {
                 const isPending = order.order_status === 'PAYMENT_VERIFICATION_PENDING' || order.order_status === 'PENDING_PAYMENT';
                 const isPrinting = order.order_status === 'APPROVED' || order.order_status === 'PRINTING';
@@ -549,7 +551,7 @@ export default function AdminLiveOrdersPage() {
                 return (
                   <div
                     key={order.id}
-                    className={`rounded-2xl p-3 sm:p-3.5 border transition-all duration-150 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white shadow-2xs hover:shadow-xs relative overflow-hidden ${
+                    className={`rounded-2xl py-2.5 px-3.5 border transition-all duration-150 flex items-center justify-between gap-3 bg-white shadow-2xs hover:shadow-xs relative overflow-hidden min-w-[720px] font-sans ${
                       isPending
                         ? 'border-amber-300 bg-amber-50/20'
                         : isPrinting
@@ -576,10 +578,10 @@ export default function AdminLiveOrdersPage() {
                       }`}
                     />
 
-                    {/* Column 1: Customer & Order Details */}
-                    <div className="flex items-center gap-2.5 min-w-0 pl-2">
+                    {/* Column 1: Customer & Token (Strict 1 Line) */}
+                    <div className="flex items-center gap-2.5 min-w-[200px] max-w-[240px] pl-2 shrink-0">
                       <div
-                        className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 ${
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center font-black text-[10px] text-white shrink-0 ${
                           isPending
                             ? 'bg-amber-500'
                             : isPrinting
@@ -593,14 +595,14 @@ export default function AdminLiveOrdersPage() {
                       </div>
 
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-1.5 whitespace-nowrap">
                           <span className="font-extrabold text-xs text-slate-900 truncate">
                             {order.customer_name?.trim() || 'Walk-in'}
                           </span>
                           <button
                             type="button"
                             onClick={(e) => copyOrderNumber(order.order_number, e)}
-                            className="font-mono text-[10px] font-extrabold text-slate-700 bg-slate-100 hover:bg-indigo-50 px-1.5 py-0.5 rounded border border-slate-200 flex items-center gap-1 cursor-pointer"
+                            className="font-mono text-[10px] font-extrabold text-slate-700 bg-slate-100 hover:bg-indigo-50 px-1 py-0.2 rounded border border-slate-200 flex items-center gap-1 cursor-pointer shrink-0"
                             title="Copy Order #"
                           >
                             <span>{order.order_number}</span>
@@ -611,7 +613,7 @@ export default function AdminLiveOrdersPage() {
                             )}
                           </button>
                         </div>
-                        <div className="text-[10px] text-slate-400 font-medium flex items-center gap-2 mt-0.5">
+                        <div className="text-[10px] text-slate-400 font-medium flex items-center gap-2 whitespace-nowrap mt-0.5">
                           <span>{formatDate(order.created_at)}</span>
                           {order.customer_phone && (
                             <a
@@ -625,48 +627,47 @@ export default function AdminLiveOrdersPage() {
                       </div>
                     </div>
 
-                    {/* Column 2: Document & Specification Badges */}
-                    <div className="flex-1 flex flex-wrap items-center gap-1.5 text-[11px] min-w-0 px-2">
-                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-black border uppercase shrink-0 ${fileBadge.color}`}>
+                    {/* Column 2: Document & Specification Badges (Strict 1 Line) */}
+                    <div className="flex-1 flex items-center gap-1.5 text-[11px] min-w-0 overflow-hidden whitespace-nowrap px-2">
+                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-black border uppercase shrink-0 ${fileBadge.color}`}>
                         {fileBadge.ext}
                       </span>
-                      <span className="font-bold text-slate-800 text-xs truncate max-w-[140px]" title={order.file_name}>
+                      <span className="font-bold text-slate-800 text-xs truncate max-w-[150px]" title={order.file_name}>
                         {order.file_name}
                       </span>
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] shrink-0">
                         {order.paper_size}
                       </span>
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] shrink-0">
                         {order.color_mode === 'COLOR' ? '🎨 Color' : '⚫ B&W'}
                       </span>
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-bold text-[10px] shrink-0">
                         {order.print_sides === 'DOUBLE' ? '🔄 2-Side' : '📄 1-Side'}
                       </span>
-                      <span className="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 font-extrabold text-[10px]">
+                      <span className="px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 font-extrabold text-[10px] shrink-0">
                         {order.page_count}p × {order.copies} = {totalPages}p
                       </span>
 
-                      {/* Addon Badges */}
                       {order.add_ons?.spiralBinding && (
-                        <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold text-[10px]">
+                        <span className="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold text-[10px] shrink-0">
                           📚 Spiral
                         </span>
                       )}
                       {order.add_ons?.hardBinding && (
-                        <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[10px]">
+                        <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 font-bold text-[10px] shrink-0">
                           📕 HardBound
                         </span>
                       )}
                     </div>
 
-                    {/* Column 3: Price, Payment Status & Action Button */}
-                    <div className="flex items-center gap-3 shrink-0 justify-between md:justify-end">
-                      <div className="text-right">
-                        <div className="text-sm font-black text-slate-900">
+                    {/* Column 3: Price, Payment Status & Verify Buttons (Strictly Right Aligned) */}
+                    <div className="flex items-center gap-3 shrink-0 whitespace-nowrap ml-auto">
+                      <div className="text-right shrink-0">
+                        <div className="text-xs font-black text-slate-900">
                           {formatCurrency(order.total_amount)}
                         </div>
                         <div className="flex items-center justify-end gap-1 mt-0.5">
-                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-extrabold ${order.payment_method === 'UPI' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
+                          <span className={`px-1 py-0.2 rounded text-[9px] font-extrabold ${order.payment_method === 'UPI' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}`}>
                             {order.payment_method}
                           </span>
                           <span
@@ -685,8 +686,8 @@ export default function AdminLiveOrdersPage() {
                         </div>
                       </div>
 
-                      {/* Action Button Toolbar */}
-                      <div className="flex items-center gap-1.5">
+                      {/* Rightmost Action Button Toolbar */}
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {isPending && (
                           <>
                             <button
@@ -707,7 +708,7 @@ export default function AdminLiveOrdersPage() {
                               type="button"
                               onClick={() => handleOrderAction(order.id, 'REJECT')}
                               disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
-                              className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs active:scale-95 disabled:opacity-50 cursor-pointer"
+                              className="px-2 py-1.5 rounded-xl bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs active:scale-95 disabled:opacity-50 cursor-pointer"
                             >
                               {isRejecting ? (
                                 <div className="w-3.5 h-3.5 border-2 border-rose-500/40 border-t-rose-600 rounded-full animate-spin" />
