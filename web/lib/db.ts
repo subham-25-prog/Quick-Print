@@ -179,6 +179,7 @@ function getOrdersConfigFilePaths(): string[] {
 
 function readSavedOrdersFile(): Order[] {
   const candidatePaths = getOrdersConfigFilePaths();
+  const allMap = new Map<string, Order>();
   for (const p of candidatePaths) {
     try {
       if (fs.existsSync(p)) {
@@ -186,13 +187,28 @@ function readSavedOrdersFile(): Order[] {
         if (raw && raw.trim()) {
           const parsed = JSON.parse(raw);
           if (Array.isArray(parsed)) {
-            return parsed;
+            for (const item of parsed) {
+              if (item && item.id) {
+                allMap.set(item.id, item);
+              }
+            }
           }
         }
       }
     } catch (e) {}
   }
-  return [];
+  return Array.from(allMap.values());
+}
+
+function ensureDiskOrdersLoaded(): void {
+  try {
+    const saved = readSavedOrdersFile();
+    for (const o of saved) {
+      if (o && o.id && !localStore.orders.has(o.id)) {
+        localStore.orders.set(o.id, o);
+      }
+    }
+  } catch (err) {}
 }
 
 function writeSavedOrdersFile(orders: Order[]) {
@@ -334,6 +350,9 @@ export async function updatePricing(newPricing: Partial<PricingConfig>): Promise
  * Create a new order with pricing snapshot
  */
 export async function createOrder(order: Order): Promise<Order> {
+  // First merge all existing disk orders into memory store so old orders are NEVER lost or overwritten
+  ensureDiskOrdersLoaded();
+
   // Always save to memory store & local disk file so it is instantly available and never vanishes
   localStore.orders.set(order.id, order);
   writeSavedOrdersFile(Array.from(localStore.orders.values()));
@@ -454,14 +473,7 @@ export async function cleanupOldOrders(retentionDays = 3): Promise<{ deletedCoun
  */
 export async function getAllOrders(statusFilter?: string): Promise<Order[]> {
   // Sync disk-saved orders into memory store so orders are permanently preserved
-  try {
-    const savedDiskOrders = readSavedOrdersFile();
-    for (const o of savedDiskOrders) {
-      if (o && o.id && !localStore.orders.has(o.id)) {
-        localStore.orders.set(o.id, o);
-      }
-    }
-  } catch (err) {}
+  ensureDiskOrdersLoaded();
 
   const admin = getAdminClient();
   const orderMap = new Map<string, Order>();
@@ -484,6 +496,7 @@ export async function getAllOrders(statusFilter?: string): Promise<Order[]> {
           orderMap.set(o.id, o as Order);
           localStore.orders.set(o.id, o as Order);
         }
+        writeSavedOrdersFile(Array.from(localStore.orders.values()));
       } else if (error) {
         console.warn('Notice querying Supabase orders:', error.message);
       }
