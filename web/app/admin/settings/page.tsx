@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
-import { PricingConfig, CustomAddon, CustomPaperSize } from '@/types';
+import { PricingConfig, CustomAddon, CustomPaperType } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
 import {
   Save,
@@ -142,7 +142,7 @@ export default function AdminSettingsPage() {
   const handleAddCustomPaper = () => {
     if (!newPaperName.trim() || newPaperBwSingle === '') return;
 
-    const newPaper: CustomPaperSize = {
+    const newPaper: CustomPaperType = {
       id: `paper_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       name: newPaperName.trim(),
       bw_single: Number(newPaperBwSingle || 0),
