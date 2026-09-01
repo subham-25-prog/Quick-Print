@@ -253,16 +253,6 @@ export const AdminOrderCard: React.FC<AdminOrderCardProps> = ({ order, onAction 
           </button>
         )}
 
-        {order.order_status === 'FAILED' && (
-          <button
-            onClick={() => handleActionClick('RETRY_PRINT')}
-            disabled={!!loadingAction}
-            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold flex items-center gap-1.5 transition-colors"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Retry Print</span>
-          </button>
-        )}
       </div>
     </div>
   );
