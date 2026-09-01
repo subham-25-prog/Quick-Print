@@ -414,6 +414,13 @@ export async function createOrder(order: Order): Promise<Order> {
  * Get order by ID
  */
 export async function getOrderById(id: string): Promise<Order | null> {
+  const local = localStore.orders.get(id);
+  if (local) return local;
+
+  ensureDiskOrdersLoaded();
+  const loaded = localStore.orders.get(id);
+  if (loaded) return loaded;
+
   const admin = getAdminClient();
   if (admin) {
     try {
@@ -430,7 +437,7 @@ export async function getOrderById(id: string): Promise<Order | null> {
     } catch {}
   }
 
-  return localStore.orders.get(id) || null;
+  return null;
 }
 
 /**
@@ -539,44 +546,40 @@ export async function updateOrderStatus(
     updatePayload.printed_at = new Date().toISOString();
   }
 
-  let finalOrder: Order | null = null;
+  // 1. Immediately update in-memory localStore and write to disk (0ms latency)
+  const updated: Order = {
+    ...(current || {}),
+    ...updatePayload,
+    id: orderId,
+  } as Order;
 
+  localStore.orders.set(orderId, updated);
+  writeSavedOrdersFile(Array.from(localStore.orders.values()));
+
+  // 2. Asynchronously mirror update to Supabase (non-blocking)
   const admin = getAdminClient();
   if (admin) {
-    try {
-      const { data, error } = await admin
-        .from('orders')
-        .update(updatePayload)
-        .eq('id', orderId)
-        .select()
-        .single();
+    (async () => {
+      try {
+        const { data, error } = await admin
+          .from('orders')
+          .update(updatePayload)
+          .eq('id', orderId)
+          .select()
+          .single();
 
-      if (data && !error) {
-        finalOrder = data as Order;
-      } else if (error) {
-        console.warn('Notice updating order in Supabase:', error.message);
+        if (data && !error) {
+          localStore.orders.set(orderId, data as Order);
+          writeSavedOrdersFile(Array.from(localStore.orders.values()));
+        }
+      } catch (err) {
+        console.warn('Supabase background update notice:', err);
       }
-    } catch (updErr) {
-      console.warn('Supabase updateOrderStatus error:', updErr);
-    }
+    })();
   }
 
-  if (current || finalOrder) {
-    const updated: Order = {
-      ...(current || {}),
-      ...(finalOrder || {}),
-      order_status: newStatus,
-      updated_at: new Date().toISOString(),
-      ...extraData,
-    } as Order;
-
-    localStore.orders.set(orderId, updated);
-    writeSavedOrdersFile(Array.from(localStore.orders.values()));
-    await recordOrderEvent(orderId, prevStatus, newStatus, actor, extraData?.customer_notes || `Status changed to ${newStatus}`);
-    return updated;
-  }
-
-  return null;
+  await recordOrderEvent(orderId, prevStatus, newStatus, actor, extraData?.customer_notes || `Status changed to ${newStatus}`);
+  return updated;
 }
 
 

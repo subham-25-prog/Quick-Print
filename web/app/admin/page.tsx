@@ -98,9 +98,22 @@ export default function AdminLiveOrdersPage() {
             if (o && o.id) map.set(o.id, o);
           }
 
-          // 3. Merge server response orders
-          for (const o of data.orders) {
-            if (o && o.id) map.set(o.id, o);
+          // Status weight helper: never allow polling to revert higher status back to lower status
+          const getStatusWeight = (st?: string) => {
+            if (!st) return 0;
+            if (['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(st)) return 3;
+            if (['APPROVED', 'PRINTING'].includes(st)) return 2;
+            return 1;
+          };
+
+          // 3. Merge server response orders intelligently
+          for (const s of data.orders) {
+            if (s && s.id) {
+              const existing = map.get(s.id);
+              if (!existing || getStatusWeight(s.order_status) >= getStatusWeight(existing.order_status)) {
+                map.set(s.id, s);
+              }
+            }
           }
 
           const merged = Array.from(map.values()).sort(
@@ -753,7 +766,7 @@ export default function AdminLiveOrdersPage() {
                           <button
                             type="button"
                             onClick={() => handleOrderAction(order.id, 'APPROVE_PRINT')}
-                            disabled={Boolean(actionLoadingKey)}
+                            disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
                             className="flex-1 py-2.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-500/20 hover:shadow-lg transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                           >
                             {isApproving ? (
@@ -767,7 +780,7 @@ export default function AdminLiveOrdersPage() {
                           <button
                             type="button"
                             onClick={() => handleOrderAction(order.id, 'REJECT')}
-                            disabled={Boolean(actionLoadingKey)}
+                            disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
                             className="py-2.5 px-3.5 rounded-2xl bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-2xs hover:shadow-xs"
                           >
                             {isRejecting ? (
@@ -784,7 +797,7 @@ export default function AdminLiveOrdersPage() {
                         <button
                           type="button"
                           onClick={() => handleOrderAction(order.id, 'MARK_PRINTED')}
-                          disabled={Boolean(actionLoadingKey)}
+                          disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
                           className="flex-1 py-2.5 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-indigo-500/20 hover:shadow-lg transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                         >
                           {isCompleting ? (
@@ -801,7 +814,7 @@ export default function AdminLiveOrdersPage() {
                         <button
                           type="button"
                           onClick={() => handleOrderAction(order.id, 'RETRY_PRINT')}
-                          disabled={Boolean(actionLoadingKey)}
+                          disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
                           className="flex-1 py-2.5 px-4 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
                         >
                           {isRetrying ? (
@@ -818,7 +831,7 @@ export default function AdminLiveOrdersPage() {
                         <button
                           type="button"
                           onClick={() => handleOrderAction(order.id, 'RETRY_PRINT')}
-                          disabled={Boolean(actionLoadingKey)}
+                          disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
                           className="py-2.5 px-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer shadow-2xs"
                           title="Reprint Document"
                         >
