@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { PricingConfig, CustomAddon } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
-import { X, CheckCircle2, Save, Tag, RefreshCw, Layers, CreditCard, FileText, Plus, Trash2 } from '@/components/ui/Icons';
+import { X, CheckCircle2, Save, Tag, RefreshCw, Layers, CreditCard, FileText, Plus, Trash2, Settings, MessageSquare, AlertCircle } from '@/components/ui/Icons';
 
 interface EditPricingModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
   const [form, setForm] = useState<PricingConfig>(currentPricing || defaultPricingConfig);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'paper' | 'features' | 'addons' | 'payment'>('paper');
+  const [activeTab, setActiveTab] = useState<'paper' | 'features' | 'addons' | 'config' | 'payment'>('paper');
 
   // New Custom Addon Form State
   const [newAddonName, setNewAddonName] = useState('');
@@ -70,6 +70,16 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
       form_fields: {
         ...(prev.form_fields || defaultPricingConfig.form_fields),
         [fieldKey]: !(prev.form_fields?.[fieldKey] !== false),
+      },
+    }));
+  };
+
+  const handleFormFieldChange = (fieldKey: keyof NonNullable<PricingConfig['form_fields']>, value: any) => {
+    setForm((prev) => ({
+      ...prev,
+      form_fields: {
+        ...(prev.form_fields || defaultPricingConfig.form_fields),
+        [fieldKey]: value,
       },
     }));
   };
@@ -130,7 +140,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
       const data = await res.json();
       if (res.ok && data.pricing) {
         onPricingUpdated(data.pricing);
-        setNotice('Shop customization & custom options saved! Customer page updated live.');
+        setNotice('Print configuration & rates saved! Customer page updated live.');
         setTimeout(() => {
           setNotice(null);
           onClose();
@@ -155,8 +165,8 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-slate-900">Customize Shop Options & Rates</h3>
-              <p className="text-[11px] text-slate-500 font-medium">Turn services ON/OFF, set rates & add custom options</p>
+              <h3 className="text-base font-extrabold text-slate-900">Shop Customization & Print Config</h3>
+              <p className="text-[11px] text-slate-500 font-medium">Configure print options, shop rates & customer form controls</p>
             </div>
           </div>
           <button
@@ -168,12 +178,12 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
         </div>
 
         {/* Tab Selection */}
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200/80 text-xs font-bold shrink-0">
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl border border-slate-200/80 text-[11px] sm:text-xs font-bold shrink-0 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('paper')}
-            className={`flex-1 py-2 px-3 rounded-xl transition-all ${
-              activeTab === 'paper' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+            className={`py-1.5 px-2.5 sm:px-3 rounded-xl transition-all whitespace-nowrap ${
+              activeTab === 'paper' ? 'bg-white text-indigo-700 shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             📄 Paper Sizes
@@ -181,26 +191,35 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
           <button
             type="button"
             onClick={() => setActiveTab('features')}
-            className={`flex-1 py-2 px-3 rounded-xl transition-all ${
-              activeTab === 'features' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+            className={`py-1.5 px-2.5 sm:px-3 rounded-xl transition-all whitespace-nowrap ${
+              activeTab === 'features' ? 'bg-white text-indigo-700 shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            🎨 Print Features
+            🎨 Print Options
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('addons')}
-            className={`flex-1 py-2 px-3 rounded-xl transition-all ${
-              activeTab === 'addons' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+            className={`py-1.5 px-2.5 sm:px-3 rounded-xl transition-all whitespace-nowrap ${
+              activeTab === 'addons' ? 'bg-white text-indigo-700 shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            📚 Add-ons & Extra
+            📚 Add-ons
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('config')}
+            className={`py-1.5 px-2.5 sm:px-3 rounded-xl transition-all whitespace-nowrap ${
+              activeTab === 'config' ? 'bg-white text-indigo-700 shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            ⚙️ Print Config
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('payment')}
-            className={`flex-1 py-2 px-3 rounded-xl transition-all ${
-              activeTab === 'payment' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+            className={`py-1.5 px-2.5 sm:px-3 rounded-xl transition-all whitespace-nowrap ${
+              activeTab === 'payment' ? 'bg-white text-indigo-700 shadow-2xs font-extrabold' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             💳 Payment
@@ -230,7 +249,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
                       type="checkbox"
                       checked={form.enabled_papers?.a4 !== false}
                       onChange={() => toggleEnabledPaper('a4')}
-                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                     />
                   </label>
                 </div>
@@ -293,7 +312,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
                       type="checkbox"
                       checked={form.enabled_papers?.a3 !== false}
                       onChange={() => toggleEnabledPaper('a3')}
-                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                     />
                   </label>
                 </div>
@@ -333,7 +352,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
                       type="checkbox"
                       checked={form.enabled_papers?.legal !== false}
                       onChange={() => toggleEnabledPaper('legal')}
-                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                     />
                   </div>
                   <div className="flex items-center justify-between">
@@ -342,7 +361,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
                       type="checkbox"
                       checked={form.enabled_papers?.photo !== false}
                       onChange={() => toggleEnabledPaper('photo')}
-                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                      className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                     />
                   </div>
                 </div>
@@ -350,7 +369,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
             </div>
           )}
 
-          {/* TAB 2: Print Features (Color/Duplex Controls) */}
+          {/* TAB 2: Print Features */}
           {activeTab === 'features' && (
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
@@ -406,7 +425,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
                         type="checkbox"
                         checked={form.enabled_addons?.spiralBinding !== false}
                         onChange={() => toggleEnabledAddon('spiralBinding')}
-                        className="w-4 h-4 rounded text-indigo-600"
+                        className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
                       />
                       <div>
                         <span className="font-bold text-slate-800">Spiral Binding</span>
@@ -432,7 +451,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
                         type="checkbox"
                         checked={form.enabled_addons?.hardBinding !== false}
                         onChange={() => toggleEnabledAddon('hardBinding')}
-                        className="w-4 h-4 rounded text-indigo-600"
+                        className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
                       />
                       <div>
                         <span className="font-bold text-slate-800">Hard Cover Binding</span>
@@ -458,7 +477,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
                         type="checkbox"
                         checked={form.enabled_addons?.softBinding !== false}
                         onChange={() => toggleEnabledAddon('softBinding')}
-                        className="w-4 h-4 rounded text-indigo-600"
+                        className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
                       />
                       <div>
                         <span className="font-bold text-slate-800">Soft Cover Binding</span>
@@ -484,7 +503,7 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
                         type="checkbox"
                         checked={form.enabled_addons?.stapling !== false}
                         onChange={() => toggleEnabledAddon('stapling')}
-                        className="w-4 h-4 rounded text-indigo-600"
+                        className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
                       />
                       <div>
                         <span className="font-bold text-slate-800">Stapling</span>
@@ -612,7 +631,99 @@ export const EditPricingModal: React.FC<EditPricingModalProps> = ({
             </div>
           )}
 
-          {/* TAB 4: Payment Methods & Auto-Approve */}
+          {/* TAB 4: Print Configuration & Customer Form Controls */}
+          {activeTab === 'config' && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                <div className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                  <span>⚙️ Shop Print Configuration</span>
+                </div>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">Shop Name (Customer Title)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Subham Cyber Cafe"
+                      value={form.shop_name || ''}
+                      onChange={(e) => handleChange('shop_name', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-bold mb-1">
+                      Customer Announcement Banner Text (Optional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="e.g. Prints spooled instantly! Lunch break 1:30 PM - 2:00 PM."
+                      value={form.form_fields?.announcementText || ''}
+                      onChange={(e) => handleFormFieldChange('announcementText', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium text-slate-900"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-700 font-bold mb-1">Minimum Order Total (₹)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 5"
+                        value={form.form_fields?.minOrderAmount || 0}
+                        onChange={(e) => handleFormFieldChange('minOrderAmount', parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-700 font-bold mb-1">Urgent / Express Fee (₹)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 10"
+                        value={form.form_fields?.urgentFee || 0}
+                        onChange={(e) => handleFormFieldChange('urgentFee', parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200 space-y-2">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200">
+                      <span className="font-bold text-slate-800">Require Customer Name</span>
+                      <input
+                        type="checkbox"
+                        checked={form.form_fields?.requireCustomerName !== false}
+                        onChange={() => toggleFormField('requireCustomerName')}
+                        className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200">
+                      <span className="font-bold text-slate-800">Require Customer Phone Number</span>
+                      <input
+                        type="checkbox"
+                        checked={form.form_fields?.requireCustomerPhone !== false}
+                        onChange={() => toggleFormField('requireCustomerPhone')}
+                        className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200">
+                      <span className="font-bold text-slate-800">Allow Customer Notes / Special Instructions</span>
+                      <input
+                        type="checkbox"
+                        checked={form.form_fields?.allowCustomerNotes !== false}
+                        onChange={() => toggleFormField('allowCustomerNotes')}
+                        className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: Payment Methods & Auto-Approve */}
           {activeTab === 'payment' && (
             <div className="space-y-4">
               <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-200 space-y-4">
