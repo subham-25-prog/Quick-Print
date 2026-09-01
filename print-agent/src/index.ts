@@ -67,17 +67,20 @@ async function main() {
       const job = await client.claimNextJob();
       if (!job) return;
 
-      isProcessing = true;
-      currentJobOrderNum = job.order_number;
-      currentJobFileName = job.file_name;
+      const safeOrderNum = job.order_number || job.order_id || 'UNKNOWN';
+      const safeFileName = job.file_name || (job as any).filename || 'document.pdf';
 
-      logger.job(job.order_number, `Claimed job! File: ${job.file_name} (${job.page_count} pages, ${job.copies} copies)`);
+      isProcessing = true;
+      currentJobOrderNum = safeOrderNum;
+      currentJobFileName = safeFileName;
+
+      logger.job(safeOrderNum, `Claimed job! File: ${safeFileName} (${job.page_count || 1} pages, ${job.copies || 1} copies)`);
 
       // 2. Download document
-      const fileExt = job.file_name.split('.').pop() || 'pdf';
+      const fileExt = String(safeFileName).includes('.') ? String(safeFileName).split('.').pop() || 'pdf' : 'pdf';
       const localFilePath = path.join(
         config.downloadDir,
-        `job_${job.order_number}_${Date.now()}.${fileExt}`
+        `job_${safeOrderNum}_${Date.now()}.${fileExt}`
       );
 
       logger.job(job.order_number, `Downloading document from server...`);
@@ -99,16 +102,16 @@ async function main() {
         }
       } catch {}
 
-      logger.job(job.order_number, `Downloaded: ${actualFilePath} (${fileSize} bytes)`);
+      logger.job(safeOrderNum, `Downloaded: ${actualFilePath} (${fileSize} bytes)`);
 
       // 3. Send to Windows Print Spooler
-      logger.job(job.order_number, `Dispatching to physical printer (${config.printerName || 'Default'})...`);
+      logger.job(safeOrderNum, `Dispatching to physical printer (${config.printerName || 'Default'})...`);
       await printer.printDocument(actualFilePath, job);
 
       // 4. Mark job as printed in shop backend
       await client.reportJobCompletion(job.order_id, true);
-      healthServer.recordJobSuccess(job.order_number, job.file_name);
-      logger.success(`[JOB:${job.order_number}] Successfully printed and marked as PRINTED!`);
+      healthServer.recordJobSuccess(safeOrderNum, safeFileName);
+      logger.success(`[JOB:${safeOrderNum}] Successfully printed and marked as PRINTED!`);
 
       // 5. Clean up local temp file after 25 second delay
       setTimeout(() => {
