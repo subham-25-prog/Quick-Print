@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
-import { PricingConfig, CustomAddon } from '@/types';
+import { PricingConfig, CustomAddon, CustomPaperSize } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
 import {
   Save,
@@ -24,11 +24,18 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
-  // New Custom Addon Form State
+  // Custom Option Form State
   const [newAddonName, setNewAddonName] = useState('');
   const [newAddonPrice, setNewAddonPrice] = useState<number | ''>('');
   const [newAddonUnit, setNewAddonUnit] = useState<'per_copy' | 'per_page' | 'per_order'>('per_copy');
   const [newAddonDesc, setNewAddonDesc] = useState('');
+
+  // Custom Paper Size Form State
+  const [newPaperName, setNewPaperName] = useState('');
+  const [newPaperBwSingle, setNewPaperBwSingle] = useState<number | ''>('');
+  const [newPaperBwDouble, setNewPaperBwDouble] = useState<number | ''>('');
+  const [newPaperColorSingle, setNewPaperColorSingle] = useState<number | ''>('');
+  const [newPaperColorDouble, setNewPaperColorDouble] = useState<number | ''>('');
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToast({ text, type });
@@ -115,7 +122,6 @@ export default function AdminSettingsPage() {
     setNewAddonDesc('');
   };
 
-  // Toggle Custom Option
   const toggleCustomOption = (addonId: string) => {
     setForm((prev) => ({
       ...prev,
@@ -125,11 +131,52 @@ export default function AdminSettingsPage() {
     }));
   };
 
-  // Delete Custom Option
   const handleDeleteCustomOption = (addonId: string) => {
     setForm((prev) => ({
       ...prev,
       custom_addons: (prev.custom_addons || []).filter((a) => a.id !== addonId),
+    }));
+  };
+
+  // Add Custom Paper Size
+  const handleAddCustomPaper = () => {
+    if (!newPaperName.trim() || newPaperBwSingle === '') return;
+
+    const newPaper: CustomPaperSize = {
+      id: `paper_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      name: newPaperName.trim(),
+      bw_single: Number(newPaperBwSingle || 0),
+      bw_double: Number(newPaperBwDouble || newPaperBwSingle || 0),
+      color_single: Number(newPaperColorSingle || 0),
+      color_double: Number(newPaperColorDouble || newPaperColorSingle || 0),
+      enabled: true,
+    };
+
+    setForm((prev) => ({
+      ...prev,
+      custom_papers: [...(prev.custom_papers || []), newPaper],
+    }));
+
+    setNewPaperName('');
+    setNewPaperBwSingle('');
+    setNewPaperBwDouble('');
+    setNewPaperColorSingle('');
+    setNewPaperColorDouble('');
+  };
+
+  const toggleCustomPaper = (paperId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      custom_papers: (prev.custom_papers || []).map((p) =>
+        p.id === paperId ? { ...p, enabled: !p.enabled } : p
+      ),
+    }));
+  };
+
+  const handleDeleteCustomPaper = (paperId: string) => {
+    setForm((prev) => ({
+      ...prev,
+      custom_papers: (prev.custom_papers || []).filter((p) => p.id !== paperId),
     }));
   };
 
@@ -208,7 +255,7 @@ export default function AdminSettingsPage() {
             <div>
               <h1 className="text-xl font-extrabold text-slate-900">Shop Customization & Rates</h1>
               <p className="text-xs text-slate-500 font-medium">
-                Control active paper sizes, printing options, custom add-on services, & rates
+                Reconfigure every section of the customer page: enable/disable options & set live rates
               </p>
             </div>
           </div>
@@ -233,12 +280,90 @@ export default function AdminSettingsPage() {
           </button>
         </div>
 
-        {/* Section 1: Paper Sizes & Per-Page Rates */}
+        {/* Section 1: Store Banner & Customer Info Controls */}
+        <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🏪</span>
+              <h2 className="text-base font-extrabold text-slate-900">1. Store Branding & Customer Info Controls</h2>
+            </div>
+            <span className="text-xs text-slate-400 font-medium">Header title, announcement & form rules</span>
+          </div>
+
+          <div className="space-y-3.5">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1 text-xs">Shop Name (Displayed on Customer Page)</label>
+              <input
+                type="text"
+                placeholder="e.g. Subham Cyber Cafe"
+                value={form.shop_name || ''}
+                onChange={(e) => handleChange('shop_name', e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-bold mb-1 text-xs">
+                Customer Announcement Banner Text (Optional)
+              </label>
+              <textarea
+                rows={2}
+                placeholder="e.g. Lunch break 1:30 PM - 2:00 PM. Prints submitted now will be spooled right after!"
+                value={form.form_fields?.announcementText || ''}
+                onChange={(e) => handleFormFieldChange('announcementText', e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium text-slate-900"
+              />
+            </div>
+
+            <div className="pt-2 border-t border-slate-200 space-y-2">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <span className="font-bold text-slate-800 text-xs">Require Customer Name</span>
+                  <p className="text-[10px] text-slate-500 font-medium">Customer must enter their name before checkout</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.form_fields?.requireCustomerName !== false}
+                  onChange={() => toggleFormField('requireCustomerName')}
+                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <span className="font-bold text-slate-800 text-xs">Require Customer Phone Number</span>
+                  <p className="text-[10px] text-slate-500 font-medium">Customer must enter their mobile number for SMS/WhatsApp pickup</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.form_fields?.requireCustomerPhone !== false}
+                  onChange={() => toggleFormField('requireCustomerPhone')}
+                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <span className="font-bold text-slate-800 text-xs">Allow Customer Special Instructions / Notes</span>
+                  <p className="text-[10px] text-slate-500 font-medium">Show custom instruction field on customer order form</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={form.form_fields?.allowCustomerNotes !== false}
+                  onChange={() => toggleFormField('allowCustomerNotes')}
+                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 2: Paper Sizes & Per-Page Rates */}
         <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
           <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-lg">📄</span>
-              <h2 className="text-base font-extrabold text-slate-900">1. Paper Sizes & Per-Page Rates</h2>
+              <h2 className="text-base font-extrabold text-slate-900">2. Paper Sizes & Per-Page Rates (Customer Step 1)</h2>
             </div>
             <span className="text-xs text-slate-400 font-medium">Enable stock & set rates in ₹</span>
           </div>
@@ -248,7 +373,7 @@ export default function AdminSettingsPage() {
             <div className="flex items-center justify-between">
               <span className="font-extrabold text-slate-900 text-xs">A4 Paper (Standard)</span>
               <label className="flex items-center gap-1.5 cursor-pointer">
-                <span className="text-xs font-bold text-slate-600">Available in Shop</span>
+                <span className="text-xs font-bold text-slate-600">Available on Customer Page</span>
                 <input
                   type="checkbox"
                   checked={form.enabled_papers?.a4 !== false}
@@ -309,7 +434,7 @@ export default function AdminSettingsPage() {
             <div className="flex items-center justify-between">
               <span className="font-extrabold text-slate-900 text-xs">A3 Paper (Large Format)</span>
               <label className="flex items-center gap-1.5 cursor-pointer">
-                <span className="text-xs font-bold text-slate-600">Available in Shop</span>
+                <span className="text-xs font-bold text-slate-600">Available on Customer Page</span>
                 <input
                   type="checkbox"
                   checked={form.enabled_papers?.a3 !== false}
@@ -366,22 +491,102 @@ export default function AdminSettingsPage() {
               />
             </div>
           </div>
+
+          {/* Custom Paper Sizes */}
+          <div className="p-4 rounded-2xl bg-indigo-50/50 border border-indigo-200 space-y-3">
+            <div className="font-extrabold text-indigo-900 text-xs flex items-center justify-between">
+              <span>✨ Custom Paper Sizes</span>
+              <span className="text-[10px] text-indigo-600 font-bold font-mono">
+                {(form.custom_papers || []).length} Custom Sizes
+              </span>
+            </div>
+
+            {(form.custom_papers || []).length > 0 ? (
+              <div className="space-y-2">
+                {form.custom_papers!.map((paper) => (
+                  <div key={paper.id} className="flex items-center justify-between p-3 rounded-xl bg-white border border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={paper.enabled}
+                        onChange={() => toggleCustomPaper(paper.id)}
+                        className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                      />
+                      <span className="font-bold text-slate-900 text-xs">{paper.name}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span>B&W: ₹{paper.bw_single}</span>
+                      <span>Color: ₹{paper.color_single}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteCustomPaper(paper.id)}
+                        className="p-1 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-500 italic text-center py-1">
+                No custom paper sizes added. Add custom paper sizes below!
+              </p>
+            )}
+
+            {/* Add Custom Paper Form */}
+            <div className="p-3.5 rounded-xl bg-white border border-indigo-200 space-y-2.5">
+              <div className="font-extrabold text-slate-800 text-xs">+ Add New Custom Paper Size</div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  placeholder="Paper Name (e.g. A5, Cardstock, Letter)"
+                  value={newPaperName}
+                  onChange={(e) => setNewPaperName(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
+                />
+                <input
+                  type="number"
+                  placeholder="B&W Rate (₹/pg)"
+                  value={newPaperBwSingle}
+                  onChange={(e) => setNewPaperBwSingle(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                  className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
+                />
+                <input
+                  type="number"
+                  placeholder="Color Rate (₹/pg)"
+                  value={newPaperColorSingle}
+                  onChange={(e) => setNewPaperColorSingle(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                  className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleAddCustomPaper}
+                disabled={!newPaperName.trim() || newPaperBwSingle === ''}
+                className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Custom Paper Size</span>
+              </button>
+            </div>
+          </div>
         </section>
 
-        {/* Section 2: Customer Print Controls */}
+        {/* Section 3: Print Options (Customer Step 2) */}
         <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
           <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-lg">🎨</span>
-              <h2 className="text-base font-extrabold text-slate-900">2. Customer Print Controls</h2>
+              <h2 className="text-base font-extrabold text-slate-900">3. Print Options & Features (Customer Step 2)</h2>
             </div>
-            <span className="text-xs text-slate-400 font-medium">Turn OFF unavailable printing features</span>
+            <span className="text-xs text-slate-400 font-medium">Enable / Disable color & duplex</span>
           </div>
 
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
               <div>
-                <span className="font-bold text-slate-900 text-xs">Allow Color Printing</span>
+                <span className="font-bold text-slate-900 text-xs">Allow Color Printing Option</span>
                 <p className="text-[11px] text-slate-500 font-medium">Turn OFF if color printer is empty or undergoing maintenance</p>
               </div>
               <input
@@ -394,7 +599,7 @@ export default function AdminSettingsPage() {
 
             <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
               <div>
-                <span className="font-bold text-slate-900 text-xs">Allow Double-Sided (Duplex) Printing</span>
+                <span className="font-bold text-slate-900 text-xs">Allow Double-Sided (Duplex) Printing Option</span>
                 <p className="text-[11px] text-slate-500 font-medium">Turn OFF if printer only supports single-sided printing</p>
               </div>
               <input
@@ -407,14 +612,14 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Section 3: Add-on Services & Custom Extra Options */}
+        {/* Section 4: Add-on Services & Custom Extra Options (Customer Step 3) */}
         <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-5">
           <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-lg">📚</span>
-              <h2 className="text-base font-extrabold text-slate-900">3. Binding, Finishing & Custom Options</h2>
+              <h2 className="text-base font-extrabold text-slate-900">4. Binding & Custom Options (Customer Step 3)</h2>
             </div>
-            <span className="text-xs text-slate-400 font-medium">Standard & custom shop services</span>
+            <span className="text-xs text-slate-400 font-medium">Enable/disable options & set rates</span>
           </div>
 
           {/* Standard Finishing Services */}
@@ -625,104 +830,12 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Section 4: Shop Print Configuration */}
-        <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-          <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">⚙️</span>
-              <h2 className="text-base font-extrabold text-slate-900">4. Shop Print Configuration</h2>
-            </div>
-            <span className="text-xs text-slate-400 font-medium">Banners, Order Limits & Form Controls</span>
-          </div>
-
-          <div className="space-y-3.5">
-            <div>
-              <label className="block text-slate-700 font-bold mb-1 text-xs">Shop Name (Displayed on Customer Page)</label>
-              <input
-                type="text"
-                placeholder="e.g. Subham Cyber Cafe"
-                value={form.shop_name || ''}
-                onChange={(e) => handleChange('shop_name', e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-              />
-            </div>
-
-            <div>
-              <label className="block text-slate-700 font-bold mb-1 text-xs">
-                Customer Announcement Banner Text (Optional)
-              </label>
-              <textarea
-                rows={2}
-                placeholder="e.g. Lunch break 1:30 PM - 2:00 PM. Prints submitted now will be spooled right after!"
-                value={form.form_fields?.announcementText || ''}
-                onChange={(e) => handleFormFieldChange('announcementText', e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium text-slate-900"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-700 font-bold mb-1 text-xs">Minimum Order Total (₹)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 5"
-                  value={form.form_fields?.minOrderAmount || 0}
-                  onChange={(e) => handleFormFieldChange('minOrderAmount', parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-slate-700 font-bold mb-1 text-xs">Urgent / Express Fee (₹)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 10"
-                  value={form.form_fields?.urgentFee || 0}
-                  onChange={(e) => handleFormFieldChange('urgentFee', parseFloat(e.target.value) || 0)}
-                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
-                />
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-200 space-y-2">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="font-bold text-slate-800 text-xs">Require Customer Name</span>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.requireCustomerName !== false}
-                  onChange={() => toggleFormField('requireCustomerName')}
-                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="font-bold text-slate-800 text-xs">Require Customer Phone Number</span>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.requireCustomerPhone !== false}
-                  onChange={() => toggleFormField('requireCustomerPhone')}
-                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                />
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
-                <span className="font-bold text-slate-800 text-xs">Allow Customer Notes / Special Instructions</span>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.allowCustomerNotes !== false}
-                  onChange={() => toggleFormField('allowCustomerNotes')}
-                  className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 5: Payment Methods & UPI VPA */}
+        {/* Section 5: Payment Options & UPI VPA (Customer Step 4) */}
         <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
           <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-lg">💳</span>
-              <h2 className="text-base font-extrabold text-slate-900">5. Payment Options & UPI Details</h2>
+              <h2 className="text-base font-extrabold text-slate-900">5. Payment Options & UPI Details (Customer Step 4)</h2>
             </div>
             <span className="text-xs text-slate-400 font-medium">Counter cash & mobile UPI settings</span>
           </div>
@@ -752,9 +865,35 @@ export default function AdminSettingsPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-indigo-100">
+              <div>
+                <label className="block text-slate-600 font-bold mb-1 text-xs">Minimum Order Total (₹)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 5"
+                  value={form.form_fields?.minOrderAmount || 0}
+                  onChange={(e) => handleFormFieldChange('minOrderAmount', parseFloat(e.target.value) || 0)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-600 font-bold mb-1 text-xs">Urgent / Express Fee (₹)</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 10"
+                  value={form.form_fields?.urgentFee || 0}
+                  onChange={(e) => handleFormFieldChange('urgentFee', parseFloat(e.target.value) || 0)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white font-bold text-slate-900 text-xs"
+                />
+              </div>
+            </div>
+
             <div className="space-y-2 pt-2 border-t border-indigo-100">
               <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-indigo-100">
-                <span className="font-bold text-slate-800 text-xs">Allow UPI Mobile Payment</span>
+                <div>
+                  <span className="font-bold text-slate-800 text-xs">Allow UPI Mobile Payment</span>
+                  <p className="text-[10px] text-slate-500">Show 1-tap GPay / PhonePe / Paytm payment on mobile</p>
+                </div>
                 <input
                   type="checkbox"
                   checked={form.form_fields?.allowUpiPayment !== false}
@@ -764,7 +903,10 @@ export default function AdminSettingsPage() {
               </div>
 
               <div className="flex items-center justify-between p-3 rounded-xl bg-white border border-indigo-100">
-                <span className="font-bold text-slate-800 text-xs">Allow Cash at Counter</span>
+                <div>
+                  <span className="font-bold text-slate-800 text-xs">Allow Cash at Counter</span>
+                  <p className="text-[10px] text-slate-500">Show Pay Cash at Counter option for walk-in customers</p>
+                </div>
                 <input
                   type="checkbox"
                   checked={form.form_fields?.allowCashPayment !== false}
