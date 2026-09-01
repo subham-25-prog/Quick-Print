@@ -646,62 +646,76 @@ export async function recordOrderEvent(
  * Agent: Atomically claim next approved print job
  */
 export async function claimNextPrintJob(agentId: string) {
+  ensureDiskOrdersLoaded();
+
   const admin = getAdminClient();
   if (admin) {
-    // 1. Find the oldest approved order directly from orders table
-    const { data: approvedOrders, error } = await admin
-      .from('orders')
-      .select('*')
-      .eq('order_status', 'APPROVED')
-      .order('created_at', { ascending: true })
-      .limit(1);
-
-    if (!error && approvedOrders && approvedOrders.length > 0) {
-      const order = approvedOrders[0];
-
-      // Mark status as PRINTING so no other agent claims it
-      await admin
+    try {
+      // 1. Find the oldest approved order directly from orders table
+      const { data: approvedOrders, error } = await admin
         .from('orders')
-        .update({
-          order_status: 'PRINTING',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', order.id);
+        .select('*')
+        .eq('order_status', 'APPROVED')
+        .order('created_at', { ascending: true })
+        .limit(1);
 
-      // Generate signed download URL for the document
-      const cleanPath = (order.storage_path || '').replace(/^shop-documents\//, '');
-      let downloadUrl = order.file_url || '';
-      if (!downloadUrl && cleanPath) {
-        const { data: signed } = await admin.storage
-          .from('shop-documents')
-          .createSignedUrl(cleanPath, 3600);
-        downloadUrl = signed?.signedUrl || '';
+      if (!error && approvedOrders && approvedOrders.length > 0) {
+        const order = approvedOrders[0];
+
+        // Mark status as PRINTING so no other agent claims it
+        await admin
+          .from('orders')
+          .update({
+            order_status: 'PRINTING',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', order.id);
+
+        // Also update localStore memory and disk file
+        order.order_status = 'PRINTING';
+        order.updated_at = new Date().toISOString();
+        localStore.orders.set(order.id, order as Order);
+        writeSavedOrdersFile(Array.from(localStore.orders.values()));
+
+        // Generate signed download URL for document
+        const cleanPath = (order.storage_path || '').replace(/^shop-documents\//, '');
+        let downloadUrl = order.file_url || '';
+        if (!downloadUrl && cleanPath) {
+          const { data: signed } = await admin.storage
+            .from('shop-documents')
+            .createSignedUrl(cleanPath, 3600);
+          downloadUrl = signed?.signedUrl || '';
+        }
+
+        return {
+          success: true,
+          job: {
+            job_id: `job-${order.id}`,
+            order_id: order.id,
+            order_number: order.order_number,
+            file_name: order.file_name,
+            file_type: order.file_type,
+            download_url: downloadUrl || `/api/orders/${order.id}/file`,
+            page_count: order.page_count,
+            copies: order.copies,
+            paper_size: order.paper_size,
+            color_mode: order.color_mode,
+            print_sides: order.print_sides,
+          },
+        };
       }
-
-      return {
-        success: true,
-        job: {
-          job_id: `job-${order.id}`,
-          order_id: order.id,
-          order_number: order.order_number,
-          file_name: order.file_name,
-          file_type: order.file_type,
-          download_url: downloadUrl || `/api/orders/${order.id}/file`,
-          page_count: order.page_count,
-          copies: order.copies,
-          paper_size: order.paper_size,
-          color_mode: order.color_mode,
-          print_sides: order.print_sides,
-        },
-      };
+    } catch (e) {
+      console.warn('Supabase claimNextPrintJob notice:', e);
     }
   }
 
-  // Fallback for local memory store
+  // 2. Check local memory and disk store for APPROVED orders
   for (const [orderId, order] of Array.from(localStore.orders.entries())) {
     if (order.order_status === 'APPROVED') {
       order.order_status = 'PRINTING';
       order.updated_at = new Date().toISOString();
+      localStore.orders.set(orderId, order);
+      writeSavedOrdersFile(Array.from(localStore.orders.values()));
 
       return {
         success: true,
