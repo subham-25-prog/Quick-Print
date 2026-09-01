@@ -310,7 +310,7 @@ export default function AdminLiveOrdersPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 flex flex-col font-sans pb-24">
-      <AdminHeader onOpenPricing={() => setIsPricingModalOpen(true)} />
+      <AdminHeader />
 
       {/* Floating Action Toast Notification */}
       {toastMessage && (
