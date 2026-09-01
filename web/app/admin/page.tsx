@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Download,
   Eye,
   RefreshCw,
   FileText,
@@ -849,18 +848,6 @@ export default function AdminLiveOrdersPage() {
                           <span>Reprint</span>
                         </button>
                       )}
-
-                      {/* Download Document Button */}
-                      <a
-                        href={`/api/orders/${order.id}/file`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="py-2.5 px-3.5 rounded-2xl bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 border border-slate-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs hover:shadow-xs"
-                        title="Download Original Document"
-                      >
-                        <Download className="w-4 h-4" />
-                        <span className="hidden sm:inline">Download</span>
-                      </a>
                     </div>
                   </div>
                 );

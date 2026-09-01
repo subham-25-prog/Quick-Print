@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  ExternalLink,
   Smartphone,
   Banknote,
   RotateCcw,
@@ -21,10 +20,10 @@ import {
 interface AdminOrderCardProps {
   order: Order;
   onAction: (orderId: string, action: string, reason?: string) => Promise<void>;
-  onPreview: (order: Order) => void;
+  onPreview?: (order: Order) => void;
 }
 
-export const AdminOrderCard: React.FC<AdminOrderCardProps> = ({ order, onAction, onPreview }) => {
+export const AdminOrderCard: React.FC<AdminOrderCardProps> = ({ order, onAction }) => {
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
   const handleActionClick = async (action: string) => {
@@ -151,13 +150,6 @@ export const AdminOrderCard: React.FC<AdminOrderCardProps> = ({ order, onAction,
               </div>
             </div>
           </div>
-          <button
-            onClick={() => onPreview(order)}
-            className="p-1.5 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors ml-2 shrink-0"
-            title="Preview or Download"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </button>
         </div>
 
         {/* Specifications */}
