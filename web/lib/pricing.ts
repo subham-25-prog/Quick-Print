@@ -211,9 +211,10 @@ export function generateUpiDeepLink({
   const cleanUpi = (upiId || '').trim();
   const cleanName = encodeURIComponent((payeeName || 'QuickPrint').trim());
   const cleanAmount = (amount || 0).toFixed(2);
+  const cleanRef = encodeURIComponent(orderNumber || 'QP');
   const cleanNote = encodeURIComponent(`QuickPrint Order ${orderNumber || 'QP'}`);
 
-  return `upi://pay?pa=${cleanUpi}&pn=${cleanName}&am=${cleanAmount}&cu=${currency}&tn=${cleanNote}`;
+  return `upi://pay?pa=${cleanUpi}&pn=${cleanName}&am=${cleanAmount}&tr=${cleanRef}&tn=${cleanNote}&cu=${currency}`;
 }
 
 export type UpiAppKey = 'phonepe' | 'gpay' | 'paytm' | 'bhim' | 'cred' | 'generic';
@@ -241,8 +242,9 @@ export function generateAllUpiLinks({
   const cleanUpi = (upiId || '').trim();
   const cleanName = encodeURIComponent((payeeName || 'QuickPrint').trim());
   const cleanAmount = (amount || 0).toFixed(2);
+  const cleanRef = encodeURIComponent(orderNumber || 'QP');
   const cleanNote = encodeURIComponent(`QuickPrint Order ${orderNumber || 'QP'}`);
-  const query = `pa=${cleanUpi}&pn=${cleanName}&am=${cleanAmount}&cu=${currency}&tn=${cleanNote}`;
+  const query = `pa=${cleanUpi}&pn=${cleanName}&am=${cleanAmount}&tr=${cleanRef}&tn=${cleanNote}&cu=${currency}`;
 
   return {
     phonepe: {
