@@ -494,8 +494,15 @@ export async function cleanupOldOrders(retentionDays = 3): Promise<{ deletedCoun
  * Get all orders with optional status filter
  */
 export async function getAllOrders(statusFilter?: string): Promise<Order[]> {
-  // Asynchronously trigger 3-day auto-cleanup without blocking request
-  cleanupOldOrders(3).catch(() => {});
+  // Sync disk-saved orders into memory store so orders are permanently preserved
+  try {
+    const savedDiskOrders = readSavedOrdersFile();
+    for (const o of savedDiskOrders) {
+      if (o && o.id && !localStore.orders.has(o.id)) {
+        localStore.orders.set(o.id, o);
+      }
+    }
+  } catch (err) {}
 
   const admin = getAdminClient();
   const orderMap = new Map<string, Order>();

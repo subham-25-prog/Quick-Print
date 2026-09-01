@@ -177,9 +177,13 @@ export default function AdminLiveOrdersPage() {
 
       if (res.ok && data.order) {
         // Merge the server-confirmed order object directly
-        setOrders((currentOrders) =>
-          currentOrders.map((o) => (o.id === orderId ? { ...o, ...data.order } : o))
-        );
+        setOrders((currentOrders) => {
+          const updated = currentOrders.map((o) => (o.id === orderId ? { ...o, ...data.order } : o));
+          try {
+            localStorage.setItem('qp_admin_cached_orders', JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
       } else {
         throw new Error(data.error || 'Server rejected action');
       }
@@ -187,6 +191,9 @@ export default function AdminLiveOrdersPage() {
       console.error('Action error:', err);
       // Rollback to previous state
       setOrders(previousOrders);
+      try {
+        localStorage.setItem('qp_admin_cached_orders', JSON.stringify(previousOrders));
+      } catch (e) {}
       showToast(err instanceof Error ? err.message : 'Action failed. Reverted.', 'error');
     } finally {
       setActionLoadingKey(null);
