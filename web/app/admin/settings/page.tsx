@@ -302,18 +302,7 @@ export default function AdminSettingsPage() {
               />
             </div>
 
-            <div>
-              <label className="block text-slate-700 font-bold mb-1 text-xs">
-                Customer Announcement Banner Text (Optional)
-              </label>
-              <textarea
-                rows={2}
-                placeholder="e.g. Lunch break 1:30 PM - 2:00 PM. Prints submitted now will be spooled right after!"
-                value={form.form_fields?.announcementText || ''}
-                onChange={(e) => handleFormFieldChange('announcementText', e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-xs font-medium text-slate-900"
-              />
-            </div>
+
 
             <div className="pt-2 border-t border-slate-200 space-y-2">
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
