@@ -4,6 +4,7 @@ import React, { useState, useRef } from 'react';
 import { FileText, CheckCircle2, AlertCircle, RefreshCw, X } from '@/components/ui/Icons';
 import { formatBytes } from '@/lib/utils';
 import { getPdfPageCount } from '@/lib/pdf';
+import { ImagePrintCanvas, ImagePrintSettings } from './ImagePrintCanvas';
 
 export interface UploadedFileState {
   file: File;
@@ -14,6 +15,7 @@ export interface UploadedFileState {
   storagePath: string;
   signedUrl?: string;
   previewUrl?: string;
+  printSettings?: ImagePrintSettings;
 }
 
 interface FileUploaderProps {
@@ -40,7 +42,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.name);
 
     if (!isPdf && !isImage) {
-      setError('Please upload a PDF document or an image (JPG, PNG).');
+      setError('Please upload a PDF document or an image (JPG, PNG, WEBP).');
       return;
     }
 
@@ -67,6 +69,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
         throw new Error(result.error || 'Failed to upload document');
       }
 
+      const localObjectUrl = isImage ? URL.createObjectURL(file) : undefined;
+
       const uploadedData: UploadedFileState = {
         file,
         fileName: file.name,
@@ -75,7 +79,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
         pageCount: result.fileInfo?.pageCount || detectedPages,
         storagePath: result.fileInfo?.storagePath || `shop-documents/orders/${file.name}`,
         signedUrl: result.fileInfo?.signedUrl,
-        previewUrl: result.fileInfo?.signedUrl || (isImage ? URL.createObjectURL(file) : undefined),
+        previewUrl: localObjectUrl || result.fileInfo?.signedUrl,
       };
 
       onFileUploaded(uploadedData);
@@ -119,6 +123,20 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     }
   };
 
+  const handleImageSettingsChange = (settings: ImagePrintSettings) => {
+    if (uploadedFile) {
+      onFileUploaded({
+        ...uploadedFile,
+        printSettings: settings,
+      });
+    }
+  };
+
+  const isImageFile = uploadedFile && (
+    uploadedFile.fileType.startsWith('image/') ||
+    /\.(jpg|jpeg|png|webp)$/i.test(uploadedFile.fileName)
+  );
+
   return (
     <div className="w-full">
       <input
@@ -157,7 +175,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
           {uploading ? (
             <div className="py-4 flex flex-col items-center justify-center">
               <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
-              <p className="text-xs font-semibold text-slate-700">Uploading & detecting pages...</p>
+              <p className="text-xs font-semibold text-slate-700">Uploading & generating live preview...</p>
             </div>
           ) : (
             <div className="flex flex-col items-center">
@@ -166,16 +184,27 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
                 <FileText className="w-5 h-5 text-slate-400" />
               </div>
               <h4 className="text-sm font-bold text-slate-800 mb-0.5">
-                Tap or Drop Document Here
+                Tap or Drop Document / Image Here
               </h4>
               <p className="text-[11px] text-slate-400">
-                Auto-detects page count instantly
+                PDF, JPG, PNG, WEBP • Live print canvas preview
               </p>
             </div>
           )}
         </div>
+      ) : isImageFile && (uploadedFile.previewUrl || uploadedFile.signedUrl) ? (
+        /* Unified Live Interactive Print Canvas Preview for Images */
+        <ImagePrintCanvas
+          imageSrc={uploadedFile.previewUrl || uploadedFile.signedUrl!}
+          fileName={uploadedFile.fileName}
+          fileSizeBytes={uploadedFile.fileSizeBytes}
+          onReplaceImage={() => fileInputRef.current?.click()}
+          onRemoveImage={handleRemove}
+          onSettingsChange={handleImageSettingsChange}
+        />
       ) : (
-        <div className="p-3.5 rounded-xl border border-emerald-300 bg-emerald-50/30 flex items-center justify-between gap-3">
+        /* PDF File Success Card */
+        <div className="p-3.5 rounded-2xl border border-emerald-300 bg-emerald-50/30 flex items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-9 rounded-lg border border-emerald-400 bg-white flex items-center justify-center text-emerald-600 shrink-0 shadow-xs">
               <FileText className="w-4 h-4" />
@@ -190,13 +219,21 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
             </div>
           </div>
 
-          <button
-            onClick={handleRemove}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors shrink-0"
-            title="Remove document"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="px-2.5 py-1 rounded-xl bg-white border border-emerald-300 text-emerald-800 text-[11px] font-bold hover:bg-emerald-100 transition-colors"
+            >
+              Replace
+            </button>
+            <button
+              onClick={handleRemove}
+              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+              title="Remove document"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>
