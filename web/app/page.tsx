@@ -7,10 +7,19 @@ import { FileUploader, UploadedFileState } from '@/components/customer/FileUploa
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
 import { PaymentModal } from '@/components/customer/PaymentModal';
+import { AdobePrintPreviewModal } from '@/components/customer/AdobePrintPreviewModal';
 import { calculateOrderPrice } from '@/lib/pricing';
 import { formatCurrency, generateOrderNumber } from '@/lib/utils';
 import { defaultPricingConfig } from '@/lib/config';
-import { PaperSize, ColorMode, PrintSides, AddOnOptions, PricingConfig, PaymentMethod } from '@/types';
+import {
+  PaperSize,
+  ColorMode,
+  PrintSides,
+  AddOnOptions,
+  PricingConfig,
+  PaymentMethod,
+  AdvancedPrintConfig,
+} from '@/types';
 import { User, Phone, MessageSquare } from '@/components/ui/Icons';
 
 export default function CustomerHomePage() {
@@ -28,6 +37,18 @@ export default function CustomerHomePage() {
   const [printSides, setPrintSides] = useState<PrintSides>('SINGLE');
   const [copies, setCopies] = useState<number>(1);
   const [addOns, setAddOns] = useState<AddOnOptions>({});
+
+  // Adobe Advanced Print Configuration & Preview State
+  const [isAdobeModalOpen, setIsAdobeModalOpen] = useState(false);
+  const [advancedConfig, setAdvancedConfig] = useState<AdvancedPrintConfig>({
+    pageRangeMode: 'ALL',
+    pagesPerSheet: '1',
+    pageScaling: 'FIT',
+    customScalePercent: 100,
+    orientation: 'AUTO',
+    printQuality: 'STANDARD',
+    watermark: 'NONE',
+  });
 
   // Customer details
   const [customerName, setCustomerName] = useState('');
@@ -179,22 +200,23 @@ export default function CustomerHomePage() {
         printSides,
         copies,
         addOns,
+        advancedConfig,
+        customerName,
+        customerPhone,
+        customerNotes,
         paymentMethod: method,
-        customerName: customerName.trim(),
-        customerPhone: customerPhone.trim(),
-        customerNotes: customerNotes.trim(),
-        transactionRef: transactionRef ? transactionRef.trim() : undefined,
+        transactionRef,
+        totalAmount: priceBreakdown.totalAmount,
       };
 
-      const response = await fetch('/api/orders', {
+      const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(orderPayload),
       });
 
-      const data = await response.json();
-
-      if (!response.ok || !data.order) {
+      const data = await res.json();
+      if (!res.ok || !data.order) {
         throw new Error(data.error || 'Failed to submit order');
       }
 
@@ -236,9 +258,9 @@ export default function CustomerHomePage() {
     enabledAddons.lamination !== false ||
     customAddons.length > 0;
 
-  const showNameField = pricing.form_fields?.showCustomerName !== false;
-  const showPhoneField = pricing.form_fields?.showCustomerPhone !== false;
-  const showNotesField = pricing.form_fields?.enableNotes !== false;
+  const showNameField = pricing.form_fields?.requireCustomerName !== false;
+  const showPhoneField = pricing.form_fields?.requireCustomerPhone !== false;
+  const showNotesField = pricing.form_fields?.allowCustomerNotes !== false;
   const showCustomerInfoSection = showNameField || showPhoneField || showNotesField;
 
   return (
@@ -247,14 +269,6 @@ export default function CustomerHomePage() {
       <Header shopName={pricing.shop_name} />
 
       <main className="max-w-xl mx-auto w-full px-4 pt-4 space-y-4">
-        {/* Top Notice Banner */}
-        {pricing.form_fields?.announcementText && (
-          <div className="p-2.5 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-900 text-center text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs">
-            <span>⚡</span>
-            <span>{pricing.form_fields.announcementText}</span>
-          </div>
-        )}
-
         {/* Card 1: 1. Upload Document */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
@@ -288,6 +302,8 @@ export default function CustomerHomePage() {
             copies={copies}
             onCopiesChange={setCopies}
             pricing={pricing}
+            advancedConfig={advancedConfig}
+            onOpenAdobeModal={() => setIsAdobeModalOpen(true)}
           />
         </section>
 
@@ -353,15 +369,15 @@ export default function CustomerHomePage() {
               {showNotesField && (
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Special Instructions <span className="text-slate-400 font-normal">(Optional)</span>
+                    Special Instructions / Notes <span className="text-slate-400 font-normal">(Optional)</span>
                   </label>
                   <div className="relative">
-                    <input
-                      type="text"
+                    <textarea
+                      rows={2}
                       value={customerNotes}
                       onChange={(e) => setCustomerNotes(e.target.value)}
-                      placeholder="e.g. Print only pages 1 to 5, or leave extra margin on left"
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
+                      placeholder="e.g. Print pages 3-10 only, corner stapled..."
+                      className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
                     />
                     <MessageSquare className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   </div>
@@ -372,8 +388,8 @@ export default function CustomerHomePage() {
         )}
       </main>
 
-      {/* Sticky Bottom Checkout Bar */}
-      <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-3.5 px-4 z-30 shadow-lg">
+      {/* Floating Bottom Order Summary & Proceed Button Bar */}
+      <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-xl z-40">
         <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -404,6 +420,21 @@ export default function CustomerHomePage() {
         onConfirmPayment={handleConfirmOrder}
         submitting={submitting}
         pricing={pricing}
+      />
+
+      {/* Adobe Acrobat Advanced Print Settings & Preview Modal */}
+      <AdobePrintPreviewModal
+        isOpen={isAdobeModalOpen}
+        onClose={() => setIsAdobeModalOpen(false)}
+        fileName={uploadedFile?.fileName || 'Document_Preview.pdf'}
+        pageCount={uploadedFile?.pageCount || 1}
+        fileSignedUrl={uploadedFile?.signedUrl}
+        fileType={uploadedFile?.fileType}
+        paperSize={paperSize}
+        colorMode={colorMode}
+        printSides={printSides}
+        advancedConfig={advancedConfig}
+        onSaveAdvancedConfig={setAdvancedConfig}
       />
     </div>
   );
