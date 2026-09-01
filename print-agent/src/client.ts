@@ -72,7 +72,28 @@ export class ShopApiClient {
       });
 
       if (response.data?.success && response.data?.job) {
-        return response.data.job as ClaimedJob;
+        const raw = response.data.job;
+        const orderIdStr = String(raw.order_id || raw.orderId || raw.id || '');
+        const orderNumStr = String(raw.order_number || raw.orderNumber || orderIdStr || 'QP-0000');
+        const fileNameStr = String(raw.file_name || raw.fileName || raw.filename || 'document.pdf');
+        const fileTypeStr = String(raw.file_type || raw.fileType || 'application/pdf');
+        const downloadUrlStr = String(raw.download_url || raw.downloadUrl || `/api/orders/${orderIdStr}/file`);
+
+        const normalizedJob: ClaimedJob = {
+          job_id: String(raw.job_id || raw.jobId || `job-${orderIdStr}`),
+          order_id: orderIdStr,
+          order_number: orderNumStr,
+          file_name: fileNameStr,
+          file_type: fileTypeStr,
+          download_url: downloadUrlStr,
+          page_count: Math.max(1, parseInt(String(raw.page_count || raw.pageCount || 1), 10) || 1),
+          copies: Math.max(1, parseInt(String(raw.copies || 1), 10) || 1),
+          paper_size: String(raw.paper_size || raw.paperSize || 'A4'),
+          color_mode: String(raw.color_mode || raw.colorMode || 'BW'),
+          print_sides: String(raw.print_sides || raw.printSides || 'SINGLE'),
+        };
+
+        return normalizedJob;
       }
       return null;
     } catch (err) {

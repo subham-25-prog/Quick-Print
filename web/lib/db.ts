@@ -744,20 +744,30 @@ export async function claimNextPrintJob(agentId: string) {
           downloadUrl = signed?.signedUrl || '';
         }
 
+        const orderIdStr = String(order.id || (order as any).orderId || (order as any).order_id || '');
+        const orderNumberStr = String(order.order_number || (order as any).orderNumber || orderIdStr || 'QP-0000');
+        const fileNameStr = String(order.file_name || (order as any).fileName || (order as any).filename || 'document.pdf');
+        const fileTypeStr = String(order.file_type || (order as any).fileType || 'application/pdf');
+        const pageCountNum = Math.max(1, parseInt(String(order.page_count || (order as any).pageCount || 1), 10) || 1);
+        const copiesNum = Math.max(1, parseInt(String(order.copies || 1), 10) || 1);
+        const paperSizeStr = String(order.paper_size || (order as any).paperSize || 'A4');
+        const colorModeStr = String(order.color_mode || (order as any).colorMode || 'BW');
+        const printSidesStr = String(order.print_sides || (order as any).printSides || 'SINGLE');
+
         return {
           success: true,
           job: {
-            job_id: `job-${order.id}`,
-            order_id: order.id,
-            order_number: order.order_number,
-            file_name: order.file_name,
-            file_type: order.file_type,
-            download_url: downloadUrl || `/api/orders/${order.id}/file`,
-            page_count: order.page_count,
-            copies: order.copies,
-            paper_size: order.paper_size,
-            color_mode: order.color_mode,
-            print_sides: order.print_sides,
+            job_id: `job-${orderIdStr}`,
+            order_id: orderIdStr,
+            order_number: orderNumberStr,
+            file_name: fileNameStr,
+            file_type: fileTypeStr,
+            download_url: downloadUrl || `/api/orders/${orderIdStr}/file`,
+            page_count: pageCountNum,
+            copies: copiesNum,
+            paper_size: paperSizeStr,
+            color_mode: colorModeStr,
+            print_sides: printSidesStr,
           },
         };
       }
@@ -774,20 +784,30 @@ export async function claimNextPrintJob(agentId: string) {
       localStore.orders.set(orderId, order);
       writeSavedOrdersFile(Array.from(localStore.orders.values()));
 
+      const orderIdStr = String(order.id || orderId);
+      const orderNumberStr = String(order.order_number || (order as any).orderNumber || orderIdStr || 'QP-0000');
+      const fileNameStr = String(order.file_name || (order as any).fileName || (order as any).filename || 'document.pdf');
+      const fileTypeStr = String(order.file_type || (order as any).fileType || 'application/pdf');
+      const pageCountNum = Math.max(1, parseInt(String(order.page_count || (order as any).pageCount || 1), 10) || 1);
+      const copiesNum = Math.max(1, parseInt(String(order.copies || 1), 10) || 1);
+      const paperSizeStr = String(order.paper_size || (order as any).paperSize || 'A4');
+      const colorModeStr = String(order.color_mode || (order as any).colorMode || 'BW');
+      const printSidesStr = String(order.print_sides || (order as any).printSides || 'SINGLE');
+
       return {
         success: true,
         job: {
-          job_id: `job-${order.id}`,
-          order_id: order.id,
-          order_number: order.order_number,
-          file_name: order.file_name,
-          file_type: order.file_type,
-          download_url: `/api/orders/${order.id}/file`,
-          page_count: order.page_count,
-          copies: order.copies,
-          paper_size: order.paper_size,
-          color_mode: order.color_mode,
-          print_sides: order.print_sides,
+          job_id: `job-${orderIdStr}`,
+          order_id: orderIdStr,
+          order_number: orderNumberStr,
+          file_name: fileNameStr,
+          file_type: fileTypeStr,
+          download_url: `/api/orders/${orderIdStr}/file`,
+          page_count: pageCountNum,
+          copies: copiesNum,
+          paper_size: paperSizeStr,
+          color_mode: colorModeStr,
+          print_sides: printSidesStr,
         },
       };
     }
