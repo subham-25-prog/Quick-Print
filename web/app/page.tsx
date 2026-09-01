@@ -11,7 +11,7 @@ import { calculateOrderPrice } from '@/lib/pricing';
 import { generateOrderNumber } from '@/lib/utils';
 import { defaultPricingConfig } from '@/lib/config';
 import { PaperSize, ColorMode, PrintSides, AddOnOptions, PricingConfig, PaymentMethod } from '@/types';
-import { User, Phone } from '@/components/ui/Icons';
+import { User, Phone, MessageSquare } from '@/components/ui/Icons';
 
 export default function CustomerHomePage() {
   const router = useRouter();
