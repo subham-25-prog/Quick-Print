@@ -63,6 +63,7 @@ export interface FormFieldsConfig {
   allowColorPrinting?: boolean;
   allowDoubleSided?: boolean;
   enableNotes?: boolean;
+  allowCustomerNotes?: boolean;
   autoApproveUpiOrders?: boolean;
   minOrderAmount?: number;
   urgentFee?: number;
