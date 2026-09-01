@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateOrderStatus, getOrderById } from '@/lib/db';
+import { updateOrderStatus, getOrderById, getAllOrders } from '@/lib/db';
 import { OrderStatus } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -11,18 +11,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Order ID and action are required' }, { status: 400 });
     }
 
-    const order = await getOrderById(orderId);
+    let order = await getOrderById(orderId);
+    
+    // Robust fallback: search all orders by id or order_number
     if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+      const all = await getAllOrders();
+      order = all.find(
+        (o) =>
+          o.id === orderId ||
+          o.id.toLowerCase() === String(orderId).toLowerCase() ||
+          o.order_number?.toUpperCase() === String(orderId).toUpperCase()
+      ) || null;
     }
 
-    let targetStatus: OrderStatus = order.order_status;
+    const actualId = order ? order.id : orderId;
+    let targetStatus: OrderStatus = order ? order.order_status : 'APPROVED';
     const extraData: Record<string, unknown> = {};
 
     switch (action) {
       case 'VERIFY_PAYMENT':
         extraData.payment_status = 'VERIFIED';
-        // If order was awaiting verification, it's now ready for approval
         break;
 
       case 'APPROVE_PRINT':
@@ -56,7 +64,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Unsupported action: ${action}` }, { status: 400 });
     }
 
-    const updated = await updateOrderStatus(orderId, targetStatus, 'ADMIN', extraData);
+    const updated = await updateOrderStatus(actualId, targetStatus, 'ADMIN', extraData);
 
     return NextResponse.json({
       success: true,

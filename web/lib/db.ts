@@ -458,7 +458,12 @@ export async function getOrderById(id: string): Promise<Order | null> {
 
   // 2. Search local memory values by id or order_number
   for (const o of Array.from(localStore.orders.values())) {
-    if (o && (o.id === cleanId || o.order_number?.toUpperCase() === cleanId.toUpperCase())) {
+    if (
+      o &&
+      (o.id === cleanId ||
+       o.id.toLowerCase() === cleanId.toLowerCase() ||
+       o.order_number?.toUpperCase() === cleanId.toUpperCase())
+    ) {
       return o;
     }
   }
@@ -466,7 +471,12 @@ export async function getOrderById(id: string): Promise<Order | null> {
   // 3. Ensure disk orders loaded & search
   ensureDiskOrdersLoaded();
   for (const o of Array.from(localStore.orders.values())) {
-    if (o && (o.id === cleanId || o.order_number?.toUpperCase() === cleanId.toUpperCase())) {
+    if (
+      o &&
+      (o.id === cleanId ||
+       o.id.toLowerCase() === cleanId.toLowerCase() ||
+       o.order_number?.toUpperCase() === cleanId.toUpperCase())
+    ) {
       return o;
     }
   }
@@ -497,6 +507,18 @@ export async function getOrderById(id: string): Promise<Order | null> {
       }
     } catch {}
   }
+
+  // 5. Fallback: Force full list search
+  try {
+    const all = await getAllOrders();
+    const match = all.find(
+      (o) =>
+        o.id === cleanId ||
+        o.id.toLowerCase() === cleanId.toLowerCase() ||
+        o.order_number?.toUpperCase() === cleanId.toUpperCase()
+    );
+    if (match) return match;
+  } catch {}
 
   return null;
 }
