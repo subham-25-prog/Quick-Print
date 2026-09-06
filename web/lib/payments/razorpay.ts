@@ -74,6 +74,10 @@ export async function createRazorpayUpiLink(input: {
   returnUrl: string;
 }) {
   if (input.reference.length > 40) throw new Error('Payment reference is too long.');
+  // Razorpay does not support UPI-only Payment Links in Test Mode. Its normal
+  // hosted Payment Link still lets us exercise the signed payment flow there;
+  // production uses the UPI-only link required by this checkout.
+  const useUpiOnlyLink = !process.env.RAZORPAY_KEY_ID?.trim().startsWith('rzp_test_');
   const response = await fetch(`${RAZORPAY_API_URL}/payment_links`, {
     method: 'POST',
     headers: {
@@ -81,7 +85,7 @@ export async function createRazorpayUpiLink(input: {
       'content-type': 'application/json',
     },
     body: JSON.stringify({
-      upi_link: true,
+      ...(useUpiOnlyLink ? { upi_link: true } : {}),
       amount: asMinorUnits(input.amount),
       currency: input.currency,
       accept_partial: false,

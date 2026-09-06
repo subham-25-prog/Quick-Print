@@ -41,7 +41,7 @@ Use the exact same Webhook Secret as Vercel. Enable at least `payment_link.paid`
 ## 5. Test safely
 
 1. Set the print agent `SIMULATE_PRINT=true` and deploy with Razorpay **test** keys.
-2. Create a UPI order. The app must open a Razorpay hosted payment link; it must not mark the order paid yet.
+2. Create an online-payment order. Test keys use a standard Razorpay hosted link because Razorpay does not permit UPI-only Payment Links in Test Mode; live keys use the UPI-only link.
 3. Complete the test payment. Razorpay should redirect to the status page, and either the signed webhook or the server-side status check confirms the payment.
 4. Confirm exactly one `print_jobs` row is created and the agent logs one simulated print.
 5. Re-send the same webhook and refresh the customer page. There must be no second print job or print.
