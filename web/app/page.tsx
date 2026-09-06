@@ -239,9 +239,8 @@ export default function CustomerHomePage() {
 
       setIsPaymentModalOpen(false);
       if (method === 'UPI' && data.paymentUrl) {
-        // Razorpay owns the UPI app hand-off and returns here afterwards. The
-        // resulting redirect is informational only; the status page waits for
-        // the signed server webhook before confirming or printing.
+        // A gateway-owned payment page returns here afterwards. The resulting
+        // redirect is informational only; server verification confirms printing.
         window.location.assign(data.paymentUrl);
         return;
       }

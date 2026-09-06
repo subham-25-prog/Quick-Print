@@ -1,50 +1,36 @@
-# Secure Razorpay UPI payment and automatic print setup
+# SBIePay payment integration status
 
-Online UPI printing stays disabled until Razorpay Payment Links and its signed webhook are configured. A personal UPI address or a browser message that says "paid" cannot prove a payment and must never trigger printing.
+Razorpay has been removed. Online payment is deliberately disabled until SBIePay provides this merchant's official integration kit. This is safer than guessing an SBIePay endpoint, encryption method, signature, callback format, or verification API: no online payment can mark an order paid or start a print without server-side verification.
 
-## 1. Apply the Supabase migrations
+## What is already secure
 
-Open the Supabase SQL editor for the QuickPrint project and run these files in order:
+- The Supabase `payments` and `print_jobs` tables are RLS-protected.
+- The existing `confirm_verified_payment` database function is idempotent: one verified payment can create at most one print job.
+- Cash orders remain manual: the shopkeeper verifies cash in Admin before printing.
+- SBIePay placeholder configuration is server-only; no SBI secret is exposed to the browser.
 
-1. `supabase/migrations/20260906_payment_first_printing.sql`
-2. `supabase/migrations/20260906_switch_to_razorpay.sql`
+## Required from SBIePay before implementation can be completed
 
-They create RLS-protected `payments` and `print_jobs` tables, then add server-only idempotent functions which confirm a payment and queue exactly one print job. Do not expose the service-role key to the browser.
+Obtain the official merchant integration kit after onboarding. It must provide all of the following for the specific merchant and environment:
 
-## 2. Create Razorpay credentials
+1. Sandbox and production gateway URLs.
+2. Merchant ID, terminal ID, and the exact credential/key format.
+3. Payment-initiation request fields and the official UPI/UPI Intent flow.
+4. Required encryption, hashing, or signing algorithm with official examples.
+5. Return/callback URL contract and signature verification process.
+6. Server-side transaction-status verification endpoint and response fields.
+7. Supported test credentials and test payment scenarios.
 
-In Razorpay Dashboard, create API keys and copy the **Key ID** and **Key Secret**. Create a separate, long random Webhook Secret for this app.
+The public SBI information confirms that SBIePay supports UPI and merchant onboarding, but the technical protocol is merchant-portal material and is not published openly. Contact SBIePay at `sbiepay@sbi.co.in` for onboarding and `support.sbiepay@sbi.co.in` for the technical integration kit.
 
-## 3. Configure Vercel
+## Supabase migration
 
-Add these Production and Preview environment variables, then redeploy:
+For an existing database that previously used the payment migration, run:
 
-```
-RAZORPAY_KEY_ID=rzp_live_...
-RAZORPAY_KEY_SECRET=...
-RAZORPAY_WEBHOOK_SECRET=...
-NEXT_PUBLIC_APP_URL=https://quick-print-two.vercel.app
-```
+`supabase/migrations/20260906_switch_to_sbiepay.sql`
 
-Use `rzp_test_...` test keys for testing and `rzp_live_...` only after completing live activation. None of the three Razorpay variables may start with `NEXT_PUBLIC_` or be committed to Git.
+It changes only the default provider for future payment records. It does not modify historical payments or orders.
 
-## 4. Configure the Razorpay webhook
+## Future Vercel configuration
 
-In Razorpay Dashboard → Account & Settings → Webhooks, add this URL:
-
-```
-https://quick-print-two.vercel.app/api/payments/razorpay/webhook
-```
-
-Use the exact same Webhook Secret as Vercel. Enable at least `payment_link.paid`, `payment_link.cancelled`, and `payment_link.expired` events. The endpoint validates the raw-body HMAC, payment-link ID/reference, captured payment ID, exact paise amount, and currency before it can confirm an order.
-
-## 5. Test safely
-
-1. Set the print agent `SIMULATE_PRINT=true` and deploy with Razorpay **test** keys.
-2. Create an online-payment order. Test keys use a standard Razorpay hosted link because Razorpay does not permit UPI-only Payment Links in Test Mode; live keys use the UPI-only link.
-3. Complete the test payment. Razorpay should redirect to the status page, and either the signed webhook or the server-side status check confirms the payment.
-4. Confirm exactly one `print_jobs` row is created and the agent logs one simulated print.
-5. Re-send the same webhook and refresh the customer page. There must be no second print job or print.
-6. Try a cancelled, expired, or wrong-amount payment. The order must remain unconfirmed and must not reach the print agent.
-
-Cash orders remain manual: the shopkeeper verifies cash in the Admin dashboard, which is the only cash path allowed to queue printing.
+Do not add guessed values. Once SBIePay supplies the official values, add the exact variables documented in `web/.env.example`, then provide the official integration document so the payment initiation, callback, and verification handlers can be implemented and tested.

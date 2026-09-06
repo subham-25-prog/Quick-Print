@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { calculateOrderPrice } from '@/lib/pricing';
 import { getActivePricing, createOrder, getAllOrders } from '@/lib/db';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { createRazorpayUpiLink, isRazorpayConfigured } from '@/lib/payments/razorpay';
+import { isSbiEpayConfigured, sbiEpayNotReadyMessage } from '@/lib/payments/sbiepay';
 import { generateOrderNumber } from '@/lib/utils';
 import { Order, OrderItemOptions, PaymentMethod } from '@/types';
 import { randomUUID } from 'crypto';
@@ -69,8 +69,8 @@ export async function POST(req: NextRequest) {
     if (!['UPI', 'CASH'].includes(paymentMethod)) {
       return NextResponse.json({ error: 'Invalid payment method' }, { status: 400 });
     }
-    if (paymentMethod === 'UPI' && !isRazorpayConfigured()) {
-      return NextResponse.json({ error: 'Online UPI is unavailable until secure payment verification is configured.' }, { status: 503 });
+    if (paymentMethod === 'UPI' && !isSbiEpayConfigured()) {
+      return NextResponse.json({ error: sbiEpayNotReadyMessage() }, { status: 503 });
     }
     if (paymentMethod === 'UPI' && !String(customerPhone || '').trim()) {
       return NextResponse.json({ error: 'A customer phone number is required for secure UPI payment.' }, { status: 400 });
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
       paymentReference = `qp_${savedOrder.id.replace(/-/g, '')}`;
       const { data: payment, error: paymentError } = await admin.from('payments').insert({
         order_id: savedOrder.id,
-        provider: 'razorpay',
+        provider: 'sbiepay',
         payment_reference: paymentReference,
         amount: savedOrder.total_amount,
         currency: savedOrder.currency,
@@ -163,23 +163,11 @@ export async function POST(req: NextRequest) {
       }).select('id').single();
       if (paymentError || !payment) throw new Error('Unable to create secure payment session.');
 
-      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin).replace(/\/$/, '');
-      try {
-        const link = await createRazorpayUpiLink({
-          reference: paymentReference,
-          orderId: savedOrder.id,
-          amount: savedOrder.total_amount,
-          currency: savedOrder.currency,
-          customerName: savedOrder.customer_name,
-          customerPhone: savedOrder.customer_phone,
-          returnUrl: `${appUrl}/status/${savedOrder.id}?access_token=${encodeURIComponent(accessToken)}`,
-        });
-        paymentUrl = link.paymentUrl;
-        await admin.from('payments').update({ provider_link_id: link.providerLinkId, payment_url: link.paymentUrl }).eq('id', payment.id);
-      } catch (error) {
-        await admin.from('payments').update({ status: 'FAILED' }).eq('id', payment.id);
-        throw error;
-      }
+      // SBIePay's official merchant kit is required before a hosted payment
+      // request can be created. This branch is unreachable while configuration
+      // is disabled above, preventing an unverified or invented integration.
+      await admin.from('payments').update({ status: 'FAILED' }).eq('id', payment.id);
+      throw new Error(sbiEpayNotReadyMessage());
     }
 
 

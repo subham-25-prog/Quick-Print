@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS public.payments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID NOT NULL UNIQUE REFERENCES public.orders(id) ON DELETE CASCADE,
-  provider TEXT NOT NULL DEFAULT 'razorpay',
+  provider TEXT NOT NULL DEFAULT 'sbiepay',
   payment_reference TEXT NOT NULL UNIQUE,
   provider_link_id TEXT UNIQUE,
   payment_url TEXT,
