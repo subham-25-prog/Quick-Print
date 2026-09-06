@@ -4,8 +4,25 @@ import { getActivePricing, createOrder, getAllOrders } from '@/lib/db';
 import { getShopConfig } from '@/lib/config';
 import { generateOrderNumber } from '@/lib/utils';
 import { Order, OrderItemOptions, PaymentMethod } from '@/types';
+import { randomUUID } from 'crypto';
+import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
+import { createOrderAccessToken } from '@/lib/order-access';
+
+function customerOrderView(order: Order) {
+  const {
+    id, order_number, created_at, file_name, file_type, page_count, paper_size, color_mode,
+    print_sides, copies, total_amount, currency, payment_method, payment_status, order_status,
+    rejection_reason, failure_reason,
+  } = order;
+  return {
+    id, order_number, created_at, file_name, file_type, page_count, paper_size, color_mode,
+    print_sides, copies, total_amount, currency, payment_method, payment_status, order_status,
+    rejection_reason, failure_reason,
+  };
+}
 
 export async function GET(req: NextRequest) {
+  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status') || 'ALL';
@@ -43,8 +60,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing document file metadata' }, { status: 400 });
     }
 
-    const safePageCount = Math.max(1, parseInt(pageCount, 10) || 1);
-    const safeCopies = Math.max(1, parseInt(copies, 10) || 1);
+    const safePageCount = Math.min(1000, Math.max(1, parseInt(pageCount, 10) || 1));
+    const safeCopies = Math.min(100, Math.max(1, parseInt(copies, 10) || 1));
+    if (!['BW', 'COLOR'].includes(colorMode) || !['SINGLE', 'DOUBLE'].includes(printSides)) {
+      return NextResponse.json({ error: 'Invalid print options' }, { status: 400 });
+    }
+    if (!['UPI', 'CASH'].includes(paymentMethod)) {
+      return NextResponse.json({ error: 'Invalid payment method' }, { status: 400 });
+    }
+    if (!storagePath.startsWith('shop-documents/orders/')) {
+      return NextResponse.json({ error: 'Invalid document upload reference' }, { status: 400 });
+    }
 
     const options: OrderItemOptions = {
       paperSize,
@@ -61,7 +87,7 @@ export async function POST(req: NextRequest) {
     const priceCalculation = calculateOrderPrice(safePageCount, options, activePricing);
 
     // 3. Generate unique Order ID & Order Number
-    const orderId = `ord_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const orderId = randomUUID();
     const orderNumber = generateOrderNumber();
 
     // 4. Payment Verification Security Gate:
@@ -80,7 +106,6 @@ export async function POST(req: NextRequest) {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       file_name: fileName,
-      file_url: signedUrl || fileUrl || undefined,
       storage_path: storagePath,
       file_type: fileType || 'application/pdf',
       file_size_bytes: fileSizeBytes || 0,
@@ -108,6 +133,13 @@ export async function POST(req: NextRequest) {
 
     // 5. Save to database
     const savedOrder = await createOrder(newOrder);
+    const accessToken = createOrderAccessToken(savedOrder.id);
+    if (!accessToken) {
+      return NextResponse.json(
+        { error: 'Order access security is not configured. Set ORDER_ACCESS_SECRET before launch.' },
+        { status: 503 }
+      );
+    }
 
     // 6. Generate UPI deep link if payment method is UPI
     const shop = getShopConfig();
@@ -124,7 +156,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      order: savedOrder,
+      order: customerOrderView(savedOrder),
+      accessToken,
       upiLink,
       priceBreakdown: priceCalculation,
     });

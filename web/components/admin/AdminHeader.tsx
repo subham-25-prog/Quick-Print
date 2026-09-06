@@ -41,9 +41,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
     try {
       await fetch('/api/admin/auth', { method: 'DELETE' });
     } catch {}
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('qp_admin_auth');
-    }
     router.replace('/admin/login');
   };
 

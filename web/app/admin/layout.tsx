@@ -11,22 +11,8 @@ export default function AdminLayout({
   const pathname = usePathname();
   const router = useRouter();
   
-  // Instant synchronous check if cached in browser
-  const [checking, setChecking] = useState(() => {
-    if (typeof window !== 'undefined') {
-      if (pathname === '/admin/login') return false;
-      return localStorage.getItem('qp_admin_auth') !== 'true';
-    }
-    return true;
-  });
-
-  const [isAuthorized, setIsAuthorized] = useState(() => {
-    if (typeof window !== 'undefined') {
-      if (pathname === '/admin/login') return true;
-      return localStorage.getItem('qp_admin_auth') === 'true';
-    }
-    return false;
-  });
+  const [checking, setChecking] = useState(pathname !== '/admin/login');
+  const [isAuthorized, setIsAuthorized] = useState(pathname === '/admin/login');
 
   useEffect(() => {
     // If already on login page, let it render immediately
@@ -43,24 +29,16 @@ export default function AdminLayout({
         if (data.authenticated) {
           setIsAuthorized(true);
           setChecking(false);
-          try {
-            localStorage.setItem('qp_admin_auth', 'true');
-          } catch {}
         } else {
-          try {
-            localStorage.removeItem('qp_admin_auth');
-          } catch {}
           setIsAuthorized(false);
           setChecking(false);
           router.replace('/admin/login');
         }
       })
       .catch(() => {
-        if (localStorage.getItem('qp_admin_auth') !== 'true') {
-          setIsAuthorized(false);
-          setChecking(false);
-          router.replace('/admin/login');
-        }
+        setIsAuthorized(false);
+        setChecking(false);
+        router.replace('/admin/login');
       });
   }, [pathname, router]);
 

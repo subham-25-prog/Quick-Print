@@ -3,7 +3,6 @@
 import React, { useState, useRef } from 'react';
 import { FileText, CheckCircle2, AlertCircle, RefreshCw, X } from '@/components/ui/Icons';
 import { formatBytes } from '@/lib/utils';
-import { getPdfPageCount } from '@/lib/pdf';
 
 export interface UploadedFileState {
   file: File;
@@ -30,14 +29,14 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
   const processFile = async (file: File) => {
     setError(null);
 
-    const MAX_SIZE = 50 * 1024 * 1024;
+    const MAX_SIZE = 4 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      setError('Document exceeds 50 MB limit. Please choose a smaller file.');
+      setError('Document exceeds the 4 MB upload limit. Please choose a smaller file.');
       return;
     }
 
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(file.name);
+    const isImage = file.type === 'image/jpeg' || file.type === 'image/png' || /\.(jpg|jpeg|png)$/i.test(file.name);
 
     if (!isPdf && !isImage) {
       setError('Please upload a PDF document or an image (JPG, PNG).');
@@ -47,12 +46,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     setUploading(true);
 
     try {
-      let detectedPages = 1;
-      if (isPdf) {
-        const arrayBuffer = await file.arrayBuffer();
-        detectedPages = await getPdfPageCount(arrayBuffer);
-      }
-
       const formData = new FormData();
       formData.append('file', file);
 
@@ -72,7 +65,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
         fileName: file.name,
         fileType: result.fileInfo?.fileType || file.type,
         fileSizeBytes: file.size,
-        pageCount: result.fileInfo?.pageCount || detectedPages,
+        pageCount: result.fileInfo?.pageCount || 1,
         storagePath: result.fileInfo?.storagePath || `shop-documents/orders/${file.name}`,
         signedUrl: result.fileInfo?.signedUrl,
         previewUrl: result.fileInfo?.signedUrl || (isImage ? URL.createObjectURL(file) : undefined),
@@ -124,7 +117,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
+        accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
         className="hidden"
         id="quickprint-file-input"
         onChange={handleFileChange}

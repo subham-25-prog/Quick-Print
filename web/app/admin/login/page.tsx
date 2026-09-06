@@ -29,10 +29,9 @@ export default function AdminLoginPage() {
       const data = await res.json();
 
       if (res.ok && data.success) {
-        localStorage.setItem('qp_admin_auth', 'true');
         router.push('/admin');
       } else {
-        setError(data.error || 'Incorrect Password. Default is 1234');
+        setError(data.error || 'Incorrect administrator password.');
         setPassword('');
       }
     } catch (err) {
@@ -79,7 +78,7 @@ export default function AdminLoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter password (default: 1234)"
+                  placeholder="Enter administrator password"
                   className="w-full pl-4 pr-10 py-3 rounded-2xl bg-slate-900 border border-slate-700/80 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-colors"
                 />
                 <Lock className="w-4 h-4 text-slate-500 absolute right-3.5 top-1/2 -translate-y-1/2" />
@@ -103,11 +102,6 @@ export default function AdminLoginPage() {
 
           </form>
 
-          <div className="text-center pt-1">
-            <span className="text-[11px] text-slate-500 font-medium">
-              Default password is <span className="font-mono text-indigo-400 font-bold">1234</span>
-            </span>
-          </div>
         </div>
 
         {/* Back to Customer Link */}

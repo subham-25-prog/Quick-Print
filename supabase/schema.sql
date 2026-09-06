@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     
     -- File details
     file_name TEXT NOT NULL,
+    file_url TEXT,
     storage_path TEXT NOT NULL,
     file_type VARCHAR(100) NOT NULL,
     file_size_bytes BIGINT NOT NULL DEFAULT 0,
@@ -45,6 +46,7 @@ CREATE TABLE IF NOT EXISTS public.orders (
     customer_name VARCHAR(100),
     customer_phone VARCHAR(20),
     customer_notes TEXT,
+    advanced_config JSONB,
     transaction_ref TEXT,
     rejection_reason TEXT,
     failure_reason TEXT,
@@ -57,16 +59,17 @@ CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(order_status);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_order_number ON public.orders(order_number);
 
--- Enable RLS & allow public/anon access for customer submission & admin actions
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS file_url TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS advanced_config JSONB;
+
+-- The web server uses the service-role key. No client may directly read or modify orders.
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow public read on orders" ON public.orders;
 DROP POLICY IF EXISTS "Allow public insert on orders" ON public.orders;
 DROP POLICY IF EXISTS "Allow public update on orders" ON public.orders;
 
-CREATE POLICY "Allow public read on orders" ON public.orders FOR SELECT USING (true);
-CREATE POLICY "Allow public insert on orders" ON public.orders FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update on orders" ON public.orders FOR UPDATE USING (true);
+-- Intentionally no anon/authenticated policies. Service-role requests bypass RLS.
 
 -- 3. Shop Pricing & Configuration Table (Single Source of Truth)
 CREATE TABLE IF NOT EXISTS public.shop_settings (
@@ -81,16 +84,38 @@ DROP POLICY IF EXISTS "Allow public read on shop_settings" ON public.shop_settin
 DROP POLICY IF EXISTS "Allow public insert on shop_settings" ON public.shop_settings;
 DROP POLICY IF EXISTS "Allow public update on shop_settings" ON public.shop_settings;
 
-CREATE POLICY "Allow public read on shop_settings" ON public.shop_settings FOR SELECT USING (true);
-CREATE POLICY "Allow public insert on shop_settings" ON public.shop_settings FOR INSERT WITH CHECK (true);
-CREATE POLICY "Allow public update on shop_settings" ON public.shop_settings FOR UPDATE USING (true);
+-- Intentionally no anon/authenticated policies. Public pricing is exposed through a
+-- server endpoint that strips any legacy sensitive fields.
 
--- 4. Storage Bucket for uploaded documents
+-- 4. Audit log and print-agent heartbeat tables used by the server application.
+CREATE TABLE IF NOT EXISTS public.order_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    order_id UUID NOT NULL REFERENCES public.orders(id) ON DELETE CASCADE,
+    previous_status VARCHAR(40),
+    new_status VARCHAR(40) NOT NULL,
+    actor VARCHAR(20) NOT NULL,
+    message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_order_events_order_id ON public.order_events(order_id, created_at DESC);
+ALTER TABLE public.order_events ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.print_agents (
+    agent_id TEXT PRIMARY KEY,
+    printer_name TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'OFFLINE',
+    last_heartbeat TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    system_info TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+ALTER TABLE public.print_agents ENABLE ROW LEVEL SECURITY;
+
+-- 5. Storage Bucket for uploaded documents
 INSERT INTO storage.buckets (id, name, public, file_size_limit) 
-VALUES ('shop-documents', 'shop-documents', true, 52428800)
-ON CONFLICT (id) DO UPDATE SET public = true;
+VALUES ('shop-documents', 'shop-documents', false, 4194304)
+ON CONFLICT (id) DO UPDATE SET public = false, file_size_limit = 4194304;
 
--- Storage Policies: Allow public uploads, reads, updates, and deletes
+-- Customer files are uploaded and retrieved only through authenticated server routes.
 DROP POLICY IF EXISTS "Allow public uploads" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public reads" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public updates" ON storage.objects;
@@ -98,8 +123,5 @@ DROP POLICY IF EXISTS "Allow public deletes" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public customer uploads" ON storage.objects;
 DROP POLICY IF EXISTS "Allow service role & signed URL reads" ON storage.objects;
 DROP POLICY IF EXISTS "Allow service role deletes" ON storage.objects;
-
-CREATE POLICY "Allow public uploads" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'shop-documents');
-CREATE POLICY "Allow public reads" ON storage.objects FOR SELECT USING (bucket_id = 'shop-documents');
-CREATE POLICY "Allow public updates" ON storage.objects FOR UPDATE USING (bucket_id = 'shop-documents');
-CREATE POLICY "Allow public deletes" ON storage.objects FOR DELETE USING (bucket_id = 'shop-documents');
+DROP POLICY IF EXISTS "Allow admin access to shop documents" ON storage.objects;
+DROP POLICY IF EXISTS "Allow admin delete shop documents" ON storage.objects;

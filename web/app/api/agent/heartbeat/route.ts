@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { recordAgentHeartbeat, getPrintAgentInfo } from '@/lib/db';
 import { verifyAgentAuth } from '@/lib/auth';
+import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
 
 export async function GET(req: NextRequest) {
+  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
     const { searchParams } = new URL(req.url);
     const agentId = searchParams.get('agentId') || 'agent-main-pc';

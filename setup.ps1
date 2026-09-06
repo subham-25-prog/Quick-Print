@@ -52,6 +52,9 @@ $supabaseService = Prompt-User "Enter Supabase Service Role Key" ""
 # 4. Print Agent & App Security
 Write-Host "`n--- 4. App & Agent Security ---" -ForegroundColor Green
 $agentSecret  = Prompt-User "Enter Shared Agent Secret" ("qp_sec_" + [guid]::NewGuid().ToString("N").Substring(0, 16))
+$adminPin = Prompt-User "Enter Administrator Password" ""
+$adminSessionSecret = Prompt-User "Enter Admin Session Secret" ([guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N"))
+$orderAccessSecret = Prompt-User "Enter Customer Order Access Secret" ([guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N"))
 $appUrl       = Prompt-User "Enter Production Web App URL" "http://localhost:3000"
 $agentId      = Prompt-User "Enter Shop PC Agent ID" "shop-counter-pc-1"
 
@@ -83,6 +86,9 @@ SUPABASE_SERVICE_ROLE_KEY="$supabaseService"
 
 # --- Print Agent Shared Secret ---
 PRINT_AGENT_SECRET="$agentSecret"
+ADMIN_PIN="$adminPin"
+ADMIN_SESSION_SECRET="$adminSessionSecret"
+ORDER_ACCESS_SECRET="$orderAccessSecret"
 
 # --- App URL ---
 NEXT_PUBLIC_APP_URL="$appUrl"

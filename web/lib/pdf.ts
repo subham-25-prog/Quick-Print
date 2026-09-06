@@ -15,7 +15,7 @@ export async function getPdfPageCount(data: ArrayBuffer | Uint8Array): Promise<n
 }
 
 /**
- * Validates whether a file is a supported format (PDF, JPG, JPEG, PNG)
+ * Validates the browser-provided metadata before server-side signature validation.
  */
 export function isValidFileType(mimeType: string, fileName: string): boolean {
   const validMimes = [
@@ -23,11 +23,10 @@ export function isValidFileType(mimeType: string, fileName: string): boolean {
     'image/jpeg',
     'image/jpg',
     'image/png',
-    'image/webp',
   ];
   
   if (validMimes.includes(mimeType.toLowerCase())) return true;
   
   const ext = fileName.split('.').pop()?.toLowerCase();
-  return ['pdf', 'jpg', 'jpeg', 'png', 'webp'].includes(ext || '');
+  return ['pdf', 'jpg', 'jpeg', 'png'].includes(ext || '');
 }

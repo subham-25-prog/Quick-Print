@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateOrderStatus, getOrderById, getAllOrders } from '@/lib/db';
 import { OrderStatus } from '@/types';
+import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
 
 export async function POST(req: NextRequest) {
+  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
     const body = await req.json();
     const { orderId, action, reason } = body;
@@ -24,8 +26,11 @@ export async function POST(req: NextRequest) {
       ) || null;
     }
 
-    const actualId = order ? order.id : orderId;
-    let targetStatus: OrderStatus = order ? order.order_status : 'APPROVED';
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+    const actualId = order.id;
+    let targetStatus: OrderStatus = order.order_status;
     const extraData: Record<string, unknown> = {};
 
     switch (action) {

@@ -6,6 +6,8 @@ import bundledPricing from '../public/config/pricing_config.json';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 // In-Memory fallback store for development or offline testing
 class LocalMemoryStore {
   pricing: PricingConfig = { ...defaultPricingConfig, ...(bundledPricing as any) };
@@ -57,6 +59,7 @@ if (process.env.NODE_ENV !== 'production') globalForStore.localStore = localStor
  * Persist uploaded document buffer to memory & local disk
  */
 export function saveFileBuffer(storagePath: string, buffer: Buffer): void {
+  if (isProduction) return;
   localStore.files.set(storagePath, buffer);
   const cleanPath = storagePath.replace(/^shop-documents\//, '');
   localStore.files.set(cleanPath, buffer);
@@ -77,6 +80,7 @@ export function saveFileBuffer(storagePath: string, buffer: Buffer): void {
  * Retrieve uploaded document buffer from memory or local disk
  */
 export function getFileBuffer(storagePath: string): Buffer | null {
+  if (isProduction) return null;
   if (localStore.files.has(storagePath)) {
     return localStore.files.get(storagePath)!;
   }
@@ -152,6 +156,7 @@ function readSavedPricingFile(): any | null {
 }
 
 function writeSavedPricingFile(pricingData: PricingConfig) {
+  if (isProduction) return;
   const jsonStr = JSON.stringify(pricingData, null, 2);
   const candidatePaths = getPricingConfigFilePaths();
   for (const p of candidatePaths) {
@@ -212,6 +217,7 @@ function ensureDiskOrdersLoaded(): void {
 }
 
 function writeSavedOrdersFile(orders: Order[]) {
+  if (isProduction) return;
   const jsonStr = JSON.stringify(orders, null, 2);
   const candidatePaths = getOrdersConfigFilePaths();
   for (const p of candidatePaths) {
@@ -223,10 +229,14 @@ function writeSavedOrdersFile(orders: Order[]) {
   }
 }
 
-function cleanConfigObject(saved: any): PricingConfig {
-  if (!saved || typeof saved !== 'object') {
+function cleanConfigObject(input: any): PricingConfig {
+  if (!input || typeof input !== 'object') {
     return { ...defaultPricingConfig };
   }
+  const saved: any = { ...input };
+  // Legacy versions stored the admin credential inside public pricing JSON.
+  // Never return or persist it again; administrator access belongs in environment secrets.
+  delete saved.admin_pin;
 
   const num = (v: any, fallback: number) => {
     const n = Number(v);
@@ -294,7 +304,6 @@ function cleanConfigObject(saved: any): PricingConfig {
     shop_address: saved.shop_address !== undefined ? saved.shop_address : defaultPricingConfig.shop_address,
     shop_merchant_qr_image: saved.shop_merchant_qr_image !== undefined ? saved.shop_merchant_qr_image : defaultPricingConfig.shop_merchant_qr_image,
     shop_qr_mode: saved.shop_qr_mode !== undefined ? saved.shop_qr_mode : defaultPricingConfig.shop_qr_mode,
-    admin_pin: saved.admin_pin !== undefined ? saved.admin_pin : defaultPricingConfig.admin_pin,
     updated_at: saved.updated_at || new Date().toISOString(),
   };
 }
@@ -305,6 +314,9 @@ function cleanConfigObject(saved: any): PricingConfig {
 export async function getActivePricing(): Promise<PricingConfig> {
   // 1. Try fetching from Supabase Cloud DB shop_settings table first
   const admin = getAdminClient();
+  if (isProduction && !admin) {
+    throw new Error('Supabase service credentials are required in production.');
+  }
   if (admin) {
     try {
       const { data, error } = await admin
@@ -343,16 +355,17 @@ export async function getActivePricing(): Promise<PricingConfig> {
  */
 export async function updatePricing(newPricing: Partial<PricingConfig>): Promise<PricingConfig> {
   const current = await getActivePricing();
+  const { admin_pin: _ignoredLegacyPin, ...safeNewPricing } = newPricing as Partial<PricingConfig> & { admin_pin?: unknown };
 
-  const finalUpi = newPricing.shop_upi_id !== undefined ? cleanUpiString(newPricing.shop_upi_id) : (current.shop_upi_id || defaultPricingConfig.shop_upi_id);
-  const finalUpiName = newPricing.shop_upi_name !== undefined ? newPricing.shop_upi_name : (current.shop_upi_name || defaultPricingConfig.shop_upi_name);
+  const finalUpi = safeNewPricing.shop_upi_id !== undefined ? cleanUpiString(safeNewPricing.shop_upi_id) : (current.shop_upi_id || defaultPricingConfig.shop_upi_id);
+  const finalUpiName = safeNewPricing.shop_upi_name !== undefined ? safeNewPricing.shop_upi_name : (current.shop_upi_name || defaultPricingConfig.shop_upi_name);
 
   const mergedRaw = {
     ...current,
-    ...newPricing,
-    enabled_papers: newPricing.enabled_papers ? { ...newPricing.enabled_papers } : current.enabled_papers,
-    enabled_addons: newPricing.enabled_addons ? { ...newPricing.enabled_addons } : current.enabled_addons,
-    form_fields: newPricing.form_fields ? { ...newPricing.form_fields } : current.form_fields,
+    ...safeNewPricing,
+    enabled_papers: safeNewPricing.enabled_papers ? { ...safeNewPricing.enabled_papers } : current.enabled_papers,
+    enabled_addons: safeNewPricing.enabled_addons ? { ...safeNewPricing.enabled_addons } : current.enabled_addons,
+    form_fields: safeNewPricing.form_fields ? { ...safeNewPricing.form_fields } : current.form_fields,
     shop_upi_id: finalUpi,
     shop_upi_name: finalUpiName,
     updated_at: new Date().toISOString(),
@@ -365,14 +378,19 @@ export async function updatePricing(newPricing: Partial<PricingConfig>): Promise
 
   // Persist to Supabase Cloud DB shop_settings table
   const admin = getAdminClient();
+  if (isProduction && !admin) {
+    throw new Error('Supabase service credentials are required to save pricing.');
+  }
   if (admin) {
     try {
-      await admin.from('shop_settings').upsert({
+      const { error } = await admin.from('shop_settings').upsert({
         id: 'default_shop',
         pricing: localStore.pricing,
         updated_at: new Date().toISOString(),
       });
+      if (error) throw error;
     } catch (dbErr) {
+      if (isProduction) throw dbErr;
       console.warn('Notice upserting Supabase shop_settings:', dbErr);
     }
   }
@@ -385,14 +403,19 @@ export async function updatePricing(newPricing: Partial<PricingConfig>): Promise
  * Create a new order with pricing snapshot
  */
 export async function createOrder(order: Order): Promise<Order> {
+  const admin = getAdminClient();
+  if (isProduction && !admin) {
+    throw new Error('Supabase service credentials are required before accepting orders.');
+  }
   // First merge all existing disk orders into memory store so old orders are NEVER lost or overwritten
-  ensureDiskOrdersLoaded();
+  if (!isProduction) ensureDiskOrdersLoaded();
 
   // Always save to memory store & local disk file so it is instantly available and never vanishes
-  localStore.orders.set(order.id, order);
-  writeSavedOrdersFile(Array.from(localStore.orders.values()));
+  if (!isProduction) {
+    localStore.orders.set(order.id, order);
+    writeSavedOrdersFile(Array.from(localStore.orders.values()));
+  }
 
-  const admin = getAdminClient();
   if (admin) {
     try {
       const { data, error } = await admin
@@ -423,6 +446,7 @@ export async function createOrder(order: Order): Promise<Order> {
           customer_name: order.customer_name,
           customer_phone: order.customer_phone,
           customer_notes: order.customer_notes,
+          advanced_config: order.advanced_config,
           transaction_ref: order.transaction_ref,
         })
         .select()
@@ -434,13 +458,16 @@ export async function createOrder(order: Order): Promise<Order> {
         await recordOrderEvent(order.id, null, order.order_status, 'CUSTOMER', 'Order submitted by customer');
         return data as Order;
       } else if (error) {
+        if (isProduction) throw error;
         console.warn('Notice saving order to Supabase:', error.message);
       }
     } catch (insertErr) {
+      if (isProduction) throw insertErr;
       console.warn('Supabase order insert error:', insertErr);
     }
   }
 
+  if (isProduction) throw new Error('Order could not be stored in Supabase.');
   recordOrderEvent(order.id, null, order.order_status, 'CUSTOMER', 'Order submitted by customer');
   return order;
 }
@@ -604,6 +631,9 @@ export async function getAllOrders(statusFilter?: string): Promise<Order[]> {
   ensureDiskOrdersLoaded();
 
   const admin = getAdminClient();
+  if (isProduction && !admin) {
+    throw new Error('Supabase service credentials are required in production.');
+  }
   const orderMap = new Map<string, Order>();
 
   // 1. First add all local in-memory orders
@@ -628,9 +658,11 @@ export async function getAllOrders(statusFilter?: string): Promise<Order[]> {
         }
         writeSavedOrdersFile(Array.from(localStore.orders.values()));
       } else if (error) {
+        if (isProduction) throw error;
         console.warn('Notice querying Supabase orders:', error.message);
       }
     } catch (dbErr) {
+      if (isProduction) throw dbErr;
       console.warn('Supabase getAllOrders error:', dbErr);
     }
   }
@@ -671,36 +703,49 @@ export async function updateOrderStatus(
     updatePayload.printed_at = new Date().toISOString();
   }
 
-  // 1. Immediately update in-memory localStore and write to disk (0ms latency)
+  if (isProduction && !current) {
+    return null;
+  }
+
+  // 1. Immediately update in-memory localStore and write to disk (development only)
   const updated: Order = {
     ...(current || {}),
     ...updatePayload,
     id: orderId,
   } as Order;
 
-  localStore.orders.set(orderId, updated);
-  writeSavedOrdersFile(Array.from(localStore.orders.values()));
+  if (!isProduction) {
+    localStore.orders.set(orderId, updated);
+    writeSavedOrdersFile(Array.from(localStore.orders.values()));
+  }
 
   // 2. Asynchronously mirror update to Supabase (non-blocking)
   const admin = getAdminClient();
+  if (isProduction && !admin) {
+    throw new Error('Supabase service credentials are required to update orders.');
+  }
   if (admin) {
-    (async () => {
-      try {
-        const { data, error } = await admin
-          .from('orders')
-          .update(updatePayload)
-          .eq('id', orderId)
-          .select()
-          .single();
+    try {
+      const { data, error } = await admin
+        .from('orders')
+        .update(updatePayload)
+        .eq('id', orderId)
+        .select()
+        .single();
 
-        if (data && !error) {
+      if (data && !error) {
+        if (!isProduction) {
           localStore.orders.set(orderId, data as Order);
           writeSavedOrdersFile(Array.from(localStore.orders.values()));
         }
-      } catch (err) {
-        console.warn('Supabase background update notice:', err);
+        await recordOrderEvent(orderId, prevStatus, newStatus, actor, extraData?.customer_notes || `Status changed to ${newStatus}`);
+        return data as Order;
       }
-    })();
+      if (error && isProduction) throw error;
+    } catch (err) {
+      if (isProduction) throw err;
+        console.warn('Supabase background update notice:', err);
+    }
   }
 
   await recordOrderEvent(orderId, prevStatus, newStatus, actor, extraData?.customer_notes || `Status changed to ${newStatus}`);

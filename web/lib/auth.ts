@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import { NextRequest } from 'next/server';
 
 /**
@@ -12,20 +13,13 @@ export function verifyAgentAuth(req: NextRequest): boolean {
   const bearerToken = authHeader.replace(/^Bearer\s+/i, '').trim();
   const providedSecret = (bearerToken || agentHeader).trim();
 
-  // 1. If PRINT_AGENT_SECRET is not configured or uses default dev secret: allow access
-  if (!configuredSecret || configuredSecret === 'qp_sec_dev_local_12345678') {
-    return true;
+  const developmentSecret = 'qp_sec_dev_local_12345678';
+  const expectedSecret = configuredSecret || (process.env.NODE_ENV === 'production' ? '' : developmentSecret);
+  if (!expectedSecret || (process.env.NODE_ENV === 'production' && expectedSecret === developmentSecret)) {
+    return false;
   }
 
-  // 2. In production: accept exact secret match or default dev secret
-  if (providedSecret === configuredSecret || providedSecret === 'qp_sec_dev_local_12345678') {
-    return true;
-  }
-
-  // 3. Fallback: If no token provided in request header but process.env is set, log warning & allow dev connection
-  if (!providedSecret) {
-    return true;
-  }
-
-  return providedSecret === configuredSecret;
+  const expected = Buffer.from(expectedSecret);
+  const provided = Buffer.from(providedSecret);
+  return expected.length === provided.length && timingSafeEqual(expected, provided);
 }

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cleanupOldOrders } from '@/lib/db';
+import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
     const body = await req.json().catch(() => ({}));
     const retentionDays = Number(body.days) || 3;

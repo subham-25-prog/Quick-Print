@@ -1,13 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { FileUploader, UploadedFileState } from '@/components/customer/FileUploader';
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
-import { PaymentModal } from '@/components/customer/PaymentModal';
-import { AdobePrintPreviewModal } from '@/components/customer/AdobePrintPreviewModal';
 import { calculateOrderPrice } from '@/lib/pricing';
 import { formatCurrency, generateOrderNumber } from '@/lib/utils';
 import { defaultPricingConfig } from '@/lib/config';
@@ -21,6 +20,15 @@ import {
   AdvancedPrintConfig,
 } from '@/types';
 import { User, Phone, MessageSquare } from '@/components/ui/Icons';
+
+const PaymentModal = dynamic(
+  () => import('@/components/customer/PaymentModal').then((module) => module.PaymentModal),
+  { ssr: false }
+);
+const AdobePrintPreviewModal = dynamic(
+  () => import('@/components/customer/AdobePrintPreviewModal').then((module) => module.AdobePrintPreviewModal),
+  { ssr: false }
+);
 
 export default function CustomerHomePage() {
   const router = useRouter();
@@ -231,7 +239,7 @@ export default function CustomerHomePage() {
       }
 
       setIsPaymentModalOpen(false);
-      router.push(`/status/${data.order.id}`);
+      router.push(`/status/${data.order.id}?access_token=${encodeURIComponent(data.accessToken)}`);
     } catch (err) {
       console.error('Order submission error:', err);
       alert(err instanceof Error ? err.message : 'Failed to submit order. Please try again.');

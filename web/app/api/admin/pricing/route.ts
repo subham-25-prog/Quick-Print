@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { getActivePricing, updatePricing } from '@/lib/db';
 import { defaultPricingConfig } from '@/lib/config';
+import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -35,6 +36,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
     const body = await req.json();
     const payload = body.pricing || body;
@@ -45,7 +47,7 @@ export async function POST(req: NextRequest) {
     try {
       revalidatePath('/');
       revalidatePath('/admin');
-      revalidateTag('pricing');
+      revalidateTag('pricing', 'max');
     } catch (e) {}
 
     return NextResponse.json(

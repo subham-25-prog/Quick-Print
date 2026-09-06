@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { OrderStatusTimeline } from '@/components/customer/OrderStatusTimeline';
@@ -22,8 +22,9 @@ import {
 
 export default function OrderStatusPage() {
   const params = useParams();
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const orderId = params.id as string;
+  const accessToken = searchParams.get('access_token');
 
   const [order, setOrder] = useState<Order | null>(null);
   const [upiLink, setUpiLink] = useState<string>('');
@@ -34,7 +35,8 @@ export default function OrderStatusPage() {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch(`/api/orders/${orderId}`);
+      if (!accessToken) throw new Error('Order link is incomplete');
+      const res = await fetch(`/api/orders/${orderId}?access_token=${encodeURIComponent(accessToken)}`);
       if (!res.ok) throw new Error('Order not found');
       const data = await res.json();
       setOrder(data.order);
@@ -59,7 +61,7 @@ export default function OrderStatusPage() {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [orderId, order?.order_status]);
+  }, [orderId, accessToken, order?.order_status]);
 
   const copyOrderNumber = () => {
     if (order?.order_number) {

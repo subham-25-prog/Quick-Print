@@ -9,28 +9,24 @@ VALUES (
     'shop-documents',
     'shop-documents',
     false, -- Private bucket (no direct public URL browsing)
-    52428800, -- 50 MB max file size limit
-    ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/json', 'text/plain', 'application/octet-stream']
+    4194304, -- Matches the Vercel serverless upload limit
+    ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
 )
 ON CONFLICT (id) DO UPDATE SET
     public = false,
-    file_size_limit = 52428800,
-    allowed_mime_types = ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/json', 'text/plain', 'application/octet-stream'];
+    file_size_limit = 4194304,
+    allowed_mime_types = ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
 
 
 -- 2. Storage RLS Policies
--- Allow anyone (public/customer) to upload to the shop-documents bucket
-CREATE POLICY "Allow public customer uploads" ON storage.objects
-    FOR INSERT
-    WITH CHECK (bucket_id = 'shop-documents');
-
--- Allow authenticated shopkeeper admins to view and download all objects
-CREATE POLICY "Allow admin access to shop documents" ON storage.objects
-    FOR SELECT TO authenticated
-    USING (bucket_id = 'shop-documents');
-
-CREATE POLICY "Allow admin delete shop documents" ON storage.objects
-    FOR DELETE TO authenticated
-    USING (bucket_id = 'shop-documents');
+-- The API uploads and downloads through the Supabase service role; customer documents
+-- must never be directly readable or writable with the public key.
+DROP POLICY IF EXISTS "Allow public uploads" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public reads" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public updates" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public deletes" ON storage.objects;
+DROP POLICY IF EXISTS "Allow public customer uploads" ON storage.objects;
+DROP POLICY IF EXISTS "Allow admin access to shop documents" ON storage.objects;
+DROP POLICY IF EXISTS "Allow admin delete shop documents" ON storage.objects;
 
 -- Service role bypasses storage policies for backend API & print agent signed URL generation

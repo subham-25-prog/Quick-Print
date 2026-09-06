@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrderById, getFileBuffer, getAllOrders } from '@/lib/db';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { isAdminRequest } from '@/lib/admin-auth';
+import { verifyAgentAuth } from '@/lib/auth';
+import { hasOrderAccess } from '@/lib/order-access';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const targetId = params.id;
+    const { id } = await params;
+    const hasPrivilegedAccess = isAdminRequest(req) || verifyAgentAuth(req);
+    if (!hasPrivilegedAccess && !hasOrderAccess(req, id)) {
+      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
+    }
+    const targetId = id;
     let order = await getOrderById(targetId);
 
     if (!order) {
@@ -41,6 +49,7 @@ export async function GET(
           'Content-Type': contentType,
           'Content-Disposition': `inline; filename="${encodeURIComponent(finalFileName)}"`,
           'Content-Length': String(buf.length),
+          'Cache-Control': 'private, no-store',
         },
       });
     };
@@ -80,28 +89,6 @@ export async function GET(
             }
           }
         } catch (sErr) {}
-      }
-    }
-
-    // 3. Check order.file_url (Data URL or Remote HTTP URL)
-    if (order.file_url) {
-      if (order.file_url.startsWith('data:')) {
-        const base64Data = order.file_url.split(',')[1];
-        if (base64Data) {
-          const buf = Buffer.from(base64Data, 'base64');
-          if (buf.length > 0) return createBufferResponse(buf);
-        }
-      } else if (order.file_url.startsWith('http://') || order.file_url.startsWith('https://')) {
-        try {
-          const res = await fetch(order.file_url);
-          if (res.ok) {
-            const arrayBuffer = await res.arrayBuffer();
-            const buf = Buffer.from(arrayBuffer);
-            if (buf.length > 0) return createBufferResponse(buf);
-          }
-        } catch (fetchErr) {
-          console.warn('Remote file_url fetch notice:', fetchErr);
-        }
       }
     }
 

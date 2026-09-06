@@ -1,14 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOrderById, getSignedFileUrl, getActivePricing } from '@/lib/db';
+import { getOrderById, getActivePricing } from '@/lib/db';
 import { getShopConfig } from '@/lib/config';
 import { generateUpiDeepLink } from '@/lib/pricing';
+import { isAdminRequest } from '@/lib/admin-auth';
+import { hasOrderAccess } from '@/lib/order-access';
+
+function customerOrderView(order: Awaited<ReturnType<typeof getOrderById>>) {
+  if (!order) return null;
+  const {
+    id, order_number, created_at, file_name, file_type, page_count, paper_size, color_mode,
+    print_sides, copies, total_amount, currency, payment_method, payment_status, order_status,
+    rejection_reason, failure_reason,
+  } = order;
+  return {
+    id, order_number, created_at, file_name, file_type, page_count, paper_size, color_mode,
+    print_sides, copies, total_amount, currency, payment_method, payment_status, order_status,
+    rejection_reason, failure_reason,
+  };
+}
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const order = await getOrderById(params.id);
+    const { id } = await params;
+    const isAdmin = isAdminRequest(req);
+    if (!isAdmin && !hasOrderAccess(req, id)) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+    const order = await getOrderById(id);
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
@@ -25,17 +46,12 @@ export async function GET(
       currency: order.currency,
     });
 
-    const fileUrl = await getSignedFileUrl(order.storage_path);
-
     return NextResponse.json({
-      order: {
-        ...order,
-        file_url: fileUrl,
-      },
+      order: isAdmin ? order : customerOrderView(order),
       upiLink,
       upiId,
       payeeName,
-    });
+    }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to retrieve order' }, { status: 500 });
   }
