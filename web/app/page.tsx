@@ -190,7 +190,7 @@ export default function CustomerHomePage() {
     setIsPaymentModalOpen(true);
   };
 
-  const handleConfirmOrder = async (method: PaymentMethod, transactionRef?: string) => {
+  const handleConfirmOrder = async (method: PaymentMethod) => {
     if (!uploadedFile) return;
 
     setSubmitting(true);
@@ -213,7 +213,6 @@ export default function CustomerHomePage() {
         customerPhone,
         customerNotes,
         paymentMethod: method,
-        transactionRef,
         totalAmount: priceBreakdown.totalAmount,
       };
 
@@ -239,6 +238,11 @@ export default function CustomerHomePage() {
       }
 
       setIsPaymentModalOpen(false);
+      if (method === 'UPI' && data.upiLink) {
+        window.location.assign(data.upiLink);
+        return;
+      }
+
       router.push(`/status/${data.order.id}?access_token=${encodeURIComponent(data.accessToken)}`);
     } catch (err) {
       console.error('Order submission error:', err);

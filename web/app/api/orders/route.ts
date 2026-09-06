@@ -91,14 +91,11 @@ export async function POST(req: NextRequest) {
     const orderNumber = generateOrderNumber();
 
     // 4. Payment Verification Security Gate:
-    // UPI orders auto-approve immediately so printing starts automatically.
-    // Cash orders require manual shopkeeper verification at counter after receiving cash.
+    // A UPI deep link only opens a payment app; it cannot prove a successful payment.
+    // A verified gateway webhook may approve an online order later. Cash is always verified at the counter.
     const pMethod = paymentMethod as PaymentMethod;
-    const isUpi = pMethod === 'UPI' || (pMethod as string) === 'ONLINE_UPI';
-    const autoApprove = isUpi && activePricing.form_fields?.autoApproveUpiOrders !== false;
-
-    const initialPaymentStatus = autoApprove ? 'VERIFIED' : 'AWAITING_VERIFICATION';
-    const initialOrderStatus = autoApprove ? 'APPROVED' : 'PAYMENT_VERIFICATION_PENDING';
+    const initialPaymentStatus = 'AWAITING_VERIFICATION';
+    const initialOrderStatus = 'PAYMENT_VERIFICATION_PENDING';
 
     const newOrder: Order = {
       id: orderId,
