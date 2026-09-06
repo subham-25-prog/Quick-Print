@@ -57,6 +57,7 @@ async function main() {
   let isProcessing = false;
   let currentJobOrderNum = '';
   let currentJobFileName = '';
+  let lastIdleNoticeAt = 0;
 
   // Main polling loop
   const pollJobs = async () => {
@@ -65,7 +66,17 @@ async function main() {
     try {
       // 1. Claim next approved job atomically
       const job = await client.claimNextJob();
-      if (!job) return;
+      if (!job) {
+        // A silent polling loop is confusing when the agent is being tested.
+        // Keep the terminal useful without flooding it every polling interval.
+        if (Date.now() - lastIdleNoticeAt >= 15000) {
+          logger.info(
+            'No approved jobs waiting. Create an order, then approve it in the Admin dashboard to test the agent.'
+          );
+          lastIdleNoticeAt = Date.now();
+        }
+        return;
+      }
 
       const safeOrderNum = job.order_number || job.order_id || 'UNKNOWN';
       const safeFileName = job.file_name || (job as any).filename || 'document.pdf';

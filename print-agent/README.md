@@ -63,3 +63,9 @@ npm run test-print
 # Production Run
 npm start
 ```
+
+## Testing Without a Physical Printer
+
+1. In `print-agent/.env`, set `BACKEND_URL` to your deployed shop URL (currently `https://quick-print-two.vercel.app`) and ensure `PRINT_AGENT_SECRET` matches the Vercel project variable with the same name.
+2. Double-click `start_simulation.bat`, or run `npm run test-print`. Simulation downloads and processes jobs but never sends paper to a printer.
+3. Place a customer order, then approve it in the Admin dashboard. The agent only claims approved orders. While it waits, the terminal prints a status message every 15 seconds.
