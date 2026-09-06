@@ -1,46 +1,50 @@
-# Secure UPI payment and automatic print setup
+# Secure Razorpay UPI payment and automatic print setup
 
-Online UPI printing is disabled until a Cashfree Payment Links account is configured. A personal UPI address cannot independently confirm a payment, so it must never be used to auto-print.
+Online UPI printing stays disabled until Razorpay Payment Links and its signed webhook are configured. A personal UPI address or a browser message that says "paid" cannot prove a payment and must never trigger printing.
 
-## 1. Apply the Supabase migration
+## 1. Apply the Supabase migrations
 
-Open the Supabase SQL editor for the QuickPrint project and run:
+Open the Supabase SQL editor for the QuickPrint project and run these files in order:
 
-`supabase/migrations/20260906_payment_first_printing.sql`
+1. `supabase/migrations/20260906_payment_first_printing.sql`
+2. `supabase/migrations/20260906_switch_to_razorpay.sql`
 
-Run it with RLS enabled. It creates private `payments` and `print_jobs` tables plus the server-only idempotent payment and print-queue functions.
+They create RLS-protected `payments` and `print_jobs` tables, then add server-only idempotent functions which confirm a payment and queue exactly one print job. Do not expose the service-role key to the browser.
 
-## 2. Configure Vercel
+## 2. Create Razorpay credentials
 
-Add these Production and Preview environment variables in Vercel:
+In Razorpay Dashboard, create API keys and copy the **Key ID** and **Key Secret**. Create a separate, long random Webhook Secret for this app.
+
+## 3. Configure Vercel
+
+Add these Production and Preview environment variables, then redeploy:
 
 ```
-CASHFREE_ENV=production
-CASHFREE_CLIENT_ID=...
-CASHFREE_CLIENT_SECRET=...
-CASHFREE_WEBHOOK_SECRET=...
+RAZORPAY_KEY_ID=rzp_live_...
+RAZORPAY_KEY_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...
 NEXT_PUBLIC_APP_URL=https://quick-print-two.vercel.app
 ```
 
-Use `sandbox` only with Cashfree sandbox credentials. Do not expose either secret in the browser or commit it to Git.
+Use `rzp_test_...` test keys for testing and `rzp_live_...` only after completing live activation. None of the three Razorpay variables may start with `NEXT_PUBLIC_` or be committed to Git.
 
-## 3. Configure the Cashfree webhook
+## 4. Configure the Razorpay webhook
 
-In Cashfree Payment Gateway → Developers → Webhooks, add:
+In Razorpay Dashboard → Account & Settings → Webhooks, add this URL:
 
 ```
-https://quick-print-two.vercel.app/api/payments/cashfree/webhook
+https://quick-print-two.vercel.app/api/payments/razorpay/webhook
 ```
 
-Enable Payment Link events. The endpoint validates the raw request-body HMAC, timestamp, payment-link reference, amount, currency, and provider transaction before it confirms an order.
+Use the exact same Webhook Secret as Vercel. Enable at least `payment_link.paid`, `payment_link.cancelled`, and `payment_link.expired` events. The endpoint validates the raw-body HMAC, payment-link ID/reference, captured payment ID, exact paise amount, and currency before it can confirm an order.
 
-## 4. Test safely
+## 5. Test safely
 
-1. Set the agent `SIMULATE_PRINT=true` and use Cashfree sandbox credentials.
-2. Place a UPI order with a sandbox payment method.
-3. Verify the payment in Cashfree; the signed webhook must change the payment to `SUCCESS`.
-4. Confirm that exactly one `print_jobs` record appears, the agent claims it, and terminal logs show the simulated print.
-5. Re-send the webhook and refresh the customer page. No additional job or print must appear.
-6. Stop the agent during a job. The order stays paid and confirmed; the job becomes retryable when the agent returns.
+1. Set the print agent `SIMULATE_PRINT=true` and deploy with Razorpay **test** keys.
+2. Create a UPI order. The app must open a Razorpay hosted payment link; it must not mark the order paid yet.
+3. Complete the test payment. Razorpay should redirect to the status page, and either the signed webhook or the server-side status check confirms the payment.
+4. Confirm exactly one `print_jobs` row is created and the agent logs one simulated print.
+5. Re-send the same webhook and refresh the customer page. There must be no second print job or print.
+6. Try a cancelled, expired, or wrong-amount payment. The order must remain unconfirmed and must not reach the print agent.
 
 Cash orders remain manual: the shopkeeper verifies cash in the Admin dashboard, which is the only cash path allowed to queue printing.

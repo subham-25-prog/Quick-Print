@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS public.payments (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   order_id UUID NOT NULL UNIQUE REFERENCES public.orders(id) ON DELETE CASCADE,
-  provider TEXT NOT NULL DEFAULT 'cashfree',
+  provider TEXT NOT NULL DEFAULT 'razorpay',
   payment_reference TEXT NOT NULL UNIQUE,
   provider_link_id TEXT UNIQUE,
   payment_url TEXT,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS public.print_jobs (
 CREATE INDEX IF NOT EXISTS idx_print_jobs_queue ON public.print_jobs(status, created_at);
 ALTER TABLE public.print_jobs ENABLE ROW LEVEL SECURITY;
 
--- Only a signed Cashfree webhook (or a server-side cash verification path) calls
+-- Only a signed payment-provider webhook (or a server-side cash verification path) calls
 -- this RPC. The unique order_id and row locks make it idempotent.
 DROP FUNCTION IF EXISTS public.confirm_verified_payment(UUID, TEXT, JSONB);
 CREATE OR REPLACE FUNCTION public.confirm_verified_payment(

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrderById } from '@/lib/db';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { fetchCashfreeLinkPayment } from '@/lib/payments/cashfree';
+import { fetchRazorpayLinkPayment, toRazorpayMinorUnits } from '@/lib/payments/razorpay';
 import { hasOrderAccess } from '@/lib/order-access';
 
 export const dynamic = 'force-dynamic';
@@ -19,15 +19,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (payment.status === 'SUCCESS') return NextResponse.json({ status: 'SUCCESS', orderId: id });
     if (!payment.provider_link_id) return NextResponse.json({ status: payment.status });
 
-    const result = await fetchCashfreeLinkPayment(payment.provider_link_id);
+    if (payment.provider !== 'razorpay') return NextResponse.json({ error: 'Payment provider is not supported for this order.' }, { status: 409 });
+    const result = await fetchRazorpayLinkPayment(payment.provider_link_id);
     if (result.status !== 'SUCCESS') return NextResponse.json({ status: payment.status === 'PENDING' ? 'PENDING' : payment.status });
-    if (!Number.isFinite(result.amount) || Number(result.amount.toFixed(2)) !== Number(Number(payment.amount).toFixed(2)) || result.currency !== payment.currency || !result.transactionId) {
+    if (
+      result.paymentReference !== payment.payment_reference
+      || !Number.isFinite(result.amountMinor)
+      || result.amountMinor !== toRazorpayMinorUnits(Number(payment.amount))
+      || result.amountPaidMinor !== result.amountMinor
+      || result.currency !== payment.currency
+      || !result.transactionId
+    ) {
       return NextResponse.json({ error: 'Payment verification mismatch' }, { status: 409 });
     }
     const { error: confirmError } = await admin.rpc('confirm_verified_payment', {
       p_payment_id: payment.id,
       p_transaction_id: result.transactionId,
-      p_provider_payload: { source: 'cashfree_status_check', data: result.raw },
+      p_provider_payload: { source: 'razorpay_status_check', data: result.raw },
     });
     if (confirmError) throw confirmError;
     return NextResponse.json({ status: 'SUCCESS', orderId: id });

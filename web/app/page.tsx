@@ -239,7 +239,7 @@ export default function CustomerHomePage() {
 
       setIsPaymentModalOpen(false);
       if (method === 'UPI' && data.paymentUrl) {
-        // Cashfree owns the UPI app hand-off and returns here afterwards. The
+        // Razorpay owns the UPI app hand-off and returns here afterwards. The
         // resulting redirect is informational only; the status page waits for
         // the signed server webhook before confirming or printing.
         window.location.assign(data.paymentUrl);

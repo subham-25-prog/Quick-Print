@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { calculateOrderPrice } from '@/lib/pricing';
 import { getActivePricing, createOrder, getAllOrders } from '@/lib/db';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { createCashfreeUpiLink, isCashfreeConfigured } from '@/lib/payments/cashfree';
+import { createRazorpayUpiLink, isRazorpayConfigured } from '@/lib/payments/razorpay';
 import { generateOrderNumber } from '@/lib/utils';
 import { Order, OrderItemOptions, PaymentMethod } from '@/types';
 import { randomUUID } from 'crypto';
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     if (!['UPI', 'CASH'].includes(paymentMethod)) {
       return NextResponse.json({ error: 'Invalid payment method' }, { status: 400 });
     }
-    if (paymentMethod === 'UPI' && !isCashfreeConfigured()) {
+    if (paymentMethod === 'UPI' && !isRazorpayConfigured()) {
       return NextResponse.json({ error: 'Online UPI is unavailable until secure payment verification is configured.' }, { status: 503 });
     }
     if (paymentMethod === 'UPI' && !String(customerPhone || '').trim()) {
@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
       paymentReference = `qp_${savedOrder.id.replace(/-/g, '')}`;
       const { data: payment, error: paymentError } = await admin.from('payments').insert({
         order_id: savedOrder.id,
-        provider: 'cashfree',
+        provider: 'razorpay',
         payment_reference: paymentReference,
         amount: savedOrder.total_amount,
         currency: savedOrder.currency,
@@ -165,14 +165,14 @@ export async function POST(req: NextRequest) {
 
       const appUrl = (process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin).replace(/\/$/, '');
       try {
-        const link = await createCashfreeUpiLink({
+        const link = await createRazorpayUpiLink({
           reference: paymentReference,
+          orderId: savedOrder.id,
           amount: savedOrder.total_amount,
           currency: savedOrder.currency,
           customerName: savedOrder.customer_name,
           customerPhone: savedOrder.customer_phone,
           returnUrl: `${appUrl}/status/${savedOrder.id}?access_token=${encodeURIComponent(accessToken)}`,
-          notifyUrl: `${appUrl}/api/payments/cashfree/webhook`,
         });
         paymentUrl = link.paymentUrl;
         await admin.from('payments').update({ provider_link_id: link.providerLinkId, payment_url: link.paymentUrl }).eq('id', payment.id);
