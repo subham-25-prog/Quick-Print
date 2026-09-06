@@ -55,6 +55,7 @@ async function main() {
   setInterval(doHeartbeat, config.heartbeatIntervalMs);
 
   let isProcessing = false;
+  let currentJobId = '';
   let currentJobOrderNum = '';
   let currentJobFileName = '';
   let lastIdleNoticeAt = 0;
@@ -84,6 +85,7 @@ async function main() {
       isProcessing = true;
       currentJobOrderNum = safeOrderNum;
       currentJobFileName = safeFileName;
+      currentJobId = job.order_id;
 
       logger.job(safeOrderNum, `Claimed job! File: ${safeFileName} (${job.page_count || 1} pages, ${job.copies || 1} copies)`);
 
@@ -139,10 +141,16 @@ async function main() {
       if (currentJobOrderNum) {
         healthServer.recordJobFailure(currentJobOrderNum, currentJobFileName, errorMsg);
       }
+      if (currentJobId) {
+        // Return the claimed job to the server-owned retry queue. A failure must
+        // never cancel a paid order, and no browser action can create a retry.
+        await client.reportJobCompletion(currentJobId, false, errorMsg);
+      }
     } finally {
       isProcessing = false;
       currentJobOrderNum = '';
       currentJobFileName = '';
+      currentJobId = '';
     }
   };
 

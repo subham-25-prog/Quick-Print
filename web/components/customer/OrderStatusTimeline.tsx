@@ -34,20 +34,22 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
       id: 'verification',
       label: 'Payment Verification',
       description:
-        paymentStatus === 'VERIFIED'
+        paymentStatus === 'PAID'
+          ? 'Payment verified securely'
+          : paymentStatus === 'VERIFIED'
           ? 'Payment verified by shopkeeper'
           : paymentMethod === 'UPI'
           ? 'Shopkeeper verifying in UPI app'
           : 'Waiting for cash payment at counter',
-      isCompleted: paymentStatus === 'VERIFIED' || ['APPROVED', 'PRINTING', 'PRINTED'].includes(orderStatus),
+      isCompleted: ['PAID', 'VERIFIED'].includes(paymentStatus) || ['CONFIRMED', 'APPROVED', 'PRINTING', 'PRINTED'].includes(orderStatus),
       isCurrent: orderStatus === 'PAYMENT_VERIFICATION_PENDING' || orderStatus === 'PENDING_PAYMENT',
     },
     {
       id: 'approved',
       label: 'Approved for Printing',
       description: 'Job queued in shop printer system',
-      isCompleted: ['APPROVED', 'PRINTING', 'PRINTED'].includes(orderStatus),
-      isCurrent: orderStatus === 'APPROVED',
+      isCompleted: ['CONFIRMED', 'APPROVED', 'PRINTING', 'PRINTED'].includes(orderStatus),
+      isCurrent: orderStatus === 'CONFIRMED' || orderStatus === 'APPROVED',
     },
     {
       id: 'printing',

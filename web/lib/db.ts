@@ -795,15 +795,24 @@ export async function claimNextPrintJob(agentId: string) {
   const admin = getAdminClient();
   if (admin) {
     try {
-      // 1. Find the oldest approved order directly from orders table
-      const { data: approvedOrders, error } = await admin
-        .from('orders')
-        .select('*')
-        .eq('order_status', 'APPROVED')
-        .order('created_at', { ascending: true })
-        .limit(1);
+      // The database function locks one queue row (FOR UPDATE SKIP LOCKED), so
+      // two agents cannot print the same paid order. A legacy fallback remains
+      // only for local development before the migration has been applied.
+      let approvedOrders: any[] | null = null;
+      const { data: claimed, error: claimError } = await admin.rpc('claim_next_print_job', { p_agent_id: agentId });
+      if (!claimError && Array.isArray(claimed) && claimed[0]?.order_id) {
+        const { data: claimedOrder, error: orderError } = await admin
+          .from('orders').select('*').eq('id', claimed[0].order_id).single();
+        if (!orderError && claimedOrder) approvedOrders = [claimedOrder];
+      }
+      if (!approvedOrders && claimError && process.env.NODE_ENV !== 'production') {
+        const { data: legacyOrders } = await admin
+          .from('orders').select('*').eq('order_status', 'APPROVED')
+          .order('created_at', { ascending: true }).limit(1);
+        approvedOrders = legacyOrders;
+      }
 
-      if (!error && approvedOrders && approvedOrders.length > 0) {
+      if (approvedOrders && approvedOrders.length > 0) {
         const order = approvedOrders[0];
 
         // Mark status as PRINTING so no other agent claims it
@@ -911,6 +920,16 @@ export async function completePrintJob(
   success: boolean,
   errorMessage?: string
 ): Promise<boolean> {
+  const admin = getAdminClient();
+  if (admin) {
+    const { error } = await admin.rpc('complete_print_job', {
+      p_order_id: orderId,
+      p_success: success,
+      p_error_message: errorMessage || null,
+    });
+    if (!error) return true;
+    if (isProduction) throw error;
+  }
   const newStatus: OrderStatus = success ? 'PRINTED' : 'FAILED';
   const updated = await updateOrderStatus(orderId, newStatus, 'PRINT_AGENT', {
     failure_reason: errorMessage,

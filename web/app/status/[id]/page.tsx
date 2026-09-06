@@ -12,7 +12,6 @@ import {
   Printer,
   CheckCircle2,
   Clock,
-  Smartphone,
   Banknote,
   ArrowLeft,
   RefreshCw,
@@ -27,9 +26,9 @@ export default function OrderStatusPage() {
   const accessToken = searchParams.get('access_token');
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [upiLink, setUpiLink] = useState<string>('');
-  const [upiId, setUpiId] = useState<string>('');
-  const [payeeName, setPayeeName] = useState<string>('');
+  const [paymentUrl, setPaymentUrl] = useState('');
+  const [checkingPayment, setCheckingPayment] = useState(false);
+  const [paymentCheckError, setPaymentCheckError] = useState('');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -40,9 +39,7 @@ export default function OrderStatusPage() {
       if (!res.ok) throw new Error('Order not found');
       const data = await res.json();
       setOrder(data.order);
-      if (data.upiLink) setUpiLink(data.upiLink);
-      if (data.upiId) setUpiId(data.upiId);
-      if (data.payeeName) setPayeeName(data.payeeName);
+      setPaymentUrl(data.paymentUrl || '');
     } catch (err) {
       console.error('Status fetch error:', err);
     } finally {
@@ -62,6 +59,29 @@ export default function OrderStatusPage() {
 
     return () => clearInterval(interval);
   }, [orderId, accessToken, order?.order_status]);
+
+  const checkPaymentStatus = async () => {
+    if (!accessToken || checkingPayment) return;
+    setCheckingPayment(true);
+    setPaymentCheckError('');
+    try {
+      const res = await fetch(`/api/orders/${orderId}/payment-status?access_token=${encodeURIComponent(accessToken)}`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Payment is still being verified.');
+      await fetchStatus();
+    } catch (error) {
+      setPaymentCheckError(error instanceof Error ? error.message : 'Unable to verify payment right now.');
+    } finally {
+      setCheckingPayment(false);
+    }
+  };
+
+  useEffect(() => {
+    if (accessToken) void checkPaymentStatus();
+    // Check directly with the provider only once after the return; normal page
+    // polling then waits for the signed webhook without flooding the provider.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, accessToken]);
 
   const copyOrderNumber = () => {
     if (order?.order_number) {
@@ -154,23 +174,38 @@ export default function OrderStatusPage() {
           />
         </div>
 
+        {order.payment_status === 'PAID' && ['CONFIRMED', 'PRINTING', 'PRINTED'].includes(order.order_status) && (
+          <div className="p-5 rounded-3xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-100 space-y-1.5">
+            <div className="flex items-center gap-2 font-bold"><CheckCircle2 className="w-5 h-5 text-emerald-400" />Payment successful — order confirmed</div>
+            <p className="text-xs text-emerald-200">{order.order_status === 'PRINTED' ? 'Your document has been printed.' : 'Your document has been sent to the printer.'}</p>
+          </div>
+        )}
+
         {/* Payment reminder if pending */}
-        {order.order_status === 'PAYMENT_VERIFICATION_PENDING' && order.payment_method === 'UPI' && upiLink && (
+        {order.order_status === 'PAYMENT_VERIFICATION_PENDING' && order.payment_method === 'UPI' && (
           <div className="p-5 rounded-3xl bg-indigo-500/10 border border-indigo-500/25 space-y-3 text-xs">
             <div className="flex items-center justify-between">
               <span className="font-semibold text-indigo-300">UPI Payment Pending Verification</span>
               <span className="font-bold text-white text-sm">{formatCurrency(order.total_amount)}</span>
             </div>
             <p className="text-slate-300">
-              Haven't paid yet? Tap below to open your UPI app and pay {formatCurrency(order.total_amount)}:
+              Verifying your payment securely. Your order will be confirmed and sent to the printer only after the payment provider confirms the exact amount.
             </p>
-            <a
-              href={upiLink}
-              className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/25 transition-all"
+            <button
+              type="button"
+              onClick={checkPaymentStatus}
+              disabled={checkingPayment}
+              className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 disabled:opacity-60 text-slate-100 font-semibold"
             >
-              <Smartphone className="w-4 h-4" />
-              <span>Pay {formatCurrency(order.total_amount)} via UPI</span>
-            </a>
+              <RefreshCw className={`w-4 h-4 ${checkingPayment ? 'animate-spin' : ''}`} />
+              {checkingPayment ? 'Verifying payment…' : 'Check Payment Status'}
+            </button>
+            {paymentUrl && (
+              <a href={paymentUrl} className="w-full inline-flex items-center justify-center py-3 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold">
+                Retry Payment
+              </a>
+            )}
+            {paymentCheckError && <p className="text-amber-300">{paymentCheckError}</p>}
           </div>
         )}
 

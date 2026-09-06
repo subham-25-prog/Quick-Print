@@ -1,6 +1,7 @@
 export type OrderStatus =
   | 'PENDING_PAYMENT'
   | 'PAYMENT_VERIFICATION_PENDING'
+  | 'CONFIRMED'
   | 'APPROVED'
   | 'PRINTING'
   | 'PRINTED'
@@ -13,6 +14,7 @@ export type PaymentMethod = 'UPI' | 'CASH';
 export type PaymentStatus =
   | 'PENDING'
   | 'AWAITING_VERIFICATION'
+  | 'PAID'
   | 'VERIFIED'
   | 'REJECTED';
 

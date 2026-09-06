@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getOrderById, getActivePricing } from '@/lib/db';
-import { getShopConfig } from '@/lib/config';
-import { generateUpiDeepLink } from '@/lib/pricing';
+import { getOrderById } from '@/lib/db';
 import { isAdminRequest } from '@/lib/admin-auth';
 import { hasOrderAccess } from '@/lib/order-access';
+import { getAdminClient } from '@/lib/supabase/admin';
 
 function customerOrderView(order: Awaited<ReturnType<typeof getOrderById>>) {
   if (!order) return null;
@@ -34,23 +33,18 @@ export async function GET(
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
-    const pricing = await getActivePricing();
-    const shop = getShopConfig();
-    const upiId = order.pricing_snapshot?.shop_upi_id || pricing.shop_upi_id || shop.upiId;
-    const payeeName = order.pricing_snapshot?.shop_upi_name || pricing.shop_upi_name || shop.upiPayeeName;
-    const upiLink = generateUpiDeepLink({
-      upiId,
-      payeeName,
-      amount: order.total_amount,
-      orderNumber: order.order_number,
-      currency: order.currency,
-    });
+    let paymentUrl: string | undefined;
+    if (!isAdmin && order.payment_method === 'UPI' && order.order_status === 'PAYMENT_VERIFICATION_PENDING') {
+      const admin = getAdminClient();
+      const { data: payment } = admin
+        ? await admin.from('payments').select('payment_url, status').eq('order_id', order.id).maybeSingle()
+        : { data: null };
+      if (payment?.status === 'PENDING' && payment.payment_url) paymentUrl = payment.payment_url;
+    }
 
     return NextResponse.json({
       order: isAdmin ? order : customerOrderView(order),
-      upiLink,
-      upiId,
-      payeeName,
+      paymentUrl,
     }, { headers: { 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to retrieve order' }, { status: 500 });

@@ -238,8 +238,11 @@ export default function CustomerHomePage() {
       }
 
       setIsPaymentModalOpen(false);
-      if (method === 'UPI' && data.upiLink) {
-        window.location.assign(data.upiLink);
+      if (method === 'UPI' && data.paymentUrl) {
+        // Cashfree owns the UPI app hand-off and returns here afterwards. The
+        // resulting redirect is informational only; the status page waits for
+        // the signed server webhook before confirming or printing.
+        window.location.assign(data.paymentUrl);
         return;
       }
 

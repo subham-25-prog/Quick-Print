@@ -32,16 +32,29 @@ export async function POST(req: NextRequest) {
     const actualId = order.id;
     let targetStatus: OrderStatus = order.order_status;
     const extraData: Record<string, unknown> = {};
+    let shouldQueuePrintJob = false;
 
     switch (action) {
       case 'VERIFY_PAYMENT':
-        extraData.payment_status = 'VERIFIED';
-        break;
-
-      case 'APPROVE_PRINT':
+        if (order.payment_method !== 'CASH') {
+          return NextResponse.json({ error: 'Online UPI payments can only be confirmed by the verified payment provider.' }, { status: 409 });
+        }
         targetStatus = 'APPROVED';
         extraData.payment_status = 'VERIFIED';
         extraData.approved_at = new Date().toISOString();
+        shouldQueuePrintJob = true;
+        break;
+
+      case 'APPROVE_PRINT':
+        if (order.payment_method === 'UPI') {
+          return NextResponse.json({ error: 'Online UPI orders are queued automatically after provider verification.' }, { status: 409 });
+        }
+        if (order.payment_status !== 'VERIFIED') {
+          return NextResponse.json({ error: 'Verify cash payment before sending this order to print.' }, { status: 409 });
+        }
+        targetStatus = 'APPROVED';
+        extraData.approved_at = new Date().toISOString();
+        shouldQueuePrintJob = true;
         break;
 
       case 'REJECT':
@@ -56,11 +69,22 @@ export async function POST(req: NextRequest) {
         break;
 
       case 'RETRY_PRINT':
-        targetStatus = 'APPROVED';
-        extraData.payment_status = 'VERIFIED';
-        extraData.approved_at = new Date().toISOString();
+        if (!['PAID', 'VERIFIED'].includes(order.payment_status)) {
+          return NextResponse.json({ error: 'Only paid or cash-verified orders can be retried.' }, { status: 409 });
+        }
+        targetStatus = 'CONFIRMED';
         extraData.printed_at = null;
         extraData.failure_reason = null;
+        {
+          const { getAdminClient } = await import('@/lib/supabase/admin');
+          const admin = getAdminClient();
+          if (admin) {
+            const { error } = await admin.from('print_jobs')
+              .update({ status: 'PENDING', attempts: 0, claimed_by: null, claimed_at: null, error_message: null, printed_at: null })
+              .eq('order_id', actualId);
+            if (error) throw error;
+          }
+        }
         break;
 
       case 'MARK_PRINTED':
@@ -73,6 +97,15 @@ export async function POST(req: NextRequest) {
     }
 
     const updated = await updateOrderStatus(actualId, targetStatus, 'ADMIN', extraData);
+    if (shouldQueuePrintJob) {
+      const { getAdminClient } = await import('@/lib/supabase/admin');
+      const admin = getAdminClient();
+      if (admin) {
+        const { error } = await admin.from('print_jobs')
+          .upsert({ order_id: actualId, status: 'PENDING', attempts: 0 }, { onConflict: 'order_id', ignoreDuplicates: true });
+        if (error) throw error;
+      }
+    }
 
     return NextResponse.json({
       success: true,

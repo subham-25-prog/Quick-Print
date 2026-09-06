@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateOrderPrice, generateUpiDeepLink } from '@/lib/pricing';
+import { calculateOrderPrice } from '@/lib/pricing';
 import { getActivePricing, createOrder, getAllOrders } from '@/lib/db';
-import { getShopConfig } from '@/lib/config';
+import { getAdminClient } from '@/lib/supabase/admin';
+import { createCashfreeUpiLink, isCashfreeConfigured } from '@/lib/payments/cashfree';
 import { generateOrderNumber } from '@/lib/utils';
 import { Order, OrderItemOptions, PaymentMethod } from '@/types';
 import { randomUUID } from 'crypto';
@@ -67,6 +68,12 @@ export async function POST(req: NextRequest) {
     }
     if (!['UPI', 'CASH'].includes(paymentMethod)) {
       return NextResponse.json({ error: 'Invalid payment method' }, { status: 400 });
+    }
+    if (paymentMethod === 'UPI' && !isCashfreeConfigured()) {
+      return NextResponse.json({ error: 'Online UPI is unavailable until secure payment verification is configured.' }, { status: 503 });
+    }
+    if (paymentMethod === 'UPI' && !String(customerPhone || '').trim()) {
+      return NextResponse.json({ error: 'A customer phone number is required for secure UPI payment.' }, { status: 400 });
     }
     if (!storagePath.startsWith('shop-documents/orders/')) {
       return NextResponse.json({ error: 'Invalid document upload reference' }, { status: 400 });
@@ -138,24 +145,50 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 6. Generate UPI deep link if payment method is UPI
-    const shop = getShopConfig();
-    const upiId = activePricing.shop_upi_id || shop.upiId;
-    const payeeName = activePricing.shop_upi_name || activePricing.shop_name || shop.upiPayeeName;
-    const upiLink = generateUpiDeepLink({
-      upiId,
-      payeeName,
-      amount: savedOrder.total_amount,
-      orderNumber: savedOrder.order_number,
-      currency: savedOrder.currency,
-    });
+    // An online order gets a provider-owned, one-time link. A browser redirect
+    // never confirms payment; only the signed webhook below can do that.
+    let paymentUrl: string | undefined;
+    let paymentReference: string | undefined;
+    if (pMethod === 'UPI') {
+      const admin = getAdminClient();
+      if (!admin) throw new Error('Payment database is unavailable. Please try again.');
+      paymentReference = `qp_${savedOrder.id.replace(/-/g, '')}`;
+      const { data: payment, error: paymentError } = await admin.from('payments').insert({
+        order_id: savedOrder.id,
+        provider: 'cashfree',
+        payment_reference: paymentReference,
+        amount: savedOrder.total_amount,
+        currency: savedOrder.currency,
+        status: 'PENDING',
+      }).select('id').single();
+      if (paymentError || !payment) throw new Error('Unable to create secure payment session.');
+
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin).replace(/\/$/, '');
+      try {
+        const link = await createCashfreeUpiLink({
+          reference: paymentReference,
+          amount: savedOrder.total_amount,
+          currency: savedOrder.currency,
+          customerName: savedOrder.customer_name,
+          customerPhone: savedOrder.customer_phone,
+          returnUrl: `${appUrl}/status/${savedOrder.id}?access_token=${encodeURIComponent(accessToken)}`,
+          notifyUrl: `${appUrl}/api/payments/cashfree/webhook`,
+        });
+        paymentUrl = link.paymentUrl;
+        await admin.from('payments').update({ provider_link_id: link.providerLinkId, payment_url: link.paymentUrl }).eq('id', payment.id);
+      } catch (error) {
+        await admin.from('payments').update({ status: 'FAILED' }).eq('id', payment.id);
+        throw error;
+      }
+    }
 
 
     return NextResponse.json({
       success: true,
       order: customerOrderView(savedOrder),
       accessToken,
-      upiLink,
+      paymentUrl,
+      paymentReference,
       priceBreakdown: priceCalculation,
     });
   } catch (error) {
