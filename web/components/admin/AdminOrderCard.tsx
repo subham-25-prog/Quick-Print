@@ -244,13 +244,10 @@ export const AdminOrderCard: React.FC<AdminOrderCardProps> = ({ order, onAction 
         )}
 
         {order.order_status === 'PRINTING' && (
-          <button
-            onClick={() => handleActionClick('MARK_PRINTED')}
-            disabled={!!loadingAction}
-            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold"
-          >
-            Mark as Printed
-          </button>
+          <div className="text-xs text-amber-300 font-medium flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 animate-spin" />
+            <span>Printing on the registered device...</span>
+          </div>
         )}
 
       </div>

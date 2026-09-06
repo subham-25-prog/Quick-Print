@@ -3,6 +3,7 @@ import { getOrderById } from '@/lib/db';
 import { isAdminRequest } from '@/lib/admin-auth';
 import { hasOrderAccess } from '@/lib/order-access';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { getCurrentShopId } from '@/lib/shop';
 
 function customerOrderView(order: Awaited<ReturnType<typeof getOrderById>>) {
   if (!order) return null;
@@ -36,8 +37,9 @@ export async function GET(
     let paymentUrl: string | undefined;
     if (!isAdmin && order.payment_method === 'UPI' && order.order_status === 'PAYMENT_VERIFICATION_PENDING') {
       const admin = getAdminClient();
+      const shopId = getCurrentShopId();
       const { data: payment } = admin
-        ? await admin.from('payments').select('payment_url, status').eq('order_id', order.id).maybeSingle()
+        ? await admin.from('payments').select('payment_url, status').eq('order_id', order.id).eq('shop_id', shopId).maybeSingle()
         : { data: null };
       if (payment?.status === 'PENDING' && payment.payment_url) paymentUrl = payment.payment_url;
     }

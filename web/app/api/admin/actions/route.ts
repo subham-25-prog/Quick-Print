@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateOrderStatus, getOrderById, getAllOrders } from '@/lib/db';
 import { OrderStatus } from '@/types';
 import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
+import { getCurrentShopId } from '@/lib/shop';
 
 export async function POST(req: NextRequest) {
   if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
+    const shopId = getCurrentShopId();
     const body = await req.json();
     const { orderId, action, reason } = body;
 
@@ -81,15 +83,11 @@ export async function POST(req: NextRequest) {
           if (admin) {
             const { error } = await admin.from('print_jobs')
               .update({ status: 'PENDING', attempts: 0, claimed_by: null, claimed_at: null, error_message: null, printed_at: null })
-              .eq('order_id', actualId);
+              .eq('order_id', actualId)
+              .eq('shop_id', shopId);
             if (error) throw error;
           }
         }
-        break;
-
-      case 'MARK_PRINTED':
-        targetStatus = 'PRINTED';
-        extraData.printed_at = new Date().toISOString();
         break;
 
       default:
@@ -102,7 +100,7 @@ export async function POST(req: NextRequest) {
       const admin = getAdminClient();
       if (admin) {
         const { error } = await admin.from('print_jobs')
-          .upsert({ order_id: actualId, status: 'PENDING', attempts: 0 }, { onConflict: 'order_id', ignoreDuplicates: true });
+          .upsert({ order_id: actualId, shop_id: shopId, status: 'PENDING', attempts: 0 }, { onConflict: 'order_id', ignoreDuplicates: true });
         if (error) throw error;
       }
     }

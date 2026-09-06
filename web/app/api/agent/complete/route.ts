@@ -9,13 +9,13 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { orderId, success = true, errorMessage } = body;
+    const { orderId, success = true, errorMessage, agentId } = body;
 
-    if (!orderId) {
-      return NextResponse.json({ error: 'orderId is required' }, { status: 400 });
+    if (!orderId || typeof agentId !== 'string' || !agentId.trim()) {
+      return NextResponse.json({ error: 'orderId and agentId are required' }, { status: 400 });
     }
 
-    await completePrintJob(orderId, success, errorMessage);
+    await completePrintJob(orderId, success, errorMessage, agentId.trim());
 
     return NextResponse.json({
       success: true,

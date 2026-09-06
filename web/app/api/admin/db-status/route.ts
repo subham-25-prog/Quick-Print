@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
+import { getCurrentShopId } from '@/lib/shop';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +20,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const { count, error } = await admin.from('orders').select('*', { count: 'exact', head: true });
+    const { count, error } = await admin.from('orders').select('*', { count: 'exact', head: true }).eq('shop_id', getCurrentShopId());
 
     if (error) {
       return NextResponse.json({

@@ -1,5 +1,6 @@
 import { Order, OrderStatus, PricingConfig, PrintAgentInfo, OrderEvent } from '@/types';
 import { getAdminClient } from './supabase/admin';
+import { getCurrentShopId } from './shop';
 import { defaultPricingConfig } from './config';
 import bundledPricing from '../public/config/pricing_config.json';
 
@@ -312,6 +313,7 @@ function cleanConfigObject(input: any): PricingConfig {
  * Get active pricing configuration (Single Source of Truth from Supabase Cloud DB)
  */
 export async function getActivePricing(): Promise<PricingConfig> {
+  const shopId = getCurrentShopId();
   // 1. Try fetching from Supabase Cloud DB shop_settings table first
   const admin = getAdminClient();
   if (isProduction && !admin) {
@@ -322,7 +324,7 @@ export async function getActivePricing(): Promise<PricingConfig> {
       const { data, error } = await admin
         .from('shop_settings')
         .select('pricing')
-        .eq('id', 'default_shop')
+        .eq('shop_id', shopId)
         .maybeSingle();
 
       if (data?.pricing && !error) {
@@ -354,6 +356,7 @@ export async function getActivePricing(): Promise<PricingConfig> {
  * Update pricing configuration (Saves to Supabase & disk)
  */
 export async function updatePricing(newPricing: Partial<PricingConfig>): Promise<PricingConfig> {
+  const shopId = getCurrentShopId();
   const current = await getActivePricing();
   const { admin_pin: _ignoredLegacyPin, ...safeNewPricing } = newPricing as Partial<PricingConfig> & { admin_pin?: unknown };
 
@@ -384,7 +387,8 @@ export async function updatePricing(newPricing: Partial<PricingConfig>): Promise
   if (admin) {
     try {
       const { error } = await admin.from('shop_settings').upsert({
-        id: 'default_shop',
+        id: shopId,
+        shop_id: shopId,
         pricing: localStore.pricing,
         updated_at: new Date().toISOString(),
       });
@@ -403,6 +407,7 @@ export async function updatePricing(newPricing: Partial<PricingConfig>): Promise
  * Create a new order with pricing snapshot
  */
 export async function createOrder(order: Order): Promise<Order> {
+  const shopId = getCurrentShopId();
   const admin = getAdminClient();
   if (isProduction && !admin) {
     throw new Error('Supabase service credentials are required before accepting orders.');
@@ -422,6 +427,7 @@ export async function createOrder(order: Order): Promise<Order> {
         .from('orders')
         .insert({
           id: order.id,
+          shop_id: shopId,
           order_number: order.order_number,
           file_name: order.file_name,
           file_url: order.file_url,
@@ -478,6 +484,7 @@ export async function createOrder(order: Order): Promise<Order> {
 export async function getOrderById(id: string): Promise<Order | null> {
   if (!id) return null;
   const cleanId = id.trim();
+  const shopId = getCurrentShopId();
 
   // 1. Direct map lookup
   const local = localStore.orders.get(cleanId);
@@ -516,13 +523,15 @@ export async function getOrderById(id: string): Promise<Order | null> {
         .from('orders')
         .select('*')
         .eq('id', cleanId)
+        .eq('shop_id', shopId)
         .maybeSingle();
 
       if (!data) {
         const res = await admin
           .from('orders')
-          .select('*')
-          .eq('order_number', cleanId)
+        .select('*')
+        .eq('order_number', cleanId)
+        .eq('shop_id', shopId)
           .maybeSingle();
         data = res.data;
         error = res.error;
@@ -554,6 +563,7 @@ export async function getOrderById(id: string): Promise<Order | null> {
  * Get order by order number (e.g. QP-1234)
  */
 export async function getOrderByNumber(orderNumber: string): Promise<Order | null> {
+  const shopId = getCurrentShopId();
   const admin = getAdminClient();
   if (admin) {
     try {
@@ -561,6 +571,7 @@ export async function getOrderByNumber(orderNumber: string): Promise<Order | nul
         .from('orders')
         .select('*')
         .eq('order_number', orderNumber)
+        .eq('shop_id', shopId)
         .single();
 
       if (data && !error) {
@@ -635,6 +646,7 @@ export async function getAllOrders(statusFilter?: string): Promise<Order[]> {
     throw new Error('Supabase service credentials are required in production.');
   }
   const orderMap = new Map<string, Order>();
+  const shopId = getCurrentShopId();
 
   // 1. First add all local in-memory orders
   for (const [id, order] of Array.from(localStore.orders.entries())) {
@@ -645,7 +657,7 @@ export async function getAllOrders(statusFilter?: string): Promise<Order[]> {
   // 2. Fetch all cloud orders from Supabase and merge
   if (admin) {
     try {
-      let query = admin.from('orders').select('*').order('created_at', { ascending: false });
+      let query = admin.from('orders').select('*').eq('shop_id', shopId).order('created_at', { ascending: false });
       if (statusFilter && statusFilter !== 'ALL') {
         query = query.eq('order_status', statusFilter);
       }
@@ -688,6 +700,7 @@ export async function updateOrderStatus(
   actor: 'CUSTOMER' | 'ADMIN' | 'PRINT_AGENT' | 'SYSTEM',
   extraData?: Partial<Order>
 ): Promise<Order | null> {
+  const shopId = getCurrentShopId();
   const current = await getOrderById(orderId);
   const prevStatus = current ? current.order_status : null;
 
@@ -730,6 +743,7 @@ export async function updateOrderStatus(
         .from('orders')
         .update(updatePayload)
         .eq('id', orderId)
+        .eq('shop_id', shopId)
         .select()
         .single();
 
@@ -763,10 +777,12 @@ export async function recordOrderEvent(
   actor: 'CUSTOMER' | 'ADMIN' | 'PRINT_AGENT' | 'SYSTEM',
   message?: string
 ): Promise<void> {
+  const shopId = getCurrentShopId();
   const admin = getAdminClient();
   if (admin) {
     await admin.from('order_events').insert({
       order_id: orderId,
+      shop_id: shopId,
       previous_status: previousStatus,
       new_status: newStatus,
       actor,
@@ -793,6 +809,7 @@ export async function claimNextPrintJob(agentId: string) {
   ensureDiskOrdersLoaded();
 
   const admin = getAdminClient();
+  const shopId = getCurrentShopId();
   if (admin) {
     try {
       // The database function locks one queue row (FOR UPDATE SKIP LOCKED), so
@@ -802,12 +819,12 @@ export async function claimNextPrintJob(agentId: string) {
       const { data: claimed, error: claimError } = await admin.rpc('claim_next_print_job', { p_agent_id: agentId });
       if (!claimError && Array.isArray(claimed) && claimed[0]?.order_id) {
         const { data: claimedOrder, error: orderError } = await admin
-          .from('orders').select('*').eq('id', claimed[0].order_id).single();
+          .from('orders').select('*').eq('id', claimed[0].order_id).eq('shop_id', shopId).single();
         if (!orderError && claimedOrder) approvedOrders = [claimedOrder];
       }
       if (!approvedOrders && claimError && process.env.NODE_ENV !== 'production') {
         const { data: legacyOrders } = await admin
-          .from('orders').select('*').eq('order_status', 'APPROVED')
+          .from('orders').select('*').eq('order_status', 'APPROVED').eq('shop_id', shopId)
           .order('created_at', { ascending: true }).limit(1);
         approvedOrders = legacyOrders;
       }
@@ -822,7 +839,8 @@ export async function claimNextPrintJob(agentId: string) {
             order_status: 'PRINTING',
             updated_at: new Date().toISOString(),
           })
-          .eq('id', order.id);
+          .eq('id', order.id)
+          .eq('shop_id', shopId);
 
         // Also update localStore memory and disk file
         order.order_status = 'PRINTING';
@@ -918,7 +936,8 @@ export async function claimNextPrintJob(agentId: string) {
 export async function completePrintJob(
   orderId: string,
   success: boolean,
-  errorMessage?: string
+  errorMessage: string | undefined,
+  agentId: string
 ): Promise<boolean> {
   const admin = getAdminClient();
   if (admin) {
@@ -926,6 +945,7 @@ export async function completePrintJob(
       p_order_id: orderId,
       p_success: success,
       p_error_message: errorMessage || null,
+      p_agent_id: agentId,
     });
     if (!error) return true;
     if (isProduction) throw error;
@@ -947,16 +967,30 @@ export async function recordAgentHeartbeat(
   printerName: string,
   systemInfo?: string
 ): Promise<void> {
+  const shopId = getCurrentShopId();
   const admin = getAdminClient();
   if (admin) {
     await admin.from('print_agents').upsert({
       agent_id: agentId,
+      shop_id: shopId,
+      device_name: agentId,
       printer_name: printerName,
       status: 'ONLINE',
       last_heartbeat: new Date().toISOString(),
       system_info: systemInfo,
       updated_at: new Date().toISOString(),
     });
+    if (printerName) {
+      await admin.from('printers').upsert({
+        shop_id: shopId,
+        agent_id: agentId,
+        name: printerName,
+        system_identifier: printerName,
+        status: 'ONLINE',
+        last_seen: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'shop_id,system_identifier' });
+    }
     return;
   }
 
@@ -973,12 +1007,14 @@ export async function recordAgentHeartbeat(
  * Get print agent status
  */
 export async function getPrintAgentInfo(agentId = 'agent-main-pc'): Promise<PrintAgentInfo | null> {
+  const shopId = getCurrentShopId();
   const admin = getAdminClient();
   if (admin) {
     const { data } = await admin
       .from('print_agents')
       .select('*')
       .eq('agent_id', agentId)
+      .eq('shop_id', shopId)
       .single();
     if (data) return data as PrintAgentInfo;
   }

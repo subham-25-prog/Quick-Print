@@ -165,7 +165,7 @@ export default function AdminLiveOrdersPage() {
 
   const handleOrderAction = async (
     orderId: string,
-    action: 'APPROVE_PRINT' | 'REJECT' | 'VERIFY_PAYMENT' | 'MARK_PRINTED' | 'RETRY_PRINT'
+    action: 'APPROVE_PRINT' | 'REJECT' | 'VERIFY_PAYMENT' | 'RETRY_PRINT'
   ) => {
     const actionKey = `${orderId}_${action}`;
     setActionLoadingKey(actionKey);
@@ -191,13 +191,6 @@ export default function AdminLiveOrdersPage() {
             order_status: 'REJECTED' as OrderStatus,
             payment_status: 'REJECTED' as const,
           };
-        } else if (action === 'MARK_PRINTED') {
-          return {
-            ...order,
-            order_status: 'PRINTED' as OrderStatus,
-            payment_status: 'VERIFIED' as const,
-            printed_at: new Date().toISOString(),
-          };
         } else if (action === 'VERIFY_PAYMENT') {
           return {
             ...order,
@@ -215,8 +208,6 @@ export default function AdminLiveOrdersPage() {
       if (filter === 'COMPLETED') {
         setFilter('PRINTING');
       }
-    } else if (action === 'MARK_PRINTED') {
-      showToast('Order marked as Completed!', 'success');
     } else if (action === 'REJECT') {
       showToast('Order marked as Rejected', 'success');
     }
@@ -578,7 +569,6 @@ export default function AdminLiveOrdersPage() {
 
                 const isApproving = actionLoadingKey === `${order.id}_APPROVE_PRINT`;
                 const isRejecting = actionLoadingKey === `${order.id}_REJECT`;
-                const isCompleting = actionLoadingKey === `${order.id}_MARK_PRINTED`;
                 const isRetrying = actionLoadingKey === `${order.id}_RETRY_PRINT`;
 
                 const fileBadge = getFileBadge(order.file_name);
@@ -779,23 +769,9 @@ export default function AdminLiveOrdersPage() {
                         )}
 
                         {isPrinting && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOrderAction(order.id, 'MARK_PRINTED');
-                            }}
-                            disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
-                            style={{ touchAction: 'manipulation' }}
-                            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-500/20 active:scale-95 disabled:opacity-50 cursor-pointer transition-all"
-                          >
-                            {isCompleting ? (
-                              <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            )}
-                            <span>Mark Completed</span>
-                          </button>
+                          <span className="px-3.5 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-700 font-bold text-xs">
+                            Print agent is processing
+                          </span>
                         )}
 
                       </div>

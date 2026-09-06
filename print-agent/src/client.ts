@@ -32,6 +32,7 @@ export class ShopApiClient {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${config.agentSecret}`,
         'x-agent-secret': config.agentSecret,
+        'x-agent-id': config.agentId,
       },
     });
   }
@@ -148,6 +149,7 @@ export class ShopApiClient {
           headers: {
             Authorization: `Bearer ${this.config.agentSecret}`,
             'x-agent-secret': this.config.agentSecret,
+            'x-agent-id': this.config.agentId,
           },
           timeout: 60000,
         });
@@ -173,6 +175,7 @@ export class ShopApiClient {
         orderId,
         success,
         errorMessage,
+        agentId: this.config.agentId,
       });
     } catch (err) {
       logger.error(`Failed to report job status for ${orderId}:`, err instanceof Error ? err.message : err);

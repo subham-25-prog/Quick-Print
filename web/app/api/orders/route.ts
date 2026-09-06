@@ -8,6 +8,7 @@ import { Order, OrderItemOptions, PaymentMethod } from '@/types';
 import { randomUUID } from 'crypto';
 import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
 import { createOrderAccessToken } from '@/lib/order-access';
+import { getCurrentShopId } from '@/lib/shop';
 
 function customerOrderView(order: Order) {
   const {
@@ -36,6 +37,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    const shopId = getCurrentShopId();
     const body = await req.json();
     const {
       fileName,
@@ -75,7 +77,7 @@ export async function POST(req: NextRequest) {
     if (paymentMethod === 'UPI' && !String(customerPhone || '').trim()) {
       return NextResponse.json({ error: 'A customer phone number is required for secure UPI payment.' }, { status: 400 });
     }
-    if (!storagePath.startsWith('shop-documents/orders/')) {
+    if (!storagePath.startsWith(`shop-documents/${shopId}/orders/`)) {
       return NextResponse.json({ error: 'Invalid document upload reference' }, { status: 400 });
     }
 
@@ -106,6 +108,7 @@ export async function POST(req: NextRequest) {
 
     const newOrder: Order = {
       id: orderId,
+      shop_id: shopId,
       order_number: orderNumber,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -155,6 +158,7 @@ export async function POST(req: NextRequest) {
       paymentReference = `qp_${savedOrder.id.replace(/-/g, '')}`;
       const { data: payment, error: paymentError } = await admin.from('payments').insert({
         order_id: savedOrder.id,
+        shop_id: shopId,
         provider: 'sbiepay',
         payment_reference: paymentReference,
         amount: savedOrder.total_amount,

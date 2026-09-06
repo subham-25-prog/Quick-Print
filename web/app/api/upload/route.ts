@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { getPdfPageCount, isValidFileType } from '@/lib/pdf';
 import { generateOrderNumber } from '@/lib/utils';
+import { getCurrentShopId } from '@/lib/shop';
 import { PDFDocument } from 'pdf-lib';
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
@@ -45,6 +46,7 @@ async function convertImageToA4Pdf(imageBuffer: Uint8Array | Buffer, isPng: bool
 
 export async function POST(req: NextRequest) {
   try {
+    const shopId = getCurrentShopId();
     const admin = getAdminClient();
     if (!admin) {
       return NextResponse.json(
@@ -108,7 +110,7 @@ export async function POST(req: NextRequest) {
     // 4. Create storage path
     const fileExt = 'pdf';
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-    const storagePath = `orders/${tempId}.${fileExt}`;
+    const storagePath = `${shopId}/orders/${tempId}.${fileExt}`;
 
     let signedUrl = '';
     const { data: buckets, error: bucketError } = await admin.storage.listBuckets();

@@ -4,6 +4,7 @@ import { getAdminClient } from '@/lib/supabase/admin';
 import { isAdminRequest } from '@/lib/admin-auth';
 import { verifyAgentAuth } from '@/lib/auth';
 import { hasOrderAccess } from '@/lib/order-access';
+import { getCurrentShopId } from '@/lib/shop';
 
 export async function GET(
   req: NextRequest,
@@ -11,7 +12,31 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const hasPrivilegedAccess = isAdminRequest(req) || verifyAgentAuth(req);
+    const isAdmin = isAdminRequest(req);
+    const agentId = req.headers.get('x-agent-id')?.trim();
+    const agentAuthenticated = verifyAgentAuth(req);
+    let agentHasClaimedJob = false;
+
+    // An agent may only retrieve the document it has atomically claimed. The
+    // bearer secret alone is deliberately insufficient to browse all files.
+    if (agentAuthenticated && agentId) {
+      const admin = getAdminClient();
+      if (admin) {
+        const { data } = await admin
+          .from('print_jobs')
+          .select('id')
+          .eq('order_id', id)
+          .eq('shop_id', getCurrentShopId())
+          .eq('claimed_by', agentId)
+          .eq('status', 'PRINTING')
+          .maybeSingle();
+        agentHasClaimedJob = Boolean(data);
+      } else if (process.env.NODE_ENV !== 'production') {
+        agentHasClaimedJob = true;
+      }
+    }
+
+    const hasPrivilegedAccess = isAdmin || agentHasClaimedJob;
     if (!hasPrivilegedAccess && !hasOrderAccess(req, id)) {
       return NextResponse.json({ error: 'Document not found' }, { status: 404 });
     }

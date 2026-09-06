@@ -6,9 +6,9 @@ QuickPrint is a self-service document printing platform designed as a reusable *
 
 ## Key Architecture Principles
 
-1. **Single-Tenant per Print Shop**: Every shop has an isolated deployment with its own database, storage bucket, shopkeeper credentials, UPI VPA, dynamic pricing, and local Windows print agent.
+1. **Tenant-safe per Print Shop**: Every shop can run as an isolated deployment with its own database, storage bucket, credentials, pricing, payment account, and local Windows print agent. The shared-code database foundation also scopes operational data by a server-only shop ID.
 2. **Instant Mobile-First Flow**: Customers enter the shop, scan the static wall QR code, upload PDF/images, select print options, see live price breakdowns, and pay via UPI or Cash.
-3. **Transparent Manual UPI Verification**: No third-party payment gateway cuts or false confirmations. Generates direct UPI deep links and dynamic QR codes with exact order amounts for manual shopkeeper verification.
+3. **Verified payment only**: Automatic printing is permitted only after server-side gateway verification. A direct UPI link, customer message, screenshot, soundbox alert, or browser redirect is never payment proof.
 4. **Autonomous Windows Print Agent**: Node.js/TypeScript background service running on the shop PC that atomically claims approved jobs and sends documents directly to the local printer spooler.
 5. **Historical Pricing Snapshots**: Pricing adjustments made in the Admin Dashboard apply strictly to future orders; previous orders retain their exact creation snapshots.
 

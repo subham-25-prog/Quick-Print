@@ -171,6 +171,7 @@ export interface PriceBreakdown {
 
 export interface Order {
   id: string;
+  shop_id?: string;
   order_number: string;
   created_at: string;
   updated_at: string;

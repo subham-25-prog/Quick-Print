@@ -15,13 +15,13 @@ sequenceDiagram
     Customer->>NextApp: Scans QR code & opens Shop URL
     Customer->>NextApp: Uploads PDF/Image & selects Print Options
     NextApp->>NextApp: Calculates live price (Pages × Rate × Copies + Add-ons)
-    Customer->>NextApp: Chooses UPI or Cash & submits Order
+    Customer->>NextApp: Chooses online payment or cash & submits Order
     NextApp->>DB: Saves Order with exact pricing snapshot
+    NextApp->>NextApp: Server verifies provider payment before confirmation
     NextApp-->>Customer: Shows Order Number (QP-XXXX) & Live Status Screen
 
-    Shopkeeper->>NextApp: Views Order in Admin Queue & verifies payment
-    Shopkeeper->>NextApp: Clicks "Verify & Approve Print"
-    NextApp->>DB: Updates order status to APPROVED & inserts into print_jobs
+    Shopkeeper->>NextApp: Views cash orders in Admin Queue & verifies cash
+    NextApp->>DB: Confirms verified payment & inserts one print_jobs row
 
     loop Polling / Heartbeat
         Agent->>NextApp: Claims approved job (claim_next_print_job RPC)
@@ -46,7 +46,8 @@ stateDiagram-v2
     [*] --> PAYMENT_VERIFICATION_PENDING: Customer Submits Order
     PAYMENT_VERIFICATION_PENDING --> REJECTED: Shopkeeper Declines
     PAYMENT_VERIFICATION_PENDING --> CANCELLED: Customer/Admin Cancels
-    PAYMENT_VERIFICATION_PENDING --> APPROVED: Shopkeeper Verifies Payment
+    PAYMENT_VERIFICATION_PENDING --> APPROVED: Shopkeeper Verifies Cash
+    PAYMENT_VERIFICATION_PENDING --> CONFIRMED: Payment Provider Verification
     
     APPROVED --> PRINTING: Print Agent Claims Job
     PRINTING --> FAILED: Printer Spooler Failure / Offline
