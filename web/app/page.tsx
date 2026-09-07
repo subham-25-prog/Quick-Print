@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { FileUploader, UploadedFileState } from '@/components/customer/FileUploader';
@@ -10,8 +11,21 @@ import { PaymentModal } from '@/components/customer/PaymentModal';
 import { calculateOrderPrice } from '@/lib/pricing';
 import { formatCurrency, generateOrderNumber } from '@/lib/utils';
 import { defaultPricingConfig } from '@/lib/config';
-import { PaperSize, ColorMode, PrintSides, AddOnOptions, PricingConfig, PaymentMethod } from '@/types';
+import {
+  PaperSize,
+  ColorMode,
+  PrintSides,
+  AddOnOptions,
+  PricingConfig,
+  PaymentMethod,
+  AdvancedPrintConfig,
+} from '@/types';
 import { User, Phone, MessageSquare } from '@/components/ui/Icons';
+
+const AdobePrintPreviewModal = dynamic(
+  () => import('@/components/customer/AdobePrintPreviewModal').then((module) => module.AdobePrintPreviewModal),
+  { ssr: false }
+);
 
 export default function CustomerHomePage() {
   const router = useRouter();
@@ -28,6 +42,18 @@ export default function CustomerHomePage() {
   const [printSides, setPrintSides] = useState<PrintSides>('SINGLE');
   const [copies, setCopies] = useState<number>(1);
   const [addOns, setAddOns] = useState<AddOnOptions>({});
+
+  // Adobe Advanced Print Configuration & Preview State
+  const [isAdobeModalOpen, setIsAdobeModalOpen] = useState(false);
+  const [advancedConfig, setAdvancedConfig] = useState<AdvancedPrintConfig>({
+    pageRangeMode: 'ALL',
+    pagesPerSheet: '1',
+    pageScaling: 'FIT',
+    customScalePercent: 100,
+    orientation: 'AUTO',
+    printQuality: 'STANDARD',
+    watermark: 'NONE',
+  });
 
   // Customer details
   const [customerName, setCustomerName] = useState('');
@@ -179,6 +205,7 @@ export default function CustomerHomePage() {
         printSides,
         copies,
         addOns,
+        advancedConfig,
         paymentMethod: method,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
@@ -278,6 +305,8 @@ export default function CustomerHomePage() {
             copies={copies}
             onCopiesChange={setCopies}
             pricing={pricing}
+            advancedConfig={advancedConfig}
+            onOpenAdobeModal={() => setIsAdobeModalOpen(true)}
           />
         </section>
 
@@ -394,6 +423,23 @@ export default function CustomerHomePage() {
         onConfirmPayment={handleConfirmOrder}
         submitting={submitting}
         pricing={pricing}
+      />
+
+      {/* Adobe Acrobat Advanced Print Settings & Preview Modal */}
+      <AdobePrintPreviewModal
+        isOpen={isAdobeModalOpen}
+        onClose={() => setIsAdobeModalOpen(false)}
+        fileName={uploadedFile?.fileName || 'Document_Preview.pdf'}
+        pageCount={uploadedFile?.pageCount || 1}
+        fileSignedUrl={uploadedFile?.signedUrl}
+        previewUrl={uploadedFile?.previewUrl}
+        fileType={uploadedFile?.fileType}
+        uploadedFile={uploadedFile}
+        paperSize={paperSize}
+        colorMode={colorMode}
+        printSides={printSides}
+        advancedConfig={advancedConfig}
+        onSaveAdvancedConfig={setAdvancedConfig}
       />
     </div>
   );

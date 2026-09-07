@@ -15,7 +15,8 @@ import {
   RotateCcw,
   AlertCircle,
   Copy,
-  Sparkles
+  Sparkles,
+  Sliders
 } from '@/components/ui/Icons';
 
 interface AdminOrderCardProps {
@@ -180,6 +181,23 @@ export const AdminOrderCard: React.FC<AdminOrderCardProps> = ({ order, onAction,
           )}
         </div>
       </div>
+
+      {order.advanced_config && (
+        <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-300 space-y-1">
+          <div className="flex items-center justify-between text-[11px] font-bold text-red-400">
+            <span className="flex items-center gap-1.5"><Sliders className="w-3.5 h-3.5" /> Adobe Advanced Print Options</span>
+            <span className="font-mono text-[10px] text-slate-400">{order.advanced_config.pagesPerSheet}-Up Layout</span>
+          </div>
+          <div className="grid grid-cols-2 gap-x-2 text-[11px] text-slate-300">
+            <span>Range: <strong>{order.advanced_config.pageRangeMode === 'RANGE' ? order.advanced_config.customPageRange : order.advanced_config.pageRangeMode}</strong></span>
+            <span>Scaling: <strong>{order.advanced_config.pageScaling} ({order.advanced_config.customScalePercent}%)</strong></span>
+            <span>Orient: <strong>{order.advanced_config.orientation}</strong></span>
+            {order.advanced_config.watermark && order.advanced_config.watermark !== 'NONE' && (
+              <span className="text-rose-400 font-bold">Watermark: {order.advanced_config.watermark}</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {order.customer_notes && (
         <div className="p-2.5 rounded-lg bg-slate-800/50 text-xs text-slate-300">

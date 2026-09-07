@@ -22,6 +22,17 @@ export type ColorMode = 'BW' | 'COLOR';
 
 export type PrintSides = 'SINGLE' | 'DOUBLE';
 
+export interface AdvancedPrintConfig {
+  pageRangeMode?: 'ALL' | 'RANGE' | 'ODD' | 'EVEN';
+  customPageRange?: string;
+  pagesPerSheet?: '1' | '2' | '4' | 'booklet';
+  pageScaling?: 'FIT' | 'ACTUAL' | 'SHRINK' | 'CUSTOM';
+  customScalePercent?: number;
+  orientation?: 'AUTO' | 'PORTRAIT' | 'LANDSCAPE';
+  printQuality?: 'FAST_DRAFT' | 'STANDARD' | 'HIGH_QUALITY';
+  watermark?: 'NONE' | 'CONFIDENTIAL' | 'DRAFT' | 'SAMPLE';
+}
+
 export interface AddOnOptions {
   stapling?: boolean;
   spiralBinding?: boolean;
@@ -185,6 +196,7 @@ export interface Order {
   customer_name?: string;
   customer_phone?: string;
   customer_notes?: string;
+  advanced_config?: AdvancedPrintConfig;
   transaction_ref?: string;
   rejection_reason?: string;
   failure_reason?: string;

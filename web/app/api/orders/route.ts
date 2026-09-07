@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
       customerPhone,
       customerNotes,
       transactionRef,
+      advancedConfig,
     } = body;
 
     if (!fileName || !storagePath) {
@@ -102,6 +103,7 @@ export async function POST(req: NextRequest) {
       customer_name: customerName,
       customer_phone: customerPhone,
       customer_notes: customerNotes,
+      advanced_config: advancedConfig,
       transaction_ref: transactionRef ? String(transactionRef).trim() : undefined,
     };
 
