@@ -1,50 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getAdminClient } from '@/lib/supabase/admin';
-import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
-import { getCurrentShopId } from '@/lib/shop';
-
-export const dynamic = 'force-dynamic';
-
-export async function GET(req: NextRequest) {
-  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
-  const admin = getAdminClient();
-
-  if (!admin) {
-    return NextResponse.json({
-      connected: false,
-      mode: 'LOCAL_MEMORY',
-      supabaseUrlConfigured: Boolean(supabaseUrl && !supabaseUrl.includes('placeholder')),
-      message: 'Supabase credentials missing or invalid in environment variables',
-    });
-  }
-
-  try {
-    const { count, error } = await admin.from('orders').select('*', { count: 'exact', head: true }).eq('shop_id', getCurrentShopId());
-
-    if (error) {
-      return NextResponse.json({
-        connected: false,
-        mode: 'LOCAL_MEMORY',
-        supabaseUrlConfigured: true,
-        error: error.message,
-        message: `Supabase query error: ${error.message}. Ensure schema.sql was run in SQL Editor.`,
-      });
-    }
-
-    return NextResponse.json({
-      connected: true,
-      mode: 'SUPABASE_CLOUD',
-      supabaseUrlConfigured: true,
-      totalCloudOrders: count || 0,
-      message: 'Successfully connected to Supabase Cloud Database!',
-    });
-  } catch (err) {
-    return NextResponse.json({
-      connected: false,
-      mode: 'LOCAL_MEMORY',
-      error: err instanceof Error ? err.message : String(err),
-      message: 'Failed to connect to Supabase Cloud Database.',
-    });
-  }
+import {NextRequest,NextResponse} from 'next/server';
+import {database} from '@/lib/db';
+import {isAdminRequest,adminUnauthorizedResponse} from '@/lib/admin-auth';
+import {getCurrentShopId} from '@/lib/shop';
+export async function GET(req:NextRequest){
+  if(!isAdminRequest(req))return adminUnauthorizedResponse();
+  try{const {error}=await database().from('shops').select('id').eq('id',getCurrentShopId()).single();if(error)throw error;
+    return NextResponse.json({connected:true,mode:'SUPABASE',message:'Database connected.'});
+  }catch{return NextResponse.json({connected:false,mode:'UNAVAILABLE',message:'Database unavailable. Checkout fails closed.'});}
 }

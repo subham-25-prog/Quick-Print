@@ -5,14 +5,13 @@ import { shopConfig } from '@/lib/config';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  userScalable: true,
   themeColor: '#0f172a',
 };
 
 export const metadata: Metadata = {
   title: `${shopConfig.name} – Self-Service Document Printing`,
-  description: `${shopConfig.tagline}. Upload documents, select printing options, pay via UPI or Cash, and get prints instantly.`,
+  description: `${shopConfig.tagline}. Upload a document, pay securely, and track your verified print job.`,
 };
 
 export default function RootLayout({

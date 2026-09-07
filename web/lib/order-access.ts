@@ -6,7 +6,7 @@ const DEVELOPMENT_SECRET = 'quickprint-development-order-access-secret-change-be
 
 function secret(): string | null {
   const configured = process.env.ORDER_ACCESS_SECRET?.trim();
-  if (configured) return configured;
+  if (configured && configured.length >= 32) return configured;
   return process.env.NODE_ENV === 'production' ? null : DEVELOPMENT_SECRET;
 }
 
@@ -23,8 +23,8 @@ function sign(orderId: string, expiresAt: number): string | null {
     : null;
 }
 
-export function createOrderAccessToken(orderId: string): string | null {
-  const expiresAt = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS;
+export function createOrderAccessToken(orderId: string,ttlSeconds=TOKEN_TTL_SECONDS): string | null {
+  const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
   const signature = sign(orderId, expiresAt);
   return signature ? `${expiresAt}.${signature}` : null;
 }
@@ -32,6 +32,7 @@ export function createOrderAccessToken(orderId: string): string | null {
 export function hasOrderAccess(request: NextRequest, orderId: string): boolean {
   const token = request.nextUrl.searchParams.get('access_token') || request.headers.get('x-order-access-token');
   if (!token) return false;
+  if (token.split('.').length !== 2) return false;
 
   const [rawExpiry, suppliedSignature] = token.split('.');
   const expiresAt = Number(rawExpiry);

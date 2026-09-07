@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest } from 'next/server';
+import { getCurrentShopId } from './shop';
 
 export const ADMIN_SESSION_COOKIE = 'qp_admin_session';
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
@@ -18,13 +19,13 @@ function safeEqual(left: string, right: string): boolean {
 
 function sessionSecret(): string | null {
   const secret = process.env.ADMIN_SESSION_SECRET?.trim();
-  if (secret) return secret;
+  if (secret && secret.length >= 32) return secret;
   return isProduction() ? null : DEVELOPMENT_SESSION_SECRET;
 }
 
 export function configuredAdminPin(): string | null {
   const pin = process.env.ADMIN_PIN?.trim();
-  if (pin) return pin;
+  if (pin && pin.length >= 12) return pin;
   return isProduction() ? null : DEVELOPMENT_PIN;
 }
 
@@ -45,7 +46,7 @@ export function verifyAdminPin(candidate: unknown): boolean {
 
 export function createAdminSession(): { value: string; maxAge: number } | null {
   const payload = Buffer.from(
-    JSON.stringify({ role: 'admin', exp: Date.now() + SESSION_TTL_SECONDS * 1000 })
+    JSON.stringify({ role: 'admin', shop: getCurrentShopId(), exp: Date.now() + SESSION_TTL_SECONDS * 1000 })
   ).toString('base64url');
   const signed = signature(payload);
   return signed ? { value: `${payload}.${signed}`, maxAge: SESSION_TTL_SECONDS } : null;
@@ -53,7 +54,7 @@ export function createAdminSession(): { value: string; maxAge: number } | null {
 
 export function isAdminRequest(request: NextRequest): boolean {
   const token = request.cookies.get(ADMIN_SESSION_COOKIE)?.value;
-  if (!token) return false;
+  if (!token || token.split('.').length !== 2) return false;
 
   const [payload, providedSignature] = token.split('.');
   if (!payload || !providedSignature) return false;
@@ -63,7 +64,7 @@ export function isAdminRequest(request: NextRequest): boolean {
 
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    return data.role === 'admin' && typeof data.exp === 'number' && data.exp > Date.now();
+    return data.role === 'admin' && data.shop === getCurrentShopId() && typeof data.exp === 'number' && data.exp > Date.now();
   } catch {
     return false;
   }

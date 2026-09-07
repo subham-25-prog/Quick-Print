@@ -25,10 +25,6 @@ const PaymentModal = dynamic(
   () => import('@/components/customer/PaymentModal').then((module) => module.PaymentModal),
   { ssr: false }
 );
-const AdobePrintPreviewModal = dynamic(
-  () => import('@/components/customer/AdobePrintPreviewModal').then((module) => module.AdobePrintPreviewModal),
-  { ssr: false }
-);
 
 export default function CustomerHomePage() {
   const router = useRouter();
@@ -47,8 +43,7 @@ export default function CustomerHomePage() {
   const [addOns, setAddOns] = useState<AddOnOptions>({});
 
   // Adobe Advanced Print Configuration & Preview State
-  const [isAdobeModalOpen, setIsAdobeModalOpen] = useState(false);
-  const [advancedConfig, setAdvancedConfig] = useState<AdvancedPrintConfig>({
+  const [advancedConfig] = useState<AdvancedPrintConfig>({
     pageRangeMode: 'ALL',
     pagesPerSheet: '1',
     pageScaling: 'FIT',
@@ -66,11 +61,15 @@ export default function CustomerHomePage() {
   // Payment modal & order submission
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [checkoutError,setCheckoutError]=useState('');
+  const [pricingReady,setPricingReady]=useState(false);
+  const [resumeUrl,setResumeUrl]=useState('');
   const [tempOrderNumber, setTempOrderNumber] = useState<string>('QP-PREV');
 
   // Fetch shop pricing on mount & listen for live admin updates
   useEffect(() => {
     setMounted(true);
+    try{const saved=localStorage.getItem('quickprint_last_checkout');if(saved?.startsWith('/payment/')||saved?.startsWith('/order/success/'))setResumeUrl(saved);}catch{}
 
     const applyPricingConfig = (cfg: PricingConfig) => {
       setPricing(cfg);
@@ -127,9 +126,11 @@ export default function CustomerHomePage() {
           const data = await res.json();
           if (data.pricing) {
             applyPricingConfig(data.pricing);
+            setPricingReady(true);
           }
-        }
+        } else {setPricingReady(false);}
       } catch (err) {
+        setPricingReady(false);
         console.error('Failed to load fresh shop pricing:', err);
       }
     };
@@ -137,7 +138,7 @@ export default function CustomerHomePage() {
     fetchFreshPricing();
 
     // Auto-sync pricing every 5s so customer page updates live if shopkeeper changes rates
-    const syncInterval = setInterval(fetchFreshPricing, 5000);
+    const syncInterval = setInterval(fetchFreshPricing, 30000);
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'quickprint_live_pricing' && e.newValue) {
@@ -191,67 +192,26 @@ export default function CustomerHomePage() {
   };
 
   const handleConfirmOrder = async (method: PaymentMethod) => {
-    if (!uploadedFile) return;
-
-    setSubmitting(true);
-
+    if (!uploadedFile || submitting) return;
+    setSubmitting(true);setCheckoutError('');
     try {
-      const orderPayload = {
-        fileName: uploadedFile.fileName,
-        storagePath: uploadedFile.storagePath,
-        signedUrl: uploadedFile.signedUrl,
-        fileType: uploadedFile.fileType,
-        fileSizeBytes: uploadedFile.fileSizeBytes,
-        pageCount: uploadedFile.pageCount,
-        paperSize,
-        colorMode,
-        printSides,
-        copies,
-        addOns,
-        advancedConfig,
-        customerName,
-        customerPhone,
-        customerNotes,
-        paymentMethod: method,
-        totalAmount: priceBreakdown.totalAmount,
-      };
-
       const res = await fetch('/api/orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(orderPayload),
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          uploadId:uploadedFile.uploadId,uploadToken:uploadedFile.uploadToken,
+          idempotencyKey:uploadedFile.checkoutKey,paperSize,colorMode,printSides,copies,addOns,
+          customerName,customerPhone,customerNotes,paymentMethod:method,
+        }),
       });
-
-      const data = await res.json();
-      if (!res.ok || !data.order) {
-        throw new Error(data.error || 'Failed to submit order');
-      }
-
-      // Save order to customer local storage history
-      try {
-        const existing = localStorage.getItem('quickprint_customer_orders');
-        const parsedOrders = existing ? JSON.parse(existing) : [];
-        const updatedList = [data.order, ...parsedOrders.filter((o: any) => o.id !== data.order.id)];
-        localStorage.setItem('quickprint_customer_orders', JSON.stringify(updatedList));
-      } catch (err) {
-        console.error('Failed to save order to local history:', err);
-      }
-
+      const data=await res.json();
+      if(!res.ok||!data.paymentId)throw new Error(data.error||'Checkout could not be opened.');
+      const statusUrl=`/payment/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
+      try{localStorage.setItem('quickprint_last_checkout',statusUrl);}catch{}
       setIsPaymentModalOpen(false);
-      if (method === 'UPI' && data.paymentUrl) {
-        // A gateway-owned payment page returns here afterwards. The resulting
-        // redirect is informational only; server verification confirms printing.
-        window.location.assign(data.paymentUrl);
-        return;
-      }
-
-      router.push(`/status/${data.order.id}?access_token=${encodeURIComponent(data.accessToken)}`);
-    } catch (err) {
-      console.error('Order submission error:', err);
-      alert(err instanceof Error ? err.message : 'Failed to submit order. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
+      if(data.paymentUrl){window.location.assign(data.paymentUrl);return;}
+      router.push(statusUrl);
+    }catch(e){setCheckoutError(e instanceof Error?e.message:'Unable to start payment. Please retry.');}
+    finally{setSubmitting(false);}
   };
 
   // Determine if finishing section has active options
@@ -283,6 +243,9 @@ export default function CustomerHomePage() {
       <Header shopName={pricing.shop_name} />
 
       <main className="max-w-xl mx-auto w-full px-4 pt-4 space-y-4">
+        {resumeUrl&&<a href={resumeUrl} className="block p-3 bg-indigo-50 rounded-xl text-indigo-800 text-sm">Resume your last payment / order →</a>}
+        {!pricingReady&&<p role="status" className="p-3 bg-amber-50 text-amber-900 rounded-xl text-sm">Checking shop availability…</p>}
+        {checkoutError&&<p role="alert" className="p-3 bg-rose-50 text-rose-800 rounded-xl text-sm">{checkoutError}</p>}
         {/* Card 1: 1. Upload Document */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
@@ -290,7 +253,7 @@ export default function CustomerHomePage() {
               1. Upload Document
             </h2>
             <span className="text-[10px] font-bold text-slate-400 tracking-wider">
-              PDF / JPG / PNG / DOCX
+              PDF / JPG / PNG
             </span>
           </div>
 
@@ -317,7 +280,6 @@ export default function CustomerHomePage() {
             onCopiesChange={setCopies}
             pricing={pricing}
             advancedConfig={advancedConfig}
-            onOpenAdobeModal={() => setIsAdobeModalOpen(true)}
           />
         </section>
 
@@ -390,7 +352,7 @@ export default function CustomerHomePage() {
                       rows={2}
                       value={customerNotes}
                       onChange={(e) => setCustomerNotes(e.target.value)}
-                      placeholder="e.g. Print pages 3-10 only, corner stapled..."
+                      placeholder="Pickup notes (all uploaded pages will print)"
                       className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
                     />
                     <MessageSquare className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -417,9 +379,10 @@ export default function CustomerHomePage() {
           <button
             type="button"
             onClick={handleOpenPayment}
+            disabled={!pricingReady||!uploadedFile||submitting}
             className="py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer"
           >
-            <span>Proceed to Pay</span>
+            <span>Pay &amp; Print</span>
             <span>→</span>
           </button>
         </div>
@@ -427,6 +390,7 @@ export default function CustomerHomePage() {
 
       {/* Payment Modal */}
       <PaymentModal
+        error={checkoutError}
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         amount={priceBreakdown.totalAmount}
@@ -436,22 +400,6 @@ export default function CustomerHomePage() {
         pricing={pricing}
       />
 
-      {/* Adobe Acrobat Advanced Print Settings & Preview Modal */}
-      <AdobePrintPreviewModal
-        isOpen={isAdobeModalOpen}
-        onClose={() => setIsAdobeModalOpen(false)}
-        fileName={uploadedFile?.fileName || 'Document_Preview.pdf'}
-        pageCount={uploadedFile?.pageCount || 1}
-        fileSignedUrl={uploadedFile?.signedUrl}
-        previewUrl={uploadedFile?.previewUrl}
-        fileType={uploadedFile?.fileType}
-        uploadedFile={uploadedFile}
-        paperSize={paperSize}
-        colorMode={colorMode}
-        printSides={printSides}
-        advancedConfig={advancedConfig}
-        onSaveAdvancedConfig={setAdvancedConfig}
-      />
     </div>
   );
 }

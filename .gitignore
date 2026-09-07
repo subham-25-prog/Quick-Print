@@ -19,6 +19,10 @@ dist/
 .env.local
 .env.*.local
 *.env
+generated/
+print-agent/state/
+playwright-report/
+test-results/
 
 # Local upload / temp job directories
 uploads/*

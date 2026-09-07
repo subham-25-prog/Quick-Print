@@ -1,0 +1,25 @@
+name: Shop payment reconciliation and document retention
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/5 * * * *'
+permissions:
+  contents: read
+concurrency:
+  group: shop-maintenance
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: vars.QUICKPRINT_MAINTENANCE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Reconcile durable payment inbox
+        env:
+          SHOP_URL: ${{ vars.QUICKPRINT_APP_URL }}
+          CRON_SECRET: ${{ secrets.QUICKPRINT_CRON_SECRET }}
+        run: |
+          case "$SHOP_URL" in https://*) ;; *) exit 1;; esac
+          test -n "$CRON_SECRET"
+          curl --fail --silent --show-error --max-time 65 --retry 1 --retry-delay 5 \
+            -H "Authorization: Bearer $CRON_SECRET" "$SHOP_URL/api/maintenance"

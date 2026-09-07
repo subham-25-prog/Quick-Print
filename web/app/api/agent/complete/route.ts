@@ -1,30 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { completePrintJob } from '@/lib/db';
-import { verifyAgentAuth } from '@/lib/auth';
-
-export async function POST(req: NextRequest) {
-  try {
-    if (!verifyAgentAuth(req)) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid agent secret token' }, { status: 401 });
-    }
-
-    const body = await req.json();
-    const { orderId, success = true, errorMessage, agentId } = body;
-
-    if (!orderId || typeof agentId !== 'string' || !agentId.trim()) {
-      return NextResponse.json({ error: 'orderId and agentId are required' }, { status: 400 });
-    }
-
-    await completePrintJob(orderId, success, errorMessage, agentId.trim());
-
-    return NextResponse.json({
-      success: true,
-      message: `Print job for order ${orderId} marked as ${success ? 'PRINTED' : 'FAILED'}`,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to update job status' },
-      { status: 500 }
-    );
-  }
+import {NextRequest,NextResponse} from 'next/server';
+import {database} from '@/lib/db';
+import {agentIdentity} from '@/lib/security';
+import {getCurrentShopId} from '@/lib/shop';
+import {apiError,HttpError,readJson} from '@/lib/http';
+import {uuid} from '@/lib/validation';
+export async function POST(req:NextRequest){
+  try{const id=agentIdentity(req),body=await readJson(req);
+    if(!['SUBMITTED','FAILED','REVIEW'].includes(String(body.outcome)))throw new HttpError(400,'Explicit print outcome is required.');
+    const {error}=await database().rpc('finish_print_job',{p_shop_id:getCurrentShopId(),p_agent_id:id,p_job_id:uuid(body.jobId),p_claim_token:uuid(body.claimToken),p_outcome:body.outcome});
+    if(error)throw new HttpError(409,'Completion rejected: check the job claim and current state.');
+    return NextResponse.json({success:true,outcome:body.outcome});
+  }catch(e){return apiError(e);}
 }

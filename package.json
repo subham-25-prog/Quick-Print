@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "engines": {
-    "node": ">=20.9.0"
+    "node": "22.x"
   },
   "workspaces": [
     "web"
@@ -18,6 +18,9 @@
   "scripts": {
     "build": "cd web && npm run build",
     "dev": "cd web && npm run dev",
-    "start": "cd web && npm run start"
+    "start": "cd web && npm run start",
+    "lint": "npm run lint --workspace web",
+    "typecheck": "npm run typecheck --workspace web",
+    "test": "npm test --workspace web"
   }
 }

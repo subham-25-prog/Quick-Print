@@ -1,66 +1,36 @@
-# QuickPrint System Architecture
+# Architecture
 
-## End-to-End System Lifecycle
+## Installation boundary
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Customer as Customer (Mobile Phone)
-    participant NextApp as Web Application (Next.js / Vercel)
-    participant DB as Supabase PostgreSQL & Storage
-    actor Shopkeeper as Shopkeeper (Admin Dashboard)
-    participant Agent as Windows Print Agent (Shop PC)
-    participant Printer as Windows Physical Printer
+Each shop receives an independent deployment, Supabase project, merchant account integration and Windows agent. QUICKPRINT_SHOP_ID is mandatory in production and is never read from a browser request. The schema has shop IDs and membership RLS for defense in depth; this is not a shared-merchant marketplace.
 
-    Customer->>NextApp: Scans QR code & opens Shop URL
-    Customer->>NextApp: Uploads PDF/Image & selects Print Options
-    NextApp->>NextApp: Calculates live price (Pages × Rate × Copies + Add-ons)
-    Customer->>NextApp: Chooses online payment or cash & submits Order
-    NextApp->>DB: Saves Order with exact pricing snapshot
-    NextApp->>NextApp: Server verifies provider payment before confirmation
-    NextApp-->>Customer: Shows Order Number (QP-XXXX) & Live Status Screen
+## Data flow
 
-    Shopkeeper->>NextApp: Views cash orders in Admin Queue & verifies cash
-    NextApp->>DB: Confirms verified payment & inserts one print_jobs row
+1. POST /api/upload validates a bounded multipart file, counts actual PDF pages (or converts a bounded image) and stores a private UUID-path PDF plus uploaded_files ownership/hash/expiry metadata.
+2. POST /api/orders uses that upload's server record, configured print options and integer-paisa pricing. It creates **payments only**, with an immutable draft, idempotency key and merchant/environment binding. No actual unpaid order is inserted.
+3. The configured PaymentProvider creates an official hosted checkout. Return URLs use the canonical deployment domain and a signed private payment-status capability.
+4. Authenticated webhook notifications enter a durable inbox. Best-effort after-response verification, signed customer polling and a scheduled worker fetch official payment status independently.
+5. The service normalizes and verifies proof, then calls finalize_payment. PostgreSQL locks payment/file, validates identities/amount/transaction, writes SUCCESS, creates the PAID/CONFIRMED order, inserts exactly one print_job and audits it in one transaction.
+6. A paired agent heartbeat identifies a fixed shop/agent/environment. A single queue claim gets a fresh fence token and two-minute lease.
+7. The agent downloads only its authorized private PDF, journals STARTING durably, calls start_print_job, submits once to Windows and acknowledges SUBMITTED. An uncertain start/spool result becomes REVIEW; no automatic redispatch.
+8. The customer sees only backend status. Admin statistics come from scoped database aggregates, never browser caches.
 
-    loop Polling / Heartbeat
-        Agent->>NextApp: Claims approved job (claim_next_print_job RPC)
-    end
+## State machines
 
-    NextApp->>DB: Locks job atomically & updates status to PRINTING
-    NextApp-->>Agent: Returns signed download URL & print parameters
-    Agent->>DB: Downloads document securely
-    Agent->>Printer: Dispatches document to Windows spooler
-    Printer-->>Agent: Print spool completed
-    Agent->>NextApp: Reports job completion (POST /api/agent/complete)
-    NextApp->>DB: Updates order status to PRINTED
-    NextApp-->>Customer: Live Status Screen updates to PRINTED & READY!
-```
+Payment: PENDING → provider-verified SUCCESS / FAILED / EXPIRED / CANCELLED. Delayed genuine success may supersede a previous failure. An ambiguous or duplicate paid attempt can be flagged REVIEW without creating a second order.
 
----
+Job: PENDING → CLAIMED → PRINTING → SUBMITTED. CLAIMED can safely expire/retry before dispatch; a pre-dispatch FAILED is manually retryable. PRINTING cannot expire back to the queue. REVIEW requires checking actual output. PRINTED is reserved for future reliable physical completion evidence.
 
-## State Transition Diagram
+## Tables and permissions
 
-```mermaid
-stateDiagram-v2
-    [*] --> PAYMENT_VERIFICATION_PENDING: Customer Submits Order
-    PAYMENT_VERIFICATION_PENDING --> REJECTED: Shopkeeper Declines
-    PAYMENT_VERIFICATION_PENDING --> CANCELLED: Customer/Admin Cancels
-    PAYMENT_VERIFICATION_PENDING --> APPROVED: Shopkeeper Verifies Cash
-    PAYMENT_VERIFICATION_PENDING --> CONFIRMED: Payment Provider Verification
-    
-    APPROVED --> PRINTING: Print Agent Claims Job
-    PRINTING --> FAILED: Printer Spooler Failure / Offline
-    FAILED --> APPROVED: Admin Clicks Retry
-    PRINTING --> PRINTED: Spooling Succeeded
-    PRINTED --> [*]
-```
+shops, shop_settings, shop_members, uploaded_files, payments, payment_configs, orders, print_jobs, print_agents, printers, order_events, audit_logs, webhook_inbox and rate_limits. Financial/order records are preserved during document retention. Legacy records remain archived in the database but are not trusted into the new queue.
 
----
+Application RLS denies anonymous mutations; Supabase members only read authorized shop tables. Service-role routes enforce admin/customer/agent authentication separately. Privileged functions grant execute only to service_role. Documents are private, short-preview-link authorized, and restricted from direct browser Storage access.
 
-## Security Model
+## Provider boundary
 
-1. **Storage Isolation**: Customer documents are stored in private Supabase Storage buckets (`shop-documents`).
-2. **Signed URLs**: Temporary signed URLs (expires in 5–60 minutes) are generated only when required by the print agent or admin preview.
-3. **Agent Authentication**: Print agent calls are authorized via secret token (`PRINT_AGENT_SECRET`), preventing unauthorized job access or spoofing.
-4. **Idempotency**: Atomic PostgreSQL row locks (`FOR UPDATE SKIP LOCKED` inside `claim_next_print_job`) guarantee no job is ever printed twice even during network hiccups or agent restarts.
+PhonePe v2 uses authenticated OAuth status calls. Merchant binding includes the configured expected merchant, client/environment fingerprint, provider order ID and metadata; actual settlement-account ownership is an onboarding/UAT requirement. Future adapters normalize the same proof and use the same finalizer. There is no mock fallback or hard-coded merchant QR.
+
+## Reliability limits
+
+A durable PostgreSQL job can be exactly-once while a physical device cannot participate in its transaction. This release favors no duplicate automatic dispatch over silently retrying uncertain work. It reports SUBMITTED honestly, not physical completion. Scheduler latency, driver behavior, merchant approval, Supabase configuration, document scanning and real acceptance are deployment responsibilities.

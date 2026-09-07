@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cleanupOldOrders } from '@/lib/db';
 import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
+import {apiError,readJson,requireSameOrigin} from '@/lib/http';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
-    const body = await req.json().catch(() => ({}));
+    requireSameOrigin(req);
+    const body = await readJson(req);
     const retentionDays = Number(body.days) || 3;
 
     const result = await cleanupOldOrders(retentionDays);
@@ -15,12 +17,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       deletedCount: result.deletedCount,
-      message: `Cleaned up orders and storage files older than ${retentionDays} days.`,
+      message: `Removed eligible documents older than ${retentionDays} days. Order and payment records are retained.`,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Cleanup failed' },
-      { status: 500 }
-    );
+    return apiError(error);
   }
 }

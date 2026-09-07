@@ -4,6 +4,7 @@ export type OrderStatus =
   | 'CONFIRMED'
   | 'APPROVED'
   | 'PRINTING'
+  | 'SUBMITTED'
   | 'PRINTED'
   | 'REJECTED'
   | 'CANCELLED'
@@ -171,6 +172,9 @@ export interface PriceBreakdown {
 
 export interface Order {
   id: string;
+  payment_id?: string;
+  uploaded_file_id?: string;
+  submitted_at?: string;
   shop_id?: string;
   order_number: string;
   created_at: string;

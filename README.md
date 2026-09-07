@@ -1,67 +1,50 @@
-# QuickPrint – Self-Service Print Shop System (Master Template)
+# QuickPrint — independent shop installation
 
-QuickPrint is a self-service document printing platform designed as a reusable **master template** for isolated, single-tenant print shop deployments (e.g. Royal Xerox, Quick Print, College Xerox).
+A payment-first self-service printing application: Next.js + Supabase/PostgreSQL + a paired Windows agent. One shop owns its website, database, approved merchant credentials, pricing and printer. This branch is a tested **release candidate**; live merchant/Supabase/hardware acceptance remains required before sale or launch.
 
----
+## Non-negotiable flow
 
-## Key Architecture Principles
+Upload → server page count/price → pending payment → official backend verification → atomic paid order + one print job → Windows submission.
 
-1. **Tenant-safe per Print Shop**: Every shop can run as an isolated deployment with its own database, storage bucket, credentials, pricing, payment account, and local Windows print agent. The shared-code database foundation also scopes operational data by a server-only shop ID.
-2. **Instant Mobile-First Flow**: Customers enter the shop, scan the static wall QR code, upload PDF/images, select print options, see live price breakdowns, and pay via UPI or Cash.
-3. **Verified payment only**: Automatic printing is permitted only after server-side gateway verification. A direct UPI link, customer message, screenshot, soundbox alert, or browser redirect is never payment proof.
-4. **Autonomous Windows Print Agent**: Node.js/TypeScript background service running on the shop PC that atomically claims approved jobs and sends documents directly to the local printer spooler.
-5. **Historical Pricing Snapshots**: Pricing adjustments made in the Admin Dashboard apply strictly to future orders; previous orders retain their exact creation snapshots.
+No verified payment means no order confirmation and no print. No screenshot, “I paid,” browser redirect, cash/manual approval or localStorage bypass is accepted. PhonePe v2 is implemented behind a provider interface. Paytm and other providers are extension points, not falsely advertised as supported. An existing merchant QR does not automatically supply PG/API credentials.
 
----
+The queue has exactly-once **job creation**, leased claims and durable dispatch recovery. Generic Windows drivers do not prove exactly-once physical output. Uncertain dispatch stops for review; successful submission is called SUBMITTED, not fabricated PRINTED.
 
-## Directory Structure
+## Start here
 
-```
-QuickPrint/
-├── web/                       # Next.js 14 App Router Web Application
-│   ├── app/                   # Customer routes, Admin portal & API endpoints
-│   ├── components/            # Customer & Admin UI components
-│   ├── lib/                   # Pricing engine, PDF parser, Supabase & Store
-│   ├── types/                 # Comprehensive TypeScript type definitions
-│   └── package.json
-│
-├── print-agent/               # Windows Local Print Agent
-│   ├── src/                   # Agent daemon, Windows spooler, API client
-│   ├── package.json
-│   └── README.md              # Installation & Service guide for Shop PC
-│
-├── supabase/
-│   ├── schema.sql             # PostgreSQL schema, atomic claim RPC, RLS
-│   └── storage.sql            # Private storage bucket & access policies
-│
-├── docs/
-│   ├── NEW_SHOP_SETUP.md      # 15-Minute New Shop Onboarding Checklist
-│   └── ARCHITECTURE.md        # System architecture and data flow diagrams
-│
-└── README.md
+Use Node 22. Run `npm ci` at the root and `npm ci --prefix print-agent`. Read [new-shop installation](docs/NEW_SHOP_INSTALLATION.md) and [deployment](docs/DEPLOYMENT.md) before running SQL or enabling live payments. Generate an independent shop package with:
+
+```text
+node scripts/new-shop.mjs --slug abc-xerox --name "ABC Xerox" --url https://abc.example
 ```
 
----
+Generated secrets stay in a git-ignored folder. Configure cloud credentials privately; nothing is deployed by the generator.
 
-## Quick Start (Local Development)
+## Quality gates
 
-### 1. Run the Web Application
-```powershell
-cd web
-npm install
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000) for Customer View, and [http://localhost:3000/admin](http://localhost:3000/admin) for Shopkeeper Dashboard.
-
-### 2. Run the Print Agent (Simulation Mode)
-```powershell
-cd print-agent
-npm install
-npm run test-print
+```text
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run build --prefix print-agent
+npm run test:e2e --workspace web
 ```
 
----
+Automated payment/driver fixtures are test-only. They are not real sandbox transactions or physical printer tests. CI runs unit/API/PostgreSQL/agent/build checks on Windows/Linux and mobile browser checks on Linux.
 
-## Deploying for a New Print Shop
+## Documentation
 
-See [`docs/NEW_SHOP_SETUP.md`](file:///docs/NEW_SHOP_SETUP.md) for the complete 15-minute deployment guide.
+- [Architecture](docs/ARCHITECTURE.md)
+- [Audit](docs/AUDIT.md)
+- [Installation](docs/NEW_SHOP_INSTALLATION.md)
+- [Deployment and migration order](docs/DEPLOYMENT.md)
+- [Payment configuration](docs/PAYMENT_SETUP.md)
+- [Merchant eligibility and current fees](docs/MERCHANT_PROVIDER_SETUP.md)
+- [Windows agent](docs/PRINT_AGENT.md)
+- [Shopkeeper guide](docs/SHOPKEEPER_GUIDE.md)
+- [Security](docs/SECURITY.md)
+- [Tests and live acceptance](docs/TESTING.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+
+Before live launch: actual Supabase migration/REST/Storage tests, approved shop merchant credentials, webhook/scheduler setup, real payment/settlement acceptance, printer compatibility testing, owner-approved policies, backups and monitoring. Never claim “zero errors” or “production verified” based only on local tests.

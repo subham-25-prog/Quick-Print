@@ -5,6 +5,9 @@ import { FileText, CheckCircle2, AlertCircle, RefreshCw, X } from '@/components/
 import { formatBytes } from '@/lib/utils';
 
 export interface UploadedFileState {
+  uploadId: string;
+  uploadToken: string;
+  checkoutKey: string;
   file: File;
   fileName: string;
   fileType: string;
@@ -61,6 +64,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
       }
 
       const uploadedData: UploadedFileState = {
+        uploadId: result.fileInfo.uploadId,
+        uploadToken: result.fileInfo.uploadToken,
+        checkoutKey: crypto.randomUUID(),
         file,
         fileName: file.name,
         fileType: result.fileInfo?.fileType || file.type,
@@ -68,7 +74,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
         pageCount: result.fileInfo?.pageCount || 1,
         storagePath: result.fileInfo?.storagePath || `shop-documents/orders/${file.name}`,
         signedUrl: result.fileInfo?.signedUrl,
-        previewUrl: result.fileInfo?.signedUrl || (isImage ? URL.createObjectURL(file) : undefined),
+        previewUrl: result.fileInfo?.signedUrl,
       };
 
       onFileUploaded(uploadedData);

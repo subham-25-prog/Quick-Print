@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimit } from '@/lib/security';
+import { requireSameOrigin, readJson, apiError } from '@/lib/http';
 import {
   ADMIN_SESSION_COOKIE,
   createAdminSession,
@@ -15,7 +17,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    requireSameOrigin(req);
+    await rateLimit(req, 'admin-login', 5, 300);
+    const body = await readJson(req);
     const { pin, action } = body;
 
     if (action === 'CHANGE_PIN') {
@@ -52,7 +56,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Incorrect PIN.' }, { status: 401 });
 
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to process request' }, { status: 500 });
+    return apiError(error);
   }
 }
 

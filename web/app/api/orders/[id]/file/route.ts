@@ -1,128 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getOrderById, getFileBuffer, getAllOrders } from '@/lib/db';
-import { getAdminClient } from '@/lib/supabase/admin';
-import { isAdminRequest } from '@/lib/admin-auth';
-import { verifyAgentAuth } from '@/lib/auth';
-import { hasOrderAccess } from '@/lib/order-access';
-import { getCurrentShopId } from '@/lib/shop';
-
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const isAdmin = isAdminRequest(req);
-    const agentId = req.headers.get('x-agent-id')?.trim();
-    const agentAuthenticated = verifyAgentAuth(req);
-    let agentHasClaimedJob = false;
-
-    // An agent may only retrieve the document it has atomically claimed. The
-    // bearer secret alone is deliberately insufficient to browse all files.
-    if (agentAuthenticated && agentId) {
-      const admin = getAdminClient();
-      if (admin) {
-        const { data } = await admin
-          .from('print_jobs')
-          .select('id')
-          .eq('order_id', id)
-          .eq('shop_id', getCurrentShopId())
-          .eq('claimed_by', agentId)
-          .eq('status', 'PRINTING')
-          .maybeSingle();
-        agentHasClaimedJob = Boolean(data);
-      } else if (process.env.NODE_ENV !== 'production') {
-        agentHasClaimedJob = true;
-      }
+import {NextRequest,NextResponse} from 'next/server';
+import {database,getOrderById} from '@/lib/db';
+import {isAdminRequest} from '@/lib/admin-auth';
+import {hasOrderAccess} from '@/lib/order-access';
+import {agentIdentity} from '@/lib/security';
+import {getCurrentShopId} from '@/lib/shop';
+import {apiError,HttpError} from '@/lib/http';
+import {uuid} from '@/lib/validation';
+export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}){
+  try{
+    const id=uuid((await params).id),db=database(),shop=getCurrentShopId();
+    let allowed=isAdminRequest(req)||hasOrderAccess(req,id);
+    if(!allowed){
+      const agent=agentIdentity(req);
+      const {data:job,error}=await db.from('print_jobs').select('id').eq('order_id',id).eq('shop_id',shop).eq('claimed_by',agent).eq('claim_token',uuid(req.headers.get('x-claim-token'))).eq('status','CLAIMED').gt('lease_until',new Date().toISOString()).maybeSingle();
+      if(error)throw error;allowed=Boolean(job);
     }
-
-    const hasPrivilegedAccess = isAdmin || agentHasClaimedJob;
-    if (!hasPrivilegedAccess && !hasOrderAccess(req, id)) {
-      return NextResponse.json({ error: 'Document not found' }, { status: 404 });
-    }
-    const targetId = id;
-    let order = await getOrderById(targetId);
-
-    if (!order) {
-      const all = await getAllOrders();
-      order = all.find(
-        (o) =>
-          o.id === targetId ||
-          o.id.toLowerCase() === targetId.toLowerCase() ||
-          o.order_number?.toUpperCase() === targetId.toUpperCase()
-      ) || null;
-    }
-
-    if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
-
-    const fileName = order.file_name || 'document.pdf';
-    const fileType = order.file_type || 'application/pdf';
-
-    // Helper to format 200 response
-    const createBufferResponse = (buf: Buffer) => {
-      const isPdf = buf.slice(0, 5).toString() === '%PDF-';
-      const contentType = isPdf ? 'application/pdf' : fileType;
-      const finalFileName = isPdf && !fileName.toLowerCase().endsWith('.pdf')
-        ? `${fileName.replace(/\.[^/.]+$/, '')}.pdf`
-        : fileName;
-
-      return new Response(new Uint8Array(buf), {
-        status: 200,
-        headers: {
-          'Content-Type': contentType,
-          'Content-Disposition': `inline; filename="${encodeURIComponent(finalFileName)}"`,
-          'Content-Length': String(buf.length),
-          'Cache-Control': 'private, no-store',
-        },
-      });
-    };
-
-    // 1. Check local disk storage by storage_path or file_name
-    if (order.storage_path || fileName) {
-      const pathToCheck = order.storage_path || fileName;
-      const localBuffer = getFileBuffer(pathToCheck);
-      if (localBuffer && localBuffer.length > 0) {
-        return createBufferResponse(localBuffer);
-      }
-    }
-
-    // 2. Check Supabase Cloud Storage with multiple path candidates
-    const admin = getAdminClient();
-    if (admin) {
-      const pathsToTry = Array.from(
-        new Set([
-          (order.storage_path || '').replace(/^shop-documents\//, ''),
-          order.storage_path,
-          order.id,
-          order.file_name,
-          `${order.id}.pdf`,
-          `${order.id}.png`,
-          `${order.id}.jpg`,
-        ].filter(Boolean))
-      );
-
-      for (const pathCandidate of pathsToTry) {
-        try {
-          const { data, error } = await admin.storage.from('shop-documents').download(pathCandidate);
-          if (data && !error) {
-            const arrayBuffer = await data.arrayBuffer();
-            const buf = Buffer.from(arrayBuffer);
-            if (buf.length > 0) {
-              return createBufferResponse(buf);
-            }
-          }
-        } catch (sErr) {}
-      }
-    }
-
-    return NextResponse.json({ error: 'Document file not found' }, { status: 404 });
-  } catch (error) {
-    console.error('File retrieval error:', error);
-    return NextResponse.json(
-      { error: 'Failed to retrieve document file' },
-      { status: 500 }
-    );
-  }
+    if(!allowed)throw new HttpError(404,'Document not found.');
+    const order=await getOrderById(id);if(!order)throw new HttpError(404,'Document not found.');
+    const {data:file,error}=await db.from('uploaded_files').select('storage_path').eq('id',order.uploaded_file_id).eq('shop_id',shop).is('deleted_at',null).maybeSingle();
+    if(error)throw error;if(!file||!file.storage_path.startsWith(`${shop}/orders/`))throw new HttpError(404,'Document has expired.');
+    const {data,error:se}=await db.storage.from('shop-documents').download(file.storage_path);if(se||!data)throw new HttpError(404,'Document unavailable.');
+    return new NextResponse(await data.arrayBuffer(),{headers:{'Content-Type':'application/pdf','Content-Disposition':'inline; filename="document.pdf"','Cache-Control':'private, no-store'}});
+  }catch(e){return apiError(e);}
 }

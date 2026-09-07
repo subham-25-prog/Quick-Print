@@ -1,0 +1,37 @@
+name: Quality gates
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm ci --prefix print-agent
+      - run: npm run lint --workspace web
+      - run: npm run typecheck --workspace web
+      - run: npm test --workspace web
+      - run: npm run build
+      - run: npm run build --prefix print-agent
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm audit --prefix print-agent --omit=dev --audit-level=high
+      - if: runner.os == 'Linux'
+        run: npx playwright install --with-deps chromium
+        working-directory: web
+      - if: runner.os == 'Linux'
+        run: npm run test:e2e --workspace web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: failure-artifacts-${{ matrix.os }}
+          path: |
+            web/test-results
+            web/playwright-report

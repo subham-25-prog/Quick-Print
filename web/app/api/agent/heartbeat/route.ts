@@ -1,40 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { recordAgentHeartbeat, getPrintAgentInfo } from '@/lib/db';
-import { verifyAgentAuth } from '@/lib/auth';
-import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
-
-export async function GET(req: NextRequest) {
-  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
-  try {
-    const { searchParams } = new URL(req.url);
-    const agentId = searchParams.get('agentId') || 'agent-main-pc';
-    const info = await getPrintAgentInfo(agentId);
-    return NextResponse.json({ agent: info });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to retrieve agent status' }, { status: 500 });
-  }
-}
-
-export async function POST(req: NextRequest) {
-  try {
-    if (!verifyAgentAuth(req)) {
-      return NextResponse.json({ error: 'Unauthorized: Invalid agent secret token' }, { status: 401 });
-    }
-
-    const body = await req.json();
-    const { agentId = 'agent-main-pc', printerName = 'Default Printer', systemInfo = '' } = body;
-
-    await recordAgentHeartbeat(agentId, printerName, systemInfo);
-
-    return NextResponse.json({
-      success: true,
-      timestamp: new Date().toISOString(),
-      status: 'ONLINE',
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Heartbeat failed' },
-      { status: 500 }
-    );
-  }
+import {NextRequest,NextResponse} from 'next/server';
+import {recordAgentHeartbeat,getPrintAgentInfo} from '@/lib/db';
+import {agentIdentity} from '@/lib/security';
+import {isAdminRequest,adminUnauthorizedResponse} from '@/lib/admin-auth';
+import {apiError,HttpError,readJson} from '@/lib/http';
+import {textField} from '@/lib/validation';
+export async function GET(req:NextRequest){if(!isAdminRequest(req))return adminUnauthorizedResponse();try{return NextResponse.json({agent:await getPrintAgentInfo()});}catch(e){return apiError(e);}}
+export async function POST(req:NextRequest){
+  try{const id=agentIdentity(req),body=await readJson(req);
+    const mode=body.mode;if(mode!=='live'&&mode!=='sandbox')throw new HttpError(400,'Agent mode is required.');
+    if(mode!==process.env.PAYMENT_ENVIRONMENT)throw new HttpError(409,'Agent and payment environment must match.');
+    await recordAgentHeartbeat(id,textField(body.printerName,200)||'Unavailable',textField(body.systemInfo,200),mode);
+    return NextResponse.json({success:true});
+  }catch(e){return apiError(e);}
 }

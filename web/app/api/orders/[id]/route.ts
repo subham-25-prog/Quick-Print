@@ -1,54 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getOrderById } from '@/lib/db';
-import { isAdminRequest } from '@/lib/admin-auth';
-import { hasOrderAccess } from '@/lib/order-access';
-import { getAdminClient } from '@/lib/supabase/admin';
-import { getCurrentShopId } from '@/lib/shop';
-
-function customerOrderView(order: Awaited<ReturnType<typeof getOrderById>>) {
-  if (!order) return null;
-  const {
-    id, order_number, created_at, file_name, file_type, page_count, paper_size, color_mode,
-    print_sides, copies, total_amount, currency, payment_method, payment_status, order_status,
-    rejection_reason, failure_reason,
-  } = order;
-  return {
-    id, order_number, created_at, file_name, file_type, page_count, paper_size, color_mode,
-    print_sides, copies, total_amount, currency, payment_method, payment_status, order_status,
-    rejection_reason, failure_reason,
-  };
-}
-
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const isAdmin = isAdminRequest(req);
-    if (!isAdmin && !hasOrderAccess(req, id)) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
-    const order = await getOrderById(id);
-    if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
-    }
-
-    let paymentUrl: string | undefined;
-    if (!isAdmin && order.payment_method === 'UPI' && order.order_status === 'PAYMENT_VERIFICATION_PENDING') {
-      const admin = getAdminClient();
-      const shopId = getCurrentShopId();
-      const { data: payment } = admin
-        ? await admin.from('payments').select('payment_url, status').eq('order_id', order.id).eq('shop_id', shopId).maybeSingle()
-        : { data: null };
-      if (payment?.status === 'PENDING' && payment.payment_url) paymentUrl = payment.payment_url;
-    }
-
-    return NextResponse.json({
-      order: isAdmin ? order : customerOrderView(order),
-      paymentUrl,
-    }, { headers: { 'Cache-Control': 'private, no-store' } });
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to retrieve order' }, { status: 500 });
-  }
+import {NextRequest,NextResponse} from 'next/server';
+import {database,getOrderById,getPrintAgentInfo} from '@/lib/db';
+import {isAdminRequest} from '@/lib/admin-auth';
+import {hasOrderAccess} from '@/lib/order-access';
+import {getCurrentShopId} from '@/lib/shop';
+import {apiError,HttpError} from '@/lib/http';
+import {uuid} from '@/lib/validation';
+export async function GET(req:NextRequest,{params}:{params:Promise<{id:string}>}){
+  try{
+    const {id}=await params;uuid(id);const admin=isAdminRequest(req);
+    if(!admin&&!hasOrderAccess(req,id))throw new HttpError(404,'Order not found.');
+    const order=await getOrderById(id);
+    if(!order||!order.payment_id||order.payment_status!=='PAID')throw new HttpError(404,'Verified order not found.');
+    const {data:job,error}=await database().from('print_jobs').select('status,is_test,submitted_at').eq('order_id',id).eq('shop_id',getCurrentShopId()).maybeSingle();
+    if(error)throw error;
+    const {order_number,created_at,file_name,page_count,paper_size,color_mode,print_sides,copies,total_amount,currency,payment_status,order_status}=order;
+    const agent=await getPrintAgentInfo();
+    return NextResponse.json({order:admin?order:{id,order_number,created_at,file_name,page_count,paper_size,color_mode,print_sides,copies,total_amount,currency,payment_status,order_status},job,agentOnline:agent?.status==='ONLINE'},{headers:{'Cache-Control':'private, no-store'}});
+  }catch(e){return apiError(e);}
 }

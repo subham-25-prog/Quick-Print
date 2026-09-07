@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { apiError,readJson,requireSameOrigin } from '@/lib/http';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { getActivePricing, updatePricing } from '@/lib/db';
 import { defaultPricingConfig } from '@/lib/config';
@@ -21,27 +22,18 @@ export async function GET() {
       }
     );
   } catch (error) {
-    console.error('Error fetching pricing:', error);
-    return NextResponse.json(
-      { pricing: defaultPricingConfig },
-      {
-        headers: {
-          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0, proxy-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-        },
-      }
-    );
+    return apiError(error);
   }
 }
 
 export async function POST(req: NextRequest) {
   if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
-    const body = await req.json();
+    requireSameOrigin(req);
+    const body = await readJson(req);
     const payload = body.pricing || body;
 
-    const updated = await updatePricing(payload);
+    const updated = await updatePricing(payload as Partial<import('@/types').PricingConfig>);
 
     // Explicitly revalidate Next.js cache paths & tags
     try {
@@ -65,10 +57,6 @@ export async function POST(req: NextRequest) {
       }
     );
   } catch (error) {
-    console.error('Error updating pricing:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to update pricing' },
-      { status: 500 }
-    );
+    return apiError(error);
   }
 }

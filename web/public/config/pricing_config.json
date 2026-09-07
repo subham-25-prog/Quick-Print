@@ -1,9 +1,7 @@
 {
-  "shop_name": "Cyber Cafe",
-  "shop_upi_id": "shubhamoy27@okaxis",
-  "shop_upi_name": "shubhamoy karmakar",
-  "shop_phone": "9144457475",
-  "shop_address": "jisce",
+  "shop_name": "QuickPrint",
+  "shop_phone": "",
+  "shop_address": "",
   "currency": "INR",
   "a4_bw_per_page": 2.5,
   "a4_bw_double_per_page": 3,
@@ -38,18 +36,18 @@
     "softBinding": false
   },
   "form_fields": {
-    "announcementText": "⚡ Express Self-Service Xerox • Prints ready in 5–10 mins at the counter",
+    "announcementText": "Upload, pay securely, and collect your document at the shop.",
     "showCustomerName": true,
     "requireCustomerName": true,
     "showCustomerPhone": false,
     "requireCustomerPhone": false,
-    "allowCashPayment": true,
+    "allowCashPayment": false,
     "allowUpiPayment": true,
     "allowColorPrinting": true,
     "allowDoubleSided": true,
     "enableNotes": true,
     "autoApproveUpiOrders": false,
-    "minOrderAmount": 0,
+    "minOrderAmount": 1,
     "urgentFee": 0
   }
 }

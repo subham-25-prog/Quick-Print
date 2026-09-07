@@ -1,57 +1,32 @@
-# ==============================================================================
-# QuickPrint - Windows Auto-Start Service & Startup Installer
-# ==============================================================================
-
-Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "   ⚡ QuickPrint Print Agent Windows Auto-Start Setup ⚡    " -ForegroundColor Cyan
-Write-Host "============================================================" -ForegroundColor Cyan
-
-$scriptDir = $PSScriptRoot
-if (-not $scriptDir) { $scriptDir = Get-Location }
-
-Write-Host "Setting up automatic background startup for QuickPrint Print Agent..." -ForegroundColor Gray
-Write-Host "Agent Directory: $scriptDir`n"
-
-# 1. Option A: Windows Startup Folder Shortcut (User level auto-start)
-$startupFolder = [Environment]::GetFolderPath("Startup")
-$vbsPath = Join-Path $scriptDir "start_background.vbs"
-
-$vbsContent = @"
-Set WshShell = CreateObject("WScript.Shell")
-WshShell.CurrentDirectory = "$scriptDir"
-WshShell.Run "cmd /c npm start", 0, False
+# Install exactly one CURRENT-USER startup entry. Run after a successful manual test.
+$ErrorActionPreference = 'Stop'
+$agentDirectory = (Resolve-Path -LiteralPath $PSScriptRoot).Path
+$nodeExecutable = (Get-Command node -ErrorAction Stop).Source
+$entryFile = Join-Path $agentDirectory 'dist\index.js'
+if (-not (Test-Path -LiteralPath $entryFile)) { throw 'Run npm ci and npm run build in print-agent first.' }
+if (-not (Test-Path -LiteralPath (Join-Path $agentDirectory '.env'))) { throw 'Configure print-agent/.env first.' }
+$existingTask = Get-ScheduledTask -TaskName 'QuickPrint-PrintAgent' -ErrorAction SilentlyContinue
+$shortcutPath = Join-Path ([Environment]::GetFolderPath('Startup')) 'QuickPrint-Agent.lnk'
+if ($existingTask) { throw 'An old QuickPrint scheduled task exists. Stop and remove it explicitly before installing this version.' }
+if (Test-Path -LiteralPath $shortcutPath) { throw 'An old QuickPrint startup shortcut exists. Remove it explicitly to avoid two startup mechanisms.' }
+# Interactive logon preserves the shop user printer mappings. A hidden shortcut
+# avoids a SYSTEM service, which cannot access the user's network printers.
+$launcherPath = Join-Path $agentDirectory 'start_background.vbs'
+if (Test-Path -LiteralPath $launcherPath) { throw 'An existing launcher was found. Review/remove the old installation first.' }
+$escapedDirectory = $agentDirectory.Replace('"','""')
+$escapedNode = $nodeExecutable.Replace('"','""')
+$escapedEntry = $entryFile.Replace('"','""')
+$launcher = @"
+Set shell = CreateObject("WScript.Shell")
+shell.CurrentDirectory = "$escapedDirectory"
+shell.Run Chr(34) & "$escapedNode" & Chr(34) & " " & Chr(34) & "$escapedEntry" & Chr(34), 0, False
 "@
-
-Set-Content -Path $vbsPath -Value $vbsContent -Encoding UTF8
-
-$shortcutPath = Join-Path $startupFolder "QuickPrint-Agent.lnk"
-$WshShell = New-Object -ComObject WScript.Shell
-$Shortcut = $WshShell.CreateShortcut($shortcutPath)
-$Shortcut.TargetPath = "wscript.exe"
-$Shortcut.Arguments = "`"$vbsPath`""
-$Shortcut.WorkingDirectory = $scriptDir
-$Shortcut.WindowStyle = 7
-$Shortcut.Description = "QuickPrint Local Windows Print Agent Auto-Start"
-$Shortcut.Save()
-
-Write-Host "  ✅ Registered Windows Startup Shortcut: $shortcutPath" -ForegroundColor Green
-Write-Host "  ✅ Created silent background launcher: $vbsPath" -ForegroundColor Green
-
-# 2. Option B: Register Windows Task Scheduler Task (Runs at system boot)
-try {
-    $taskName = "QuickPrint-PrintAgent"
-    $action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "`"$vbsPath`"" -WorkingDirectory $scriptDir
-    $trigger = New-ScheduledTaskTrigger -AtLogOn
-    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Hours 8760)
-
-    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -User $env:USERNAME -Force -ErrorAction SilentlyContinue
-    Write-Host "  ✅ Registered Task Scheduler Task '$taskName' (Runs at User Logon)" -ForegroundColor Green
-} catch {
-    Write-Host "  ℹ️  Task Scheduler notice: Standard startup shortcut configured." -ForegroundColor Gray
-}
-
-Write-Host "`n============================================================" -ForegroundColor Green
-Write-Host "  🎉 Print Agent is configured to auto-start on Windows reboot! " -ForegroundColor Green
-Write-Host "============================================================" -ForegroundColor Green
-Write-Host "  • Test Start Agent Now:   npm start"
-Write-Host "  • Local Health Dashboard: http://localhost:9191`n"
+Set-Content -LiteralPath $launcherPath -Value $launcher -Encoding Unicode
+$shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($shortcutPath)
+$shortcut.TargetPath = Join-Path $env:WINDIR 'System32\wscript.exe'
+$shortcut.Arguments = '"' + $launcherPath + '"'
+$shortcut.WorkingDirectory = $agentDirectory
+$shortcut.WindowStyle = 7
+$shortcut.Save()
+Write-Host 'Installed one hidden current-user startup shortcut. It starts at next sign-in.'
+Write-Host 'The agent journal and process lock must be kept. Use npm start for a visible diagnostic run.'

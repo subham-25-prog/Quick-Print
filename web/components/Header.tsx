@@ -37,7 +37,7 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin = false, shopName }) => 
           {/* Store Online Badge */}
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-[11px]">Store Online</span>
+            <span className="text-[11px]">Self-service</span>
           </div>
 
           {isAdmin ? (

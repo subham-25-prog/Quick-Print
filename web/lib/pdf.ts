@@ -5,12 +5,14 @@ import { PDFDocument } from 'pdf-lib';
  */
 export async function getPdfPageCount(data: ArrayBuffer | Uint8Array): Promise<number> {
   try {
-    const pdfDoc = await PDFDocument.load(data, { ignoreEncryption: true });
-    return pdfDoc.getPageCount();
+    const pdfDoc = await PDFDocument.load(data, { throwOnInvalidObject: true });
+    const count = pdfDoc.getPageCount();
+    if (!Number.isSafeInteger(count) || count < 1 || count > 1000) {
+      throw new Error('Invalid PDF page count');
+    }
+    return count;
   } catch (error) {
-    console.error('Error counting PDF pages:', error);
-    // If parsing fails (e.g. encrypted or malformed), default to 1 as fallback
-    return 1;
+    throw new Error('The PDF is malformed, encrypted, empty, or exceeds 1,000 pages. Export an unlocked PDF and try again.', {cause:error});
   }
 }
 
@@ -25,8 +27,7 @@ export function isValidFileType(mimeType: string, fileName: string): boolean {
     'image/png',
   ];
   
-  if (validMimes.includes(mimeType.toLowerCase())) return true;
-  
   const ext = fileName.split('.').pop()?.toLowerCase();
-  return ['pdf', 'jpg', 'jpeg', 'png'].includes(ext || '');
+  return ['pdf', 'jpg', 'jpeg', 'png'].includes(ext || '') &&
+    (!mimeType || validMimes.includes(mimeType.toLowerCase()));
 }

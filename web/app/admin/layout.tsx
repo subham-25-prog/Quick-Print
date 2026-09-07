@@ -59,6 +59,7 @@ export default function AdminLayout({
     );
   }
 
+  if(!isAuthorized)return null;
   return (
     <div className="min-h-screen flex flex-col bg-slate-100 font-sans transition-opacity duration-150">
       {children}

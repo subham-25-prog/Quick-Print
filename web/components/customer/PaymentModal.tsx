@@ -13,6 +13,7 @@ interface PaymentModalProps {
   onConfirmPayment: (method: 'UPI' | 'CASH') => Promise<void>;
   submitting: boolean;
   pricing?: PricingConfig;
+  error?: string;
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({
@@ -23,9 +24,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onConfirmPayment,
   submitting,
   pricing,
+  error,
 }) => {
   const allowOnline = pricing?.form_fields?.allowUpiPayment !== false;
-  const allowCash = pricing?.form_fields?.allowCashPayment !== false;
+  const allowCash = false; // The automatic installation requires provider-verified payment.
 
   if (!isOpen) return null;
 
@@ -34,12 +36,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 space-y-4 my-8">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Choose how to pay</h3>
-            <p className="text-[11px] text-slate-400 font-medium">Order #{orderNumberPreview}</p>
+            <h3 className="text-base font-bold text-slate-900">Secure payment</h3>
+            <p className="text-[11px] text-slate-400 font-medium">Your order is created after payment verification.</p>
           </div>
           <button
             type="button"
             onClick={onClose}
+            disabled={submitting}
             aria-label="Close payment options"
             className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
           >
@@ -52,6 +55,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
           <div className="text-3xl font-black text-emerald-600 tracking-tight">{formatCurrency(amount)}</div>
         </div>
 
+        {error&&<p role="alert" className="p-3 rounded-xl bg-amber-50 text-amber-900">{error}</p>}
         {allowOnline && (
           <button
             type="button"

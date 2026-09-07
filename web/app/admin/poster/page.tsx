@@ -15,7 +15,7 @@ export default function ShopWallPosterPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setCustomUrl(window.location.origin);
+      setCustomUrl(shopConfig.appUrl || window.location.origin);
     } else {
       setCustomUrl(shopConfig.appUrl || 'http://localhost:3000');
     }
