@@ -93,6 +93,23 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     }
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setConfig({
+      pageRangeMode: advancedConfig.pageRangeMode || 'ALL',
+      customPageRange: advancedConfig.customPageRange || '',
+      pagesPerSheet: advancedConfig.pagesPerSheet || '1',
+      pageScaling: advancedConfig.pageScaling || 'FIT',
+      customScalePercent: advancedConfig.customScalePercent || 100,
+      orientation: advancedConfig.orientation || 'AUTO',
+      printQuality: advancedConfig.printQuality || 'STANDARD',
+      watermark: advancedConfig.watermark || 'NONE',
+    });
+    setCurrentPage(1);
+    setZoomLevel(100);
+    setRotationAngle(0);
+  }, [isOpen, advancedConfig]);
+
   // Generate object URL for file if blob
   useEffect(() => {
     if (uploadedFile?.file) {
@@ -166,7 +183,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col h-[100dvh] w-screen overflow-hidden font-sans select-none pb-safe pt-safe">
+    <div role="dialog" aria-modal="true" aria-label="Advanced print preview" className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col h-[100dvh] w-screen overflow-hidden font-sans select-none pb-safe pt-safe">
       {/* 1. Mobile & Desktop Sticky Top Header Bar */}
       <header className="bg-slate-950 border-b border-slate-800/90 px-4 py-3 flex items-center justify-between shrink-0 z-50 shadow-md">
         {/* Left: Close Button */}

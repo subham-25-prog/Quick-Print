@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     try {
       revalidatePath('/');
       revalidatePath('/admin');
-      revalidateTag('pricing', 'max');
+      revalidateTag('pricing');
     } catch (e) {}
 
     return NextResponse.json(

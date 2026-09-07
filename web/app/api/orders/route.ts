@@ -39,6 +39,7 @@ export async function POST(req:NextRequest){
     const record={id,shop_id:shop,uploaded_file_id:uploadId,owner_hash:owner,idempotency_key:key,request_hash:requestHash,provider:provider.name,
       merchant_id:provider.merchantId,environment:provider.environment,credential_fingerprint:provider.fingerprint,payment_reference:`QP_${id.replace(/-/g,'')}`,amount:price.totalAmount,currency:'INR',status:'PENDING',
       draft_order:{paper_size:options.paperSize,color_mode:options.colorMode,print_sides:options.printSides,copies:options.copies,add_ons:options.addOns,
+        advanced_config:(options as any).advancedConfig,
         per_page_rate:price.effectiveRatePerPage,print_subtotal:price.printSubtotal,addons_subtotal:price.addOnsSubtotal,total_amount:price.totalAmount,currency:'INR',pricing_snapshot:pricing,customer_name:name,customer_phone:phone,customer_notes:notes}};
     const {data:payment,error:insert}=await db.from('payments').insert(record).select('*').single();
     if(insert){

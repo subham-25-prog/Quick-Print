@@ -25,6 +25,10 @@ const PaymentModal = dynamic(
   () => import('@/components/customer/PaymentModal').then((module) => module.PaymentModal),
   { ssr: false }
 );
+const AdobePrintPreviewModal = dynamic(
+  () => import('@/components/customer/AdobePrintPreviewModal').then((module) => module.AdobePrintPreviewModal),
+  { ssr: false }
+);
 
 export default function CustomerHomePage() {
   const router = useRouter();
@@ -43,7 +47,8 @@ export default function CustomerHomePage() {
   const [addOns, setAddOns] = useState<AddOnOptions>({});
 
   // Adobe Advanced Print Configuration & Preview State
-  const [advancedConfig] = useState<AdvancedPrintConfig>({
+  const [isAdobeModalOpen, setIsAdobeModalOpen] = useState(false);
+  const [advancedConfig, setAdvancedConfig] = useState<AdvancedPrintConfig>({
     pageRangeMode: 'ALL',
     pagesPerSheet: '1',
     pageScaling: 'FIT',
@@ -204,6 +209,7 @@ export default function CustomerHomePage() {
         body: JSON.stringify({
           uploadId:uploadedFile.uploadId,uploadToken:uploadedFile.uploadToken,
           idempotencyKey:uploadedFile.checkoutKey,paperSize,colorMode,printSides,copies,addOns,
+          advancedConfig,
           customerName,customerPhone,customerNotes,paymentMethod:method,
         }),
       });
@@ -284,6 +290,7 @@ export default function CustomerHomePage() {
             onCopiesChange={setCopies}
             pricing={pricing}
             advancedConfig={advancedConfig}
+            onOpenAdobeModal={() => setIsAdobeModalOpen(true)}
           />
         </section>
 
@@ -405,6 +412,22 @@ export default function CustomerHomePage() {
         pricing={pricing}
       />
 
+      {/* Adobe Acrobat Advanced Print Settings & Preview Modal */}
+      <AdobePrintPreviewModal
+        isOpen={isAdobeModalOpen}
+        onClose={() => setIsAdobeModalOpen(false)}
+        fileName={uploadedFile?.fileName || 'Document_Preview.pdf'}
+        pageCount={uploadedFile?.pageCount || 1}
+        fileSignedUrl={uploadedFile?.signedUrl}
+        previewUrl={uploadedFile?.previewUrl}
+        fileType={uploadedFile?.fileType}
+        uploadedFile={uploadedFile}
+        paperSize={paperSize}
+        colorMode={colorMode}
+        printSides={printSides}
+        advancedConfig={advancedConfig}
+        onSaveAdvancedConfig={setAdvancedConfig}
+      />
     </div>
   );
 }

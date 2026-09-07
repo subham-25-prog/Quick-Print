@@ -1,4 +1,4 @@
-import {NextRequest,NextResponse,after} from 'next/server';
+import {NextRequest,NextResponse} from 'next/server';
 import {reconcilePayment} from '@/lib/payments/service';
 import {database} from '@/lib/db';
 import {getCurrentShopId} from '@/lib/shop';
@@ -22,13 +22,16 @@ export async function POST(req:NextRequest){
     console.info(JSON.stringify({event:'webhook_received',paymentId:p.id}));
     // Fast best-effort reconciliation after acknowledgement. The durable inbox
     // and scheduled worker recover if this serverless invocation is interrupted.
-    after(async()=>{
-      try{
-        await reconcilePayment(p,provider);
-        const {error:done}=await db.from('webhook_inbox').update({processed_at:new Date().toISOString()}).eq('payment_id',p.id).eq('shop_id',shop);
-        if(done)throw done;
-      }catch{console.warn(JSON.stringify({event:'webhook_reconciliation_deferred',paymentId:p.id}));}
-    });
+    void (async () => {
+      try {
+        await reconcilePayment(p, provider);
+        const {error: done} = await db.from('webhook_inbox').update({processed_at: new Date().toISOString()}).eq('payment_id', p.id).eq('shop_id', shop);
+        if (done) throw done;
+      } catch {
+        console.warn(JSON.stringify({event: 'webhook_reconciliation_deferred', paymentId: p.id}));
+      }
+    })();
     return NextResponse.json({received:true});
   }catch(e){return apiError(e);}
 }
+
