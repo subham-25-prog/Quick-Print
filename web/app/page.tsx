@@ -498,8 +498,14 @@ export default function CustomerHomePage() {
         paperSize={paperSize}
         colorMode={colorMode}
         printSides={printSides}
+        copies={copies}
+        pricing={pricing}
         advancedConfig={advancedConfig}
         onSaveAdvancedConfig={setAdvancedConfig}
+        onPaperSizeChange={setPaperSize}
+        onColorModeChange={setColorMode}
+        onPrintSidesChange={setPrintSides}
+        onCopiesChange={setCopies}
       />
     </div>
   );

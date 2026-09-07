@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { AdvancedPrintConfig, PaperSize, ColorMode, PrintSides } from '@/types';
+import { AdvancedPrintConfig, PaperSize, ColorMode, PrintSides, PricingConfig } from '@/types';
 import { UploadedFileState } from './FileUploader';
+import { formatCurrency } from '@/lib/utils';
 import {
   X,
   FileText,
+  Image as ImageIcon,
   CheckCircle2,
   ZoomIn,
   ZoomOut,
@@ -14,7 +16,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Printer,
-  Maximize2,
   ChevronUp,
   ChevronDown,
 } from '@/components/ui/Icons';
@@ -31,8 +32,14 @@ interface AdobePrintPreviewModalProps {
   paperSize: PaperSize;
   colorMode: ColorMode;
   printSides: PrintSides;
+  copies?: number;
+  pricing?: PricingConfig;
   advancedConfig: AdvancedPrintConfig;
   onSaveAdvancedConfig: (updated: AdvancedPrintConfig) => void;
+  onPaperSizeChange?: (val: PaperSize) => void;
+  onColorModeChange?: (val: ColorMode) => void;
+  onPrintSidesChange?: (val: PrintSides) => void;
+  onCopiesChange?: (val: number) => void;
   onProceedToOrder?: () => void;
 }
 
@@ -48,10 +55,22 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   paperSize,
   colorMode,
   printSides,
+  copies = 1,
+  pricing,
   advancedConfig,
   onSaveAdvancedConfig,
+  onPaperSizeChange,
+  onColorModeChange,
+  onPrintSidesChange,
+  onCopiesChange,
   onProceedToOrder,
 }) => {
+  // Local state for Section 2 settings inside the preview modal
+  const [modalPaperSize, setModalPaperSize] = useState<PaperSize>(paperSize);
+  const [modalColorMode, setModalColorMode] = useState<ColorMode>(colorMode);
+  const [modalPrintSides, setModalPrintSides] = useState<PrintSides>(printSides);
+  const [modalCopies, setModalCopies] = useState<number>(copies || 1);
+
   const [config, setConfig] = useState<AdvancedPrintConfig>({
     pageRangeMode: advancedConfig.pageRangeMode || 'ALL',
     customPageRange: advancedConfig.customPageRange || '',
@@ -95,6 +114,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
   useEffect(() => {
     if (!isOpen) return;
+    setModalPaperSize(paperSize);
+    setModalColorMode(colorMode);
+    setModalPrintSides(printSides);
+    setModalCopies(copies || 1);
     setConfig({
       pageRangeMode: advancedConfig.pageRangeMode || 'ALL',
       customPageRange: advancedConfig.customPageRange || '',
@@ -108,7 +131,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     setCurrentPage(1);
     setZoomLevel(100);
     setRotationAngle(0);
-  }, [isOpen, advancedConfig]);
+  }, [isOpen, paperSize, colorMode, printSides, copies, advancedConfig]);
 
   // Generate object URL for file if blob
   useEffect(() => {
@@ -164,6 +187,18 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
   const handleApplyAndClose = () => {
     onSaveAdvancedConfig(config);
+    if (onPaperSizeChange && modalPaperSize !== paperSize) {
+      onPaperSizeChange(modalPaperSize);
+    }
+    if (onColorModeChange && modalColorMode !== colorMode) {
+      onColorModeChange(modalColorMode);
+    }
+    if (onPrintSidesChange && modalPrintSides !== printSides) {
+      onPrintSidesChange(modalPrintSides);
+    }
+    if (onCopiesChange && modalCopies !== copies) {
+      onCopiesChange(modalCopies);
+    }
     if (onProceedToOrder) {
       onProceedToOrder();
     } else {
@@ -171,14 +206,45 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     }
   };
 
+  const enabledPapers = pricing?.enabled_papers || { a4: true, a3: true, legal: true, photo: true };
+  const customPapers = (pricing?.custom_papers || []).filter((p) => p.enabled);
+
+  const isSelectedColor = modalColorMode === 'COLOR';
+  const isSelectedDouble = modalPrintSides === 'DOUBLE';
+
+  // Calculate dynamic per-page rate helper
+  const getPaperRate = (size: PaperSize) => {
+    if (size === 'A4') {
+      if (isSelectedColor) return isSelectedDouble ? (pricing?.a4_color_double_per_page ?? 18) : (pricing?.a4_color_per_page ?? 10);
+      return isSelectedDouble ? (pricing?.a4_bw_double_per_page ?? 4) : (pricing?.a4_bw_per_page ?? 3);
+    }
+    if (size === 'A3') {
+      if (isSelectedColor) return isSelectedDouble ? (pricing?.a3_color_double_per_page ?? 35) : (pricing?.a3_color_per_page ?? 20);
+      return isSelectedDouble ? (pricing?.a3_bw_double_per_page ?? 8) : (pricing?.a3_bw_per_page ?? 5);
+    }
+    if (size === 'LEGAL') {
+      if (isSelectedColor) return isSelectedDouble ? (pricing?.legal_color_double_per_page ?? 22) : (pricing?.legal_color_per_page ?? 12);
+      return isSelectedDouble ? (pricing?.legal_bw_double_per_page ?? 5) : (pricing?.legal_bw_per_page ?? 3);
+    }
+    if (size === 'PHOTO') {
+      return pricing?.photo_paper_per_page ?? 25;
+    }
+    const custom = customPapers.find((p) => p.id === size);
+    if (custom) {
+      if (isSelectedColor) return isSelectedDouble ? custom.color_double : custom.color_single;
+      return isSelectedDouble ? custom.bw_double : custom.bw_single;
+    }
+    return 3;
+  };
+
   const isLandscape = config.orientation === 'LANDSCAPE';
-  const isBw = colorMode === 'BW';
+  const isBw = modalColorMode === 'BW';
 
   // Calculate WYSIWYG Page Dimensions (mm aspect ratio)
   const getAspectRatio = () => {
-    if (paperSize === 'A3') return isLandscape ? '1.414 / 1' : '1 / 1.414';
-    if (paperSize === 'LEGAL') return isLandscape ? '1.64 / 1' : '1 / 1.64';
-    if (paperSize === 'PHOTO') return isLandscape ? '1.5 / 1' : '1 / 1.5';
+    if (modalPaperSize === 'A3') return isLandscape ? '1.414 / 1' : '1 / 1.414';
+    if (modalPaperSize === 'LEGAL') return isLandscape ? '1.64 / 1' : '1 / 1.64';
+    if (modalPaperSize === 'PHOTO') return isLandscape ? '1.5 / 1' : '1 / 1.5';
     return isLandscape ? '1.414 / 1' : '1 / 1.414'; // A4 Default
   };
 
@@ -319,7 +385,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               {/* Document Paper Header */}
               <div className="px-3 py-1.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between text-[9px] text-slate-500 font-mono z-20 shrink-0">
                 <span className="font-bold truncate max-w-[140px]">{fileName}</span>
-                <span>{paperSize} | {isBw ? 'B&W' : 'COLOR'}</span>
+                <span>{modalPaperSize} • {isBw ? 'B&W' : 'COLOR'} • {modalCopies} {modalCopies === 1 ? 'copy' : 'copies'}</span>
               </div>
 
               {/* Document Image / PDF Page Render */}
@@ -386,7 +452,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 <span>Print Options & Adobe Settings</span>
               </div>
               <div className="flex items-center gap-1 text-[11px] text-red-400 font-mono">
-                <span>{config.pagesPerSheet}-Up | {config.orientation}</span>
+                <span>{modalPaperSize} • {isBw ? 'B&W' : 'Color'} • {modalCopies}x</span>
                 {isDrawerExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
               </div>
             </button>
@@ -395,166 +461,409 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
         {/* 3. Settings Panel (Right Sidebar on Desktop, Sliding Bottom Sheet on Mobile) */}
         <aside
-          className={`w-full md:w-96 bg-slate-900 p-5 space-y-4 overflow-y-auto text-xs shrink-0 border-t md:border-t-0 md:border-l border-slate-800 transition-all duration-300 z-40 ${
-            isDrawerExpanded ? 'max-h-[70vh] border-t-2 border-red-500' : 'max-h-0 md:max-h-full hidden md:block'
+          className={`w-full md:w-[400px] lg:w-[420px] bg-slate-900 p-5 space-y-5 overflow-y-auto text-xs shrink-0 border-t md:border-t-0 md:border-l border-slate-800 transition-all duration-300 z-40 ${
+            isDrawerExpanded ? 'max-h-[75vh] border-t-2 border-red-500' : 'max-h-0 md:max-h-full hidden md:block'
           }`}
         >
+          {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
               <Sliders className="w-4 h-4 text-red-500" />
-              <h3 className="font-extrabold text-sm text-white">Adobe Print Options</h3>
+              <h3 className="font-extrabold text-sm text-white">Print Options & Adobe Settings</h3>
             </div>
             <button
               type="button"
               onClick={() => setIsDrawerExpanded(false)}
-              className="md:hidden p-1 text-slate-400 hover:text-white"
+              className="md:hidden p-1 text-slate-400 hover:text-white cursor-pointer"
             >
               <ChevronDown className="w-5 h-5" />
             </button>
           </div>
 
-          {/* 1. Page Range */}
-          <div className="space-y-2">
-            <label className="block font-bold text-slate-300 text-[11px]">1. Page Range / Selection</label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { key: 'ALL', label: 'All Pages' },
-                { key: 'RANGE', label: 'Custom Range' },
-                { key: 'ODD', label: 'Odd Pages Only' },
-                { key: 'EVEN', label: 'Even Pages Only' },
-              ].map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setConfig((prev) => ({ ...prev, pageRangeMode: item.key as any }))}
-                  className={`min-h-[44px] px-3 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
-                    config.pageRangeMode === item.key
-                      ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
-                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+          {/* Section 2: Core Print Specifications */}
+          <div className="space-y-4 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-red-400 flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5" />
+                Section 2 • Print Specifications
+              </span>
+              <span className="text-[10px] text-slate-400 font-mono">Live Sync</span>
             </div>
 
-            {config.pageRangeMode === 'RANGE' && (
-              <input
-                type="text"
-                placeholder="e.g. 1-5, 8, 10-12"
-                value={config.customPageRange || ''}
-                onChange={(e) => setConfig((prev) => ({ ...prev, customPageRange: e.target.value }))}
-                className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-red-500 mt-2"
-              />
-            )}
-          </div>
+            {/* A. Paper Size & Type */}
+            <div className="space-y-1.5">
+              <label className="block font-bold text-slate-300 text-[11px]">Paper Size & Type</label>
+              <div className="grid grid-cols-2 gap-2">
+                {enabledPapers.a4 !== false && (
+                  <button
+                    type="button"
+                    onClick={() => setModalPaperSize('A4')}
+                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer active:scale-95 ${
+                      modalPaperSize === 'A4'
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="w-5 h-6 border border-slate-700 rounded-xs flex items-center justify-center text-slate-400 mb-1">
+                      <FileText className="w-3 h-3" />
+                    </div>
+                    <div className="font-bold text-xs">A4 Standard</div>
+                    <div className="text-[10px] text-slate-400 font-medium">210×297 mm</div>
+                    <div className="mt-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-slate-200">
+                      {formatCurrency(getPaperRate('A4'))}/page
+                    </div>
+                  </button>
+                )}
 
-          {/* 2. Pages Per Sheet (N-Up) */}
-          <div className="space-y-2 pt-2 border-t border-slate-800">
-            <label className="block font-bold text-slate-300 text-[11px]">2. Pages Per Sheet (N-Up Layout)</label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { key: '1', label: '1 Page / Sheet' },
-                { key: '2', label: '2 Pages / Sheet' },
-                { key: '4', label: '4 Pages Grid' },
-                { key: 'booklet', label: 'Booklet Fold' },
-              ].map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setConfig((prev) => ({ ...prev, pagesPerSheet: item.key as any }))}
-                  className={`min-h-[44px] px-3 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
-                    config.pagesPerSheet === item.key
-                      ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
-                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+                {enabledPapers.a3 !== false && (
+                  <button
+                    type="button"
+                    onClick={() => setModalPaperSize('A3')}
+                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer active:scale-95 ${
+                      modalPaperSize === 'A3'
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="w-5 h-6 border border-slate-700 rounded-xs flex items-center justify-center text-slate-400 mb-1">
+                      <FileText className="w-3 h-3" />
+                    </div>
+                    <div className="font-bold text-xs">A3 Poster</div>
+                    <div className="text-[10px] text-slate-400 font-medium">297×420 mm</div>
+                    <div className="mt-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-slate-200">
+                      {formatCurrency(getPaperRate('A3'))}/page
+                    </div>
+                  </button>
+                )}
+
+                {enabledPapers.legal !== false && (
+                  <button
+                    type="button"
+                    onClick={() => setModalPaperSize('LEGAL')}
+                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer active:scale-95 ${
+                      modalPaperSize === 'LEGAL'
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="w-5 h-6 border border-slate-700 rounded-xs flex items-center justify-center text-slate-400 mb-1">
+                      <FileText className="w-3 h-3" />
+                    </div>
+                    <div className="font-bold text-xs">Legal / Stamp</div>
+                    <div className="text-[10px] text-slate-400 font-medium">216×356 mm</div>
+                    <div className="mt-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-slate-200">
+                      {formatCurrency(getPaperRate('LEGAL'))}/page
+                    </div>
+                  </button>
+                )}
+
+                {enabledPapers.photo !== false && (
+                  <button
+                    type="button"
+                    onClick={() => setModalPaperSize('PHOTO')}
+                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer active:scale-95 ${
+                      modalPaperSize === 'PHOTO'
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="w-5 h-6 border border-slate-700 rounded-xs flex items-center justify-center text-slate-400 mb-1">
+                      <ImageIcon className="w-3 h-3" />
+                    </div>
+                    <div className="font-bold text-xs">Photo Glossy</div>
+                    <div className="text-[10px] text-slate-400 font-medium">240 GSM Glossy</div>
+                    <div className="mt-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-slate-200">
+                      {formatCurrency(getPaperRate('PHOTO'))}/page
+                    </div>
+                  </button>
+                )}
+
+                {customPapers.map((paper) => (
+                  <button
+                    key={paper.id}
+                    type="button"
+                    onClick={() => setModalPaperSize(paper.id)}
+                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer active:scale-95 ${
+                      modalPaperSize === paper.id
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="w-5 h-6 border border-cyan-800 bg-cyan-950/40 rounded-xs flex items-center justify-center text-cyan-400 mb-1">
+                      <FileText className="w-3 h-3" />
+                    </div>
+                    <div className="font-bold text-xs text-slate-200 truncate max-w-full">{paper.name}</div>
+                    <div className="text-[10px] text-slate-400 font-medium truncate max-w-full">
+                      {paper.description || 'Custom'}
+                    </div>
+                    <div className="mt-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-slate-200">
+                      {formatCurrency(getPaperRate(paper.id))}/page
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* 3. Page Scaling */}
-          <div className="space-y-2 pt-2 border-t border-slate-800">
-            <label className="block font-bold text-slate-300 text-[11px]">3. Page Sizing & Handling</label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { key: 'FIT', label: 'Fit Printable Area' },
-                { key: 'ACTUAL', label: 'Actual Size (100%)' },
-                { key: 'SHRINK', label: 'Shrink Oversized' },
-                { key: 'CUSTOM', label: 'Custom Scale' },
-              ].map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  onClick={() => setConfig((prev) => ({ ...prev, pageScaling: item.key as any }))}
-                  className={`min-h-[44px] px-3 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
-                    config.pageScaling === item.key
-                      ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
-                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+            {/* B. Color Mode */}
+            {pricing?.form_fields?.allowColorPrinting !== false && (
+              <div className="space-y-1.5">
+                <label className="block font-bold text-slate-300 text-[11px]">Color Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalColorMode('BW')}
+                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
+                      modalColorMode === 'BW'
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="w-3.5 h-3.5 rounded-full bg-slate-300 border border-slate-500 mb-1" />
+                    <div className="font-bold text-xs">Black & White</div>
+                    <div className="text-[10px] text-slate-400">Standard Xerox</div>
+                    <div className="text-[10px] text-red-400 font-bold mt-0.5">
+                      From {formatCurrency(pricing?.a4_bw_per_page || 2)}/pg
+                    </div>
+                  </button>
 
-            {config.pageScaling === 'CUSTOM' && (
-              <div className="flex items-center gap-3 mt-2">
-                <input
-                  type="range"
-                  min="50"
-                  max="150"
-                  value={config.customScalePercent || 100}
-                  onChange={(e) => setConfig((prev) => ({ ...prev, customScalePercent: parseInt(e.target.value) || 100 }))}
-                  className="flex-1 accent-red-500 min-h-[44px]"
-                />
-                <span className="font-mono font-bold text-slate-200 text-xs w-12 text-right">
-                  {config.customScalePercent}%
-                </span>
+                  <button
+                    type="button"
+                    onClick={() => setModalColorMode('COLOR')}
+                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
+                      modalColorMode === 'COLOR'
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-pink-500 via-amber-400 to-indigo-500 mb-1 shadow-xs" />
+                    <div className="font-bold text-xs">Full Color</div>
+                    <div className="text-[10px] text-slate-400">Vibrant Laser</div>
+                    <div className="text-[10px] text-red-400 font-bold mt-0.5">
+                      From {formatCurrency(pricing?.a4_color_per_page || 10)}/pg
+                    </div>
+                  </button>
+                </div>
               </div>
             )}
-          </div>
 
-          {/* 4. Orientation */}
-          <div className="space-y-2 pt-2 border-t border-slate-800">
-            <label className="block font-bold text-slate-300 text-[11px]">4. Orientation</label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { key: 'AUTO', label: 'Auto' },
-                { key: 'PORTRAIT', label: 'Portrait 📄' },
-                { key: 'LANDSCAPE', label: 'Landscape 📑' },
-              ].map((item) => (
+            {/* C. Print Sides */}
+            {pricing?.form_fields?.allowDoubleSided !== false && (
+              <div className="space-y-1.5">
+                <label className="block font-bold text-slate-300 text-[11px]">Print Sides</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalPrintSides('SINGLE')}
+                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
+                      modalPrintSides === 'SINGLE'
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="w-4 h-4 rounded bg-red-600 text-white font-bold text-[10px] flex items-center justify-center mb-1">
+                      1
+                    </div>
+                    <div className="font-bold text-xs">Single Sided</div>
+                    <div className="text-[10px] text-slate-400">1 side only</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalPrintSides('DOUBLE')}
+                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
+                      modalPrintSides === 'DOUBLE'
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="w-4 h-4 rounded bg-red-600 text-white font-bold text-[10px] flex items-center justify-center mb-1">
+                      2
+                    </div>
+                    <div className="font-bold text-xs">Both Sides</div>
+                    <div className="text-[10px] text-slate-400">Back to back</div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* D. Number of Copies */}
+            <div className="space-y-1.5">
+              <label className="block font-bold text-slate-300 text-[11px]">Number of Copies</label>
+              <div className="flex items-center justify-between border border-slate-800 rounded-xl bg-slate-950 p-1 shadow-2xs">
                 <button
-                  key={item.key}
                   type="button"
-                  onClick={() => setConfig((prev) => ({ ...prev, orientation: item.key as any }))}
-                  className={`min-h-[44px] px-2 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
-                    config.orientation === item.key
-                      ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
-                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
-                  }`}
+                  onClick={() => setModalCopies((prev) => Math.max(1, prev - 1))}
+                  disabled={modalCopies <= 1}
+                  className="w-10 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-200 font-bold text-sm flex items-center justify-center transition-colors cursor-pointer"
                 >
-                  {item.label}
+                  -
                 </button>
-              ))}
+                <span className="font-bold text-xs text-white">
+                  {modalCopies} {modalCopies === 1 ? 'Copy' : 'Copies'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setModalCopies((prev) => Math.min(100, prev + 1))}
+                  className="w-10 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm flex items-center justify-center transition-colors cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* 5. Watermark Stamp */}
-          <div className="space-y-2 pt-2 border-t border-slate-800">
-            <label className="block font-bold text-slate-300 text-[11px]">5. Security Watermark</label>
-            <select
-              value={config.watermark || 'NONE'}
-              onChange={(e) => setConfig((prev) => ({ ...prev, watermark: e.target.value as any }))}
-              className="w-full min-h-[44px] px-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs font-bold focus:outline-none focus:border-red-500 cursor-pointer"
-            >
-              <option value="NONE">No Watermark</option>
-              <option value="CONFIDENTIAL">CONFIDENTIAL</option>
-              <option value="DRAFT">DRAFT</option>
-              <option value="SAMPLE">SAMPLE / FOR REVIEW</option>
-            </select>
+          {/* Section: Adobe Acrobat Advanced Settings */}
+          <div className="space-y-4 pt-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-extrabold uppercase tracking-wider text-red-400 flex items-center gap-1.5">
+                <Sliders className="w-3.5 h-3.5" />
+                Adobe Advanced Layout
+              </span>
+            </div>
+
+            {/* 1. Page Range */}
+            <div className="space-y-2">
+              <label className="block font-bold text-slate-300 text-[11px]">1. Page Range / Selection</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { key: 'ALL', label: 'All Pages' },
+                  { key: 'RANGE', label: 'Custom Range' },
+                  { key: 'ODD', label: 'Odd Pages Only' },
+                  { key: 'EVEN', label: 'Even Pages Only' },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setConfig((prev) => ({ ...prev, pageRangeMode: item.key as any }))}
+                    className={`min-h-[44px] px-3 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
+                      config.pageRangeMode === item.key
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {config.pageRangeMode === 'RANGE' && (
+                <input
+                  type="text"
+                  placeholder="e.g. 1-5, 8, 10-12"
+                  value={config.customPageRange || ''}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, customPageRange: e.target.value }))}
+                  className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-red-500 mt-2"
+                />
+              )}
+            </div>
+
+            {/* 2. Pages Per Sheet (N-Up) */}
+            <div className="space-y-2 pt-2 border-t border-slate-800">
+              <label className="block font-bold text-slate-300 text-[11px]">2. Pages Per Sheet (N-Up Layout)</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { key: '1', label: '1 Page / Sheet' },
+                  { key: '2', label: '2 Pages / Sheet' },
+                  { key: '4', label: '4 Pages Grid' },
+                  { key: 'booklet', label: 'Booklet Fold' },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setConfig((prev) => ({ ...prev, pagesPerSheet: item.key as any }))}
+                    className={`min-h-[44px] px-3 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
+                      config.pagesPerSheet === item.key
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 3. Page Scaling */}
+            <div className="space-y-2 pt-2 border-t border-slate-800">
+              <label className="block font-bold text-slate-300 text-[11px]">3. Page Sizing & Handling</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { key: 'FIT', label: 'Fit Printable Area' },
+                  { key: 'ACTUAL', label: 'Actual Size (100%)' },
+                  { key: 'SHRINK', label: 'Shrink Oversized' },
+                  { key: 'CUSTOM', label: 'Custom Scale' },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setConfig((prev) => ({ ...prev, pageScaling: item.key as any }))}
+                    className={`min-h-[44px] px-3 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
+                      config.pageScaling === item.key
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              {config.pageScaling === 'CUSTOM' && (
+                <div className="flex items-center gap-3 mt-2">
+                  <input
+                    type="range"
+                    min="50"
+                    max="150"
+                    value={config.customScalePercent || 100}
+                    onChange={(e) => setConfig((prev) => ({ ...prev, customScalePercent: parseInt(e.target.value) || 100 }))}
+                    className="flex-1 accent-red-500 min-h-[44px]"
+                  />
+                  <span className="font-mono font-bold text-slate-200 text-xs w-12 text-right">
+                    {config.customScalePercent}%
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* 4. Orientation */}
+            <div className="space-y-2 pt-2 border-t border-slate-800">
+              <label className="block font-bold text-slate-300 text-[11px]">4. Orientation</label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { key: 'AUTO', label: 'Auto' },
+                  { key: 'PORTRAIT', label: 'Portrait 📄' },
+                  { key: 'LANDSCAPE', label: 'Landscape 📑' },
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => setConfig((prev) => ({ ...prev, orientation: item.key as any }))}
+                    className={`min-h-[44px] px-2 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
+                      config.orientation === item.key
+                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
+                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 5. Watermark Stamp */}
+            <div className="space-y-2 pt-2 border-t border-slate-800">
+              <label className="block font-bold text-slate-300 text-[11px]">5. Security Watermark</label>
+              <select
+                value={config.watermark || 'NONE'}
+                onChange={(e) => setConfig((prev) => ({ ...prev, watermark: e.target.value as any }))}
+                className="w-full min-h-[44px] px-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs font-bold focus:outline-none focus:border-red-500 cursor-pointer"
+              >
+                <option value="NONE">No Watermark</option>
+                <option value="CONFIDENTIAL">CONFIDENTIAL</option>
+                <option value="DRAFT">DRAFT</option>
+                <option value="SAMPLE">SAMPLE / FOR REVIEW</option>
+              </select>
+            </div>
           </div>
 
           {/* Apply Settings Action */}
@@ -572,7 +881,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               className="min-h-[44px] flex-1 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Apply Adobe Settings</span>
+              <span>Apply All Settings</span>
             </button>
           </div>
         </aside>
