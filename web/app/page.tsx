@@ -92,15 +92,11 @@ export default function CustomerHomePage() {
         return (cfg.custom_papers || []).some((p) => p.id === size && p.enabled);
       };
 
-      if (!isPaperEnabled(paperSize)) {
-        if (cfg.enabled_papers?.a4 !== false) setPaperSize('A4');
-        else if (cfg.enabled_papers?.a3 !== false) setPaperSize('A3');
-        else if (cfg.enabled_papers?.legal !== false) setPaperSize('LEGAL');
-        else if (cfg.enabled_papers?.photo !== false) setPaperSize('PHOTO');
-        else if (cfg.custom_papers?.some((p) => p.enabled)) {
-          setPaperSize(cfg.custom_papers.find((p) => p.enabled)!.id);
-        }
-      }
+      setPaperSize(current => {
+        if (isPaperEnabled(current)) return current;
+        return (['A4', 'A3', 'LEGAL', 'PHOTO'] as PaperSize[]).find(isPaperEnabled)
+          || cfg.custom_papers?.find(p => p.enabled)?.id || current;
+      });
 
       // Enforce Color Mode restriction if disabled
       if (cfg.form_fields?.allowColorPrinting === false) {
@@ -124,12 +120,19 @@ export default function CustomerHomePage() {
       }
     } catch {}
 
-    // Fetch fresh pricing from server (Single Source of Truth)
+    let disposed = false;
+    let pricingRequest: AbortController | null = null;
+    // Only one bounded request may run, and background tabs do not poll.
     const fetchFreshPricing = async () => {
+      if (disposed || document.hidden || pricingRequest) return;
+      const controller = new AbortController();
+      pricingRequest = controller;
+      const timeout = window.setTimeout(() => controller.abort(), 15000);
       try {
-        const res = await fetch('/api/admin/pricing?t=' + Date.now(), { cache: 'no-store' });
+        const res = await fetch('/api/admin/pricing', { cache: 'no-store', signal: controller.signal });
         if (res.ok) {
           const data = await res.json();
+          if (disposed) return;
           setCheckoutEnabled(data.checkoutEnabled === true);
           if (data.pricing) {
             applyPricingConfig(data.pricing);
@@ -137,16 +140,21 @@ export default function CustomerHomePage() {
           }
         } else {setPricingReady(false);setCheckoutEnabled(false);}
       } catch (err) {
+        if (disposed) return;
         setPricingReady(false);
         setCheckoutEnabled(false);
         console.error('Failed to load fresh shop pricing:', err);
+      } finally {
+        window.clearTimeout(timeout);
+        pricingRequest = null;
       }
     };
 
     fetchFreshPricing();
 
-    // Auto-sync pricing every 5s so customer page updates live if shopkeeper changes rates
+    // Refresh visible tabs every 30 seconds and immediately on return.
     const syncInterval = setInterval(fetchFreshPricing, 30000);
+    document.addEventListener('visibilitychange', fetchFreshPricing);
 
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'quickprint_live_pricing' && e.newValue) {
@@ -161,7 +169,10 @@ export default function CustomerHomePage() {
     setTempOrderNumber(generateOrderNumber());
 
     return () => {
+      disposed = true;
+      pricingRequest?.abort();
       clearInterval(syncInterval);
+      document.removeEventListener('visibilitychange', fetchFreshPricing);
       window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
@@ -401,7 +412,7 @@ export default function CustomerHomePage() {
       </div>
 
       {/* Payment Modal */}
-      <PaymentModal
+      {isPaymentModalOpen && <PaymentModal
         error={checkoutError}
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
@@ -410,9 +421,9 @@ export default function CustomerHomePage() {
         onConfirmPayment={handleConfirmOrder}
         submitting={submitting}
         pricing={pricing}
-      />
+      />}
 
-      <AdvancedPrintPreviewModal
+      {isAdvancedPrintOpen && <AdvancedPrintPreviewModal
         isOpen={isAdvancedPrintOpen}
         onClose={() => setIsAdvancedPrintOpen(false)}
         fileName={uploadedFile?.fileName}
@@ -426,7 +437,7 @@ export default function CustomerHomePage() {
         printSides={printSides}
         advancedConfig={advancedConfig}
         onSaveAdvancedConfig={setAdvancedConfig}
-      />
+      />}
 
     </div>
   );

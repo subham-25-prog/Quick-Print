@@ -126,7 +126,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   if (!isOpen) return null;
 
   const activePreviewUrl = localObjectUrl || previewUrl || fileSignedUrl || uploadedFile?.previewUrl || uploadedFile?.signedUrl;
-  const activeFileType = fileType || uploadedFile?.fileType || (fileName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+  // The server converts images to PDF, but the local object URL still contains the original image.
+  const activeFileType = (localObjectUrl ? uploadedFile?.file.type : undefined) || fileType || uploadedFile?.fileType || (fileName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
   const isImage = activeFileType.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(fileName);
   const isPdf = activeFileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
 
@@ -368,7 +369,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
               {/* Document Paper Footer */}
               <div className="px-3 py-1.5 border-t border-slate-200 bg-slate-100 flex items-center justify-between text-[9px] text-slate-500 font-mono z-20 shrink-0">
-                <span>WYSIWYG Print Preview</span>
+                <span>Document preview</span>
                 <span>Page {currentPage} of {totalDocPages}</span>
               </div>
             </div>
@@ -415,6 +416,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
           {/* 1. Page Range */}
           <div className="space-y-2">
+            <p role="note" className="rounded-xl bg-amber-950 p-3 text-amber-200">These advanced settings are preview only. Your order prints all uploaded pages using the paper, colour, sides and copies selected on checkout. Layout, range, quality and watermark changes are not applied to the printed file.</p>
             <label className="block font-bold text-slate-300 text-[11px]">1. Page Range / Selection</label>
             <div className="grid grid-cols-2 gap-2">
               {[
