@@ -149,7 +149,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   if (!isOpen) return null;
 
   const activePreviewUrl = localObjectUrl || previewUrl || fileSignedUrl || uploadedFile?.previewUrl || uploadedFile?.signedUrl;
-  const activeFileType = fileType || uploadedFile?.fileType || (fileName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
+  // The server converts images to PDF, but the local object URL still contains the original image.
+  const activeFileType = (localObjectUrl ? uploadedFile?.file.type : undefined) || fileType || uploadedFile?.fileType || (fileName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
   const isImage = activeFileType.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(fileName);
   const isPdf = activeFileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
 
@@ -434,7 +435,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
               {/* Document Paper Footer */}
               <div className="px-3 py-1.5 border-t border-slate-200 bg-slate-100 flex items-center justify-between text-[9px] text-slate-500 font-mono z-20 shrink-0">
-                <span>WYSIWYG Print Preview</span>
+                <span>Document preview</span>
                 <span>Page {currentPage} of {totalDocPages}</span>
               </div>
             </div>
@@ -481,6 +482,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           </div>
 
           {/* Section 2: Core Print Specifications */}
+          <p role="note" className="rounded-xl bg-amber-950 p-3 text-amber-200">Paper, colour, sides and copies apply to your order. Advanced range, layout, scale and watermark controls are preview only; all uploaded pages will print.</p>
           <div className="space-y-4 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-extrabold uppercase tracking-wider text-red-400 flex items-center gap-1.5">

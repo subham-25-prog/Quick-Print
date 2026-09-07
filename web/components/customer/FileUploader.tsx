@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { FileText, CheckCircle2, AlertCircle, RefreshCw, X } from '@/components/ui/Icons';
 import { formatBytes } from '@/lib/utils';
 
@@ -28,8 +28,11 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const activeUpload = useRef<AbortController | null>(null);
+  useEffect(() => () => activeUpload.current?.abort(), []);
 
   const processFile = async (file: File) => {
+    if (activeUpload.current) return;
     setError(null);
 
     const MAX_SIZE = 4 * 1024 * 1024;
@@ -47,6 +50,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     }
 
     setUploading(true);
+    const controller = new AbortController();
+    activeUpload.current = controller;
+    const timeout = window.setTimeout(() => controller.abort(), 60000);
 
     try {
       const formData = new FormData();
@@ -55,6 +61,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
+        signal: controller.signal,
       });
 
       const result = await response.json();
@@ -80,9 +87,12 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
       onFileUploaded(uploadedData);
     } catch (err) {
       console.error('File upload error:', err);
-      setError(err instanceof Error ? err.message : 'Error uploading file');
+      setError(controller.signal.aborted ? 'Upload timed out. Please try again.' : err instanceof Error ? err.message : 'Error uploading file');
       onFileUploaded(null);
     } finally {
+      window.clearTimeout(timeout);
+      activeUpload.current = null;
+      if (fileInputRef.current) fileInputRef.current.value = '';
       setUploading(false);
     }
   };
@@ -127,6 +137,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
         className="hidden"
         id="quickprint-file-input"
         onChange={handleFileChange}
+        disabled={uploading}
       />
 
       {error && (
