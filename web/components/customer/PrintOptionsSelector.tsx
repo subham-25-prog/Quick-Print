@@ -63,71 +63,8 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
     return 3;
   };
 
-  const hasActiveAdvanced =
-    advancedConfig &&
-    (advancedConfig.pageRangeMode !== 'ALL' ||
-      advancedConfig.pagesPerSheet !== '1' ||
-      advancedConfig.pageScaling !== 'FIT' ||
-      advancedConfig.orientation !== 'AUTO' ||
-      (advancedConfig.watermark && advancedConfig.watermark !== 'NONE'));
-
   return (
     <div className="space-y-4">
-      {/* Adobe Advanced Print Settings Button */}
-      {onOpenAdobeModal && (
-        <button
-          type="button"
-          onClick={onOpenAdobeModal}
-          className={`w-full p-3.5 rounded-2xl border flex items-center justify-between transition-all cursor-pointer shadow-2xs group ${
-            hasActiveAdvanced
-              ? 'bg-slate-900 border-slate-800 text-white ring-1 ring-slate-800'
-              : 'bg-red-50/70 border-red-200 text-red-950 hover:bg-red-100/80'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-transform group-hover:scale-105 ${
-                hasActiveAdvanced
-                  ? 'bg-red-600 text-white shadow-sm shadow-red-600/40'
-                  : 'bg-red-600 text-white shadow-2xs'
-              }`}
-            >
-              PDF
-            </div>
-            <div className="text-left">
-              <div className="text-xs font-extrabold flex items-center gap-1.5">
-                <span>Adobe Acrobat Advanced Settings & Preview</span>
-                {hasActiveAdvanced && (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Active</span>
-                  </span>
-                )}
-              </div>
-              <div
-                className={`text-[10px] font-medium ${
-                  hasActiveAdvanced ? 'text-slate-400' : 'text-red-700'
-                }`}
-              >
-                {hasActiveAdvanced
-                  ? `${advancedConfig?.pageRangeMode} | ${advancedConfig?.pagesPerSheet}-Up | ${advancedConfig?.orientation}`
-                  : 'Page range, N-up grid, page scaling, rotation & live preview'}
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all ${
-              hasActiveAdvanced
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-red-600 text-white hover:bg-red-700'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Open Preview</span>
-          </div>
-        </button>
-      )}
 
       {/* 1. Paper Size & Type */}
       <div>
