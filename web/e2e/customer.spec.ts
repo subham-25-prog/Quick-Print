@@ -16,6 +16,17 @@ test('mobile upload, authoritative checkout UI, pending refresh and backend-conf
   await page.route('**/api/payments/'+id,r=>r.fulfill({json:verified?{status:'SUCCESS',orderId:id,orderAccessToken:'test-token'}:{status:'PENDING',amount:7.5,reference:'QP-test',environment:'sandbox'}}));
   await page.route('**/api/orders/'+id,r=>r.fulfill({json:{order:{id,order_number:'QP-TEST',payment_status:'PAID',order_status:'CONFIRMED',file_name:'test.pdf',page_count:3,copies:1,paper_size:'A4',color_mode:'BW',print_sides:'SINGLE',total_amount:7.5},job:{status:'PENDING',is_test:true},agentOnline:false}}));
   await page.goto('/');await page.locator('input[type=file]').setInputFiles({name:'test.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.7 fixture')});
+  const advancedButton = page.getByRole('button',{name:'Advanced printing settings',exact:true});
+  await expect(advancedButton).toBeVisible();
+  await expect(advancedButton).toBeEnabled();
+  await advancedButton.click();
+  const advancedDialog = page.getByRole('dialog',{name:'Advanced print preview'});
+  await expect(advancedDialog).toBeVisible();
+  await advancedDialog.getByRole('button',{name:/^Advanced print settings/}).click();
+  await advancedDialog.getByRole('button',{name:'2 Pages / Sheet',exact:true}).click();
+  await advancedDialog.getByRole('button',{name:'High quality',exact:true}).click();
+  await advancedDialog.getByRole('button',{name:'Apply',exact:true}).click();
+  await expect(page.getByText('2-up',{exact:false})).toBeVisible();
   await page.getByRole('button',{name:'Pay & Print',exact:false}).click();
   await page.getByRole('button',{name:/Pay Online/}).click();
   await expect(page).toHaveURL(/\/payment\//);

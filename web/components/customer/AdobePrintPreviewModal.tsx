@@ -93,6 +93,23 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     }
   }, [isOpen, onClose]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setConfig({
+      pageRangeMode: advancedConfig.pageRangeMode || 'ALL',
+      customPageRange: advancedConfig.customPageRange || '',
+      pagesPerSheet: advancedConfig.pagesPerSheet || '1',
+      pageScaling: advancedConfig.pageScaling || 'FIT',
+      customScalePercent: advancedConfig.customScalePercent || 100,
+      orientation: advancedConfig.orientation || 'AUTO',
+      printQuality: advancedConfig.printQuality || 'STANDARD',
+      watermark: advancedConfig.watermark || 'NONE',
+    });
+    setCurrentPage(1);
+    setZoomLevel(100);
+    setRotationAngle(0);
+  }, [isOpen, advancedConfig]);
+
   // Generate object URL for file if blob
   useEffect(() => {
     if (uploadedFile?.file) {
@@ -166,7 +183,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col h-[100dvh] w-screen overflow-hidden font-sans select-none pb-safe pt-safe">
+    <div role="dialog" aria-modal="true" aria-label="Advanced print preview" className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col h-[100dvh] w-screen overflow-hidden font-sans select-none pb-safe pt-safe">
       {/* 1. Mobile & Desktop Sticky Top Header Bar */}
       <header className="bg-slate-950 border-b border-slate-800/90 px-4 py-3 flex items-center justify-between shrink-0 z-50 shadow-md">
         {/* Left: Close Button */}
@@ -188,7 +205,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               {fileName}
             </h2>
             <div className="text-[10px] text-slate-400 font-mono">
-              Advance Print Preview • Page {currentPage} of {totalDocPages}
+              Advanced print preview • Page {currentPage} of {totalDocPages}
             </div>
           </div>
         </div>
@@ -329,7 +346,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                     )
                   ) : isPdf ? (
                     <iframe
-                      src={`${activePreviewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+                      src={`${activePreviewUrl}#page=${currentPage}&toolbar=0&navpanes=0&scrollbar=0`}
                       className="w-full h-full border-none pointer-events-none rounded-xs"
                       title="PDF Preview"
                     />
@@ -366,7 +383,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             >
               <div className="flex items-center gap-2">
                 <Sliders className="w-4 h-4 text-red-500" />
-                <span>Print Options & Adobe Settings</span>
+                <span>Advanced print settings</span>
               </div>
               <div className="flex items-center gap-1 text-[11px] text-red-400 font-mono">
                 <span>{config.pagesPerSheet}-Up | {config.orientation}</span>
@@ -385,7 +402,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <div className="flex items-center gap-2">
               <Sliders className="w-4 h-4 text-red-500" />
-              <h3 className="font-extrabold text-sm text-white">Adobe Print Options</h3>
+              <h3 className="font-extrabold text-sm text-white">Advanced print settings</h3>
             </div>
             <button
               type="button"
@@ -525,9 +542,34 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             </div>
           </div>
 
-          {/* 5. Watermark Stamp */}
+          {/* 5. Print Quality */}
           <div className="space-y-2 pt-2 border-t border-slate-800">
-            <label className="block font-bold text-slate-300 text-[11px]">5. Security Watermark</label>
+            <label className="block font-bold text-slate-300 text-[11px]">5. Print Quality</label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { key: 'FAST_DRAFT', label: 'Fast draft' },
+                { key: 'STANDARD', label: 'Standard' },
+                { key: 'HIGH_QUALITY', label: 'High quality' },
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setConfig((prev) => ({ ...prev, printQuality: item.key as AdvancedPrintConfig['printQuality'] }))}
+                  className={`min-h-[44px] px-2 rounded-xl border text-center font-bold text-[11px] transition-all cursor-pointer active:scale-95 ${
+                    config.printQuality === item.key
+                      ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
+                      : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 6. Watermark Stamp */}
+          <div className="space-y-2 pt-2 border-t border-slate-800">
+            <label className="block font-bold text-slate-300 text-[11px]">6. Security Watermark</label>
             <select
               value={config.watermark || 'NONE'}
               onChange={(e) => setConfig((prev) => ({ ...prev, watermark: e.target.value as any }))}
@@ -555,7 +597,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               className="min-h-[44px] flex-1 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>Apply Adobe Settings</span>
+              <span>Apply settings</span>
             </button>
           </div>
         </aside>

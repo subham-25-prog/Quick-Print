@@ -25,6 +25,10 @@ const PaymentModal = dynamic(
   () => import('@/components/customer/PaymentModal').then((module) => module.PaymentModal),
   { ssr: false }
 );
+const AdvancedPrintPreviewModal = dynamic(
+  () => import('@/components/customer/AdobePrintPreviewModal').then((module) => module.AdobePrintPreviewModal),
+  { ssr: false }
+);
 
 export default function CustomerHomePage() {
   const router = useRouter();
@@ -43,7 +47,8 @@ export default function CustomerHomePage() {
   const [addOns, setAddOns] = useState<AddOnOptions>({});
 
   // Adobe Advanced Print Configuration & Preview State
-  const [advancedConfig] = useState<AdvancedPrintConfig>({
+  const [isAdvancedPrintOpen, setIsAdvancedPrintOpen] = useState(false);
+  const [advancedConfig, setAdvancedConfig] = useState<AdvancedPrintConfig>({
     pageRangeMode: 'ALL',
     pagesPerSheet: '1',
     pageScaling: 'FIT',
@@ -284,6 +289,8 @@ export default function CustomerHomePage() {
             onCopiesChange={setCopies}
             pricing={pricing}
             advancedConfig={advancedConfig}
+            onOpenAdobeModal={() => setIsAdvancedPrintOpen(true)}
+            previewAvailable={Boolean(uploadedFile)}
           />
         </section>
 
@@ -403,6 +410,22 @@ export default function CustomerHomePage() {
         onConfirmPayment={handleConfirmOrder}
         submitting={submitting}
         pricing={pricing}
+      />
+
+      <AdvancedPrintPreviewModal
+        isOpen={isAdvancedPrintOpen}
+        onClose={() => setIsAdvancedPrintOpen(false)}
+        fileName={uploadedFile?.fileName}
+        pageCount={uploadedFile?.pageCount}
+        fileSignedUrl={uploadedFile?.signedUrl}
+        previewUrl={uploadedFile?.previewUrl}
+        fileType={uploadedFile?.fileType}
+        uploadedFile={uploadedFile}
+        paperSize={paperSize}
+        colorMode={colorMode}
+        printSides={printSides}
+        advancedConfig={advancedConfig}
+        onSaveAdvancedConfig={setAdvancedConfig}
       />
 
     </div>

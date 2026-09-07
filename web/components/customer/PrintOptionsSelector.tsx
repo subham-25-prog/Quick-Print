@@ -17,6 +17,7 @@ interface PrintOptionsSelectorProps {
   pricing: PricingConfig;
   advancedConfig?: AdvancedPrintConfig;
   onOpenAdobeModal?: () => void;
+  previewAvailable?: boolean;
 }
 
 export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
@@ -31,6 +32,7 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
   pricing,
   advancedConfig,
   onOpenAdobeModal,
+  previewAvailable = false,
 }) => {
   const enabledPapers = pricing?.enabled_papers || { a4: true, a3: true, legal: true, photo: true };
   const customPapers = (pricing?.custom_papers || []).filter((p) => p.enabled);
@@ -73,62 +75,6 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Adobe Advanced Print Settings Button */}
-      {onOpenAdobeModal && (
-        <button
-          type="button"
-          onClick={onOpenAdobeModal}
-          className={`w-full p-3.5 rounded-2xl border flex items-center justify-between transition-all cursor-pointer shadow-2xs group ${
-            hasActiveAdvanced
-              ? 'bg-slate-900 border-slate-800 text-white ring-1 ring-slate-800'
-              : 'bg-red-50/70 border-red-200 text-red-950 hover:bg-red-100/80'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs shrink-0 transition-transform group-hover:scale-105 ${
-                hasActiveAdvanced
-                  ? 'bg-red-600 text-white shadow-sm shadow-red-600/40'
-                  : 'bg-red-600 text-white shadow-2xs'
-              }`}
-            >
-              PDF
-            </div>
-            <div className="text-left">
-              <div className="text-xs font-extrabold flex items-center gap-1.5">
-                <span>Adobe Acrobat Advanced Settings & Preview</span>
-                {hasActiveAdvanced && (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3" />
-                    <span>Active</span>
-                  </span>
-                )}
-              </div>
-              <div
-                className={`text-[10px] font-medium ${
-                  hasActiveAdvanced ? 'text-slate-400' : 'text-red-700'
-                }`}
-              >
-                {hasActiveAdvanced
-                  ? `${advancedConfig?.pageRangeMode} | ${advancedConfig?.pagesPerSheet}-Up | ${advancedConfig?.orientation}`
-                  : 'Page range, N-up grid, page scaling, rotation & live preview'}
-              </div>
-            </div>
-          </div>
-
-          <div
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1 transition-all ${
-              hasActiveAdvanced
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-red-600 text-white hover:bg-red-700'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Open Preview</span>
-          </div>
-        </button>
-      )}
-
       {/* 1. Paper Size & Type */}
       <div>
         <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
@@ -370,6 +316,35 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Keep advanced controls after the essential paper, colour, sides and copy choices. */}
+      {onOpenAdobeModal && (
+        <button
+          type="button"
+          onClick={onOpenAdobeModal}
+          disabled={!previewAvailable}
+          aria-label="Advanced printing settings"
+          className={`w-full p-3.5 rounded-2xl border flex items-center justify-between transition-all shadow-2xs group ${
+            hasActiveAdvanced
+              ? 'bg-slate-900 border-slate-800 text-white ring-1 ring-slate-800'
+              : 'bg-red-50/70 border-red-200 text-red-950 hover:bg-red-100/80'
+          } ${previewAvailable ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'}`}
+        >
+          <span className="flex items-center gap-3 min-w-0">
+            <span className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center font-black text-xs shrink-0 shadow-2xs transition-transform group-hover:scale-105">PDF</span>
+            <span className="text-left min-w-0">
+              <span className="text-xs font-extrabold flex items-center gap-1.5">
+                <span>Advanced printing settings</span>
+                {hasActiveAdvanced && <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Active</span>}
+              </span>
+              <span className={`block text-[10px] font-medium mt-0.5 ${hasActiveAdvanced ? 'text-slate-400' : 'text-red-700'}`}>
+                {!previewAvailable ? 'Upload a document to open the preview' : hasActiveAdvanced ? `${advancedConfig?.pageRangeMode} • ${advancedConfig?.pagesPerSheet}-up • ${advancedConfig?.orientation}` : 'Preview pages, set range, layout, scale and orientation'}
+              </span>
+            </span>
+          </span>
+          <span className="ml-3 shrink-0 px-3 py-1.5 rounded-xl bg-red-600 text-white font-bold text-xs flex items-center gap-1"><Sliders className="w-3.5 h-3.5" /> Preview</span>
+        </button>
+      )}
     </div>
   );
 };
