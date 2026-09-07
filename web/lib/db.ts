@@ -1,4 +1,4 @@
-import { Order, PricingConfig, PrintAgentInfo } from '@/types';
+import { Order, OrderStatus, PricingConfig, PrintAgentInfo } from '@/types';
 import { getAdminClient } from './supabase/admin';
 import { getCurrentShopId } from './shop';
 import { defaultPricingConfig } from './config';
@@ -38,6 +38,13 @@ export async function getAllOrders(status='ALL'):Promise<Order[]>{
   let q=database().from('orders').select('*').eq('shop_id',getCurrentShopId()).not('payment_id','is',null).order('created_at',{ascending:false}).limit(500);
   if(status!=='ALL')q=q.eq('order_status',status);
   const {data,error}=await q;if(error)throw error;return data as Order[];
+}
+export async function updateOrderStatus(id:string,status:OrderStatus,actor='ADMIN',extra:Record<string,unknown>={}):Promise<Order>{
+  const db=database();const shop=getCurrentShopId();
+  const updateData:Record<string,unknown>={order_status:status,updated_at:new Date().toISOString(),...extra};
+  const {data,error}=await db.from('orders').update(updateData).eq('id',id).eq('shop_id',shop).select('*').single();
+  if(error)throw error;
+  return data as Order;
 }
 export async function claimNextPrintJob(agentId:string){
   const db=database();const shop=getCurrentShopId();
