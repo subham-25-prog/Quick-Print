@@ -63,6 +63,7 @@ export default function CustomerHomePage() {
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError,setCheckoutError]=useState('');
   const [pricingReady,setPricingReady]=useState(false);
+  const [checkoutEnabled,setCheckoutEnabled]=useState(false);
   const [resumeUrl,setResumeUrl]=useState('');
   const [tempOrderNumber, setTempOrderNumber] = useState<string>('QP-PREV');
 
@@ -124,13 +125,15 @@ export default function CustomerHomePage() {
         const res = await fetch('/api/admin/pricing?t=' + Date.now(), { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
+          setCheckoutEnabled(data.checkoutEnabled === true);
           if (data.pricing) {
             applyPricingConfig(data.pricing);
             setPricingReady(true);
           }
-        } else {setPricingReady(false);}
+        } else {setPricingReady(false);setCheckoutEnabled(false);}
       } catch (err) {
         setPricingReady(false);
+        setCheckoutEnabled(false);
         console.error('Failed to load fresh shop pricing:', err);
       }
     };
@@ -173,6 +176,7 @@ export default function CustomerHomePage() {
   );
 
   const handleOpenPayment = () => {
+    if (!checkoutEnabled) return;
     if (!uploadedFile) {
       alert('Please upload a document to proceed.');
       return;
@@ -366,6 +370,7 @@ export default function CustomerHomePage() {
 
       {/* Floating Bottom Order Summary & Proceed Button Bar */}
       <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-xl z-40">
+        {pricingReady && !checkoutEnabled && <p role="status" className="max-w-xl mx-auto mb-2 text-sm text-amber-900">Online ordering is not available yet. Please contact the shopkeeper.</p>}
         <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -379,7 +384,7 @@ export default function CustomerHomePage() {
           <button
             type="button"
             onClick={handleOpenPayment}
-            disabled={!pricingReady||!uploadedFile||submitting}
+            disabled={!pricingReady||!checkoutEnabled||!uploadedFile||submitting}
             className="py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer"
           >
             <span>Pay &amp; Print</span>

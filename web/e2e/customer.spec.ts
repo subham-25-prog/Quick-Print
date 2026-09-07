@@ -9,7 +9,7 @@ test('unconfigured backend fails closed and anonymous admin is redirected',async
 test('mobile upload, authoritative checkout UI, pending refresh and backend-confirmed order',async({page})=>{
   // Browser presentation contract fixtures only. No production mock payment route.
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
-  await page.route('**/api/admin/pricing*',r=>r.fulfill({json:{pricing:{...pricing,form_fields:{...pricing.form_fields,requireCustomerName:false}}}}));
+  await page.route('**/api/admin/pricing*',r=>r.fulfill({json:{checkoutEnabled:true,pricing:{...pricing,form_fields:{...pricing.form_fields,requireCustomerName:false}}}}));
   await page.route('**/api/upload',r=>r.fulfill({json:{success:true,fileInfo:{uploadId:id,uploadToken:'a'.repeat(64),fileName:'test.pdf',fileType:'application/pdf',fileSizeBytes:100,pageCount:3,storagePath:'private/test.pdf'}}}));
   await page.route('**/api/orders',r=>r.fulfill({status:201,json:{paymentId:id,accessToken:'test-token'}}));
   let verified=false;
@@ -35,6 +35,15 @@ test('forged return parameters never confirm payment; failed payment offers retr
   await expect(page.getByRole('button',{name:'Retry payment'})).toBeVisible();
   await expect(page.getByText('Order confirmed',{exact:false})).toHaveCount(0);
 });
+test('missing merchant setup disables payment even with an uploaded document',async({page})=>{
+  await page.route('**/api/admin/pricing*',r=>r.fulfill({json:{pricing,checkoutEnabled:false}}));
+  await page.route('**/api/upload',r=>r.fulfill({json:{success:true,fileInfo:{uploadId:id,uploadToken:'a'.repeat(64),fileName:'test.pdf',fileType:'application/pdf',fileSizeBytes:100,pageCount:3}}}));
+  await page.goto('/');
+  await page.locator('input[type=file]').setInputFiles({name:'test.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.7 fixture')});
+  await expect(page.getByText('Online ordering is not available yet.',{exact:false})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Pay & Print',exact:false})).toBeDisabled();
+});
+
 test('dashboard and settings show server data without manual payment approval',async({page})=>{
   await page.route('**/api/admin/auth',r=>r.fulfill({json:{authenticated:true}}));
   await page.route('**/api/admin/db-status',r=>r.fulfill({json:{connected:true,message:'Test database'}}));
