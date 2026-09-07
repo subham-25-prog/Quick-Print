@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { apiError,readJson,requireSameOrigin } from '@/lib/http';
-import { revalidatePath, revalidateTag } from 'next/cache';
+import { revalidatePath } from 'next/cache';
 import { getActivePricing, updatePricing } from '@/lib/db';
 import { defaultPricingConfig } from '@/lib/config';
 import { adminUnauthorizedResponse, isAdminRequest } from '@/lib/admin-auth';
@@ -43,11 +43,10 @@ export async function POST(req: NextRequest) {
 
     const updated = await updatePricing(payload as Partial<import('@/types').PricingConfig>);
 
-    // Explicitly revalidate Next.js cache paths & tags
+    // Explicitly revalidate Next.js cache paths
     try {
       revalidatePath('/');
       revalidatePath('/admin');
-      revalidateTag('pricing');
     } catch (e) {}
 
     return NextResponse.json(
