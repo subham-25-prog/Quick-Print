@@ -55,7 +55,8 @@ test('dashboard and settings show server data without manual payment approval',a
   await expect(page.getByRole('button',{name:'Verify & Print'})).toHaveCount(0);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await page.screenshot({path:'test-results/dashboard-mobile.png',fullPage:true});
-  await page.goto('/admin/settings');await expect(page.getByRole('heading',{name:'Payment & agent installation'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Activate configured merchant'})).toBeDisabled();
+  await page.goto('/admin/settings');await expect(page.getByRole('heading',{name:'Customize Client Page'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'5. Payment & Checkout Settings'})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Verify & Print'})).toHaveCount(0);
   await page.screenshot({path:'test-results/settings-mobile.png',fullPage:true});
 });

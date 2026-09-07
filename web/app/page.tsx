@@ -220,7 +220,6 @@ export default function CustomerHomePage() {
         body: JSON.stringify({
           uploadId:uploadedFile.uploadId,uploadToken:uploadedFile.uploadToken,
           idempotencyKey:uploadedFile.checkoutKey,paperSize,colorMode,printSides,copies,addOns,
-          advancedConfig,
           customerName,customerPhone,customerNotes,paymentMethod:method,
         }),
       });

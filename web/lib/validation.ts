@@ -26,28 +26,10 @@ export function printOptions(body: Record<string, unknown>, pricing: PricingConf
       }
     } else if (!allowed.includes(key) || typeof value !== 'boolean' || (value && pricing.enabled_addons?.[key] === false)) throw new HttpError(400, 'Invalid add-on.');
   }
-  const advanced = body.advancedConfig as Record<string, unknown> | undefined;
-  let advancedConfig: AdvancedPrintConfig | undefined = undefined;
-  if (advanced && typeof advanced === 'object' && !Array.isArray(advanced)) {
-    const pageRangeMode = ['ALL', 'RANGE', 'ODD', 'EVEN'].includes(String(advanced.pageRangeMode)) ? (advanced.pageRangeMode as any) : 'ALL';
-    const pagesPerSheet = ['1', '2', '4', 'booklet'].includes(String(advanced.pagesPerSheet)) ? (advanced.pagesPerSheet as any) : '1';
-    const pageScaling = ['FIT', 'ACTUAL', 'SHRINK', 'CUSTOM'].includes(String(advanced.pageScaling)) ? (advanced.pageScaling as any) : 'FIT';
-    const orientation = ['AUTO', 'PORTRAIT', 'LANDSCAPE'].includes(String(advanced.orientation)) ? (advanced.orientation as any) : 'AUTO';
-    const watermark = ['NONE', 'CONFIDENTIAL', 'DRAFT', 'SAMPLE'].includes(String(advanced.watermark)) ? (advanced.watermark as any) : 'NONE';
-    const customPageRange = textField(advanced.customPageRange, 100);
-    const customScalePercent = Number.isFinite(advanced.customScalePercent) ? Math.min(150, Math.max(50, Number(advanced.customScalePercent))) : 100;
-    advancedConfig = {
-      pageRangeMode,
-      customPageRange,
-      pagesPerSheet,
-      pageScaling,
-      customScalePercent,
-      orientation,
-      watermark,
-      printQuality: 'STANDARD',
-    };
-  }
-  return { paperSize: String(paperSize), colorMode, printSides, copies, addOns, ...(advancedConfig ? { advancedConfig } : {}) } as OrderItemOptions & { advancedConfig?: AdvancedPrintConfig };
+  const advanced = body.advancedConfig;
+  const defaults: Record<string, unknown> = { pageRangeMode: 'ALL', customPageRange: '', pagesPerSheet: '1', pageScaling: 'FIT', customScalePercent: 100, orientation: 'AUTO', printQuality: 'STANDARD', watermark: 'NONE' };
+  if (advanced !== undefined && (!advanced || typeof advanced !== 'object' || Array.isArray(advanced) || Object.entries(advanced).some(([k,v]) => defaults[k] !== v))) throw new HttpError(400, 'Advanced printing options are not supported by this installation.');
+  return { paperSize: String(paperSize), colorMode, printSides, copies, addOns } as OrderItemOptions;
 }
 export function validatePricing(value: PricingConfig): PricingConfig {
   for (const [key, number] of Object.entries(value)) {
