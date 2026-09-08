@@ -19,7 +19,7 @@ beforeAll(async()=>{
     CREATE TABLE storage.objects(id UUID,bucket_id TEXT); ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
     CREATE FUNCTION public.uuid_generate_v4() RETURNS UUID LANGUAGE sql AS 'SELECT gen_random_uuid()';`);
   // PGlite uses PostgreSQL; uuid-ossp alone is shimmed with core gen_random_uuid.
-  for(const file of ['schema.sql','storage.sql','migrations/20260906_payment_first_printing.sql','migrations/20260906_switch_to_sbiepay.sql','migrations/20260906_multishop_foundation.sql','migrations/20260907_production_invariants.sql']) {
+  for(const file of JSON.parse(readFileSync(resolve('../supabase/migration-order.json'),'utf8'))) {
     const sql=readFileSync(resolve('../supabase',file),'utf8').replace(/CREATE EXTENSION IF NOT EXISTS "uuid-ossp";/g,'');
     await db.exec(sql);
   }

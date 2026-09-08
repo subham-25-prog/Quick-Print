@@ -62,14 +62,7 @@ export default function AdminLiveOrdersPage() {
   // Load cached orders and pricing on mount
   useEffect(() => {
     try {
-      const cached = localStorage.getItem('qp_admin_cached_orders');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setOrders(parsed);
-          setLoading(false);
-        }
-      }
+      localStorage.removeItem('qp_admin_cached_orders');
     } catch (e) {}
 
     fetch('/api/admin/pricing')
@@ -86,62 +79,7 @@ export default function AdminLiveOrdersPage() {
       const res = await fetch('/api/orders', { cache: 'no-store' });
       const data = await res.json();
       if (Array.isArray(data.orders)) {
-        setOrders((prevOrders) => {
-          const map = new Map<string, Order>();
-
-          // 1. Load from localStorage cache first
-          try {
-            const cached = localStorage.getItem('qp_admin_cached_orders');
-            if (cached) {
-              const parsed = JSON.parse(cached);
-              if (Array.isArray(parsed)) {
-                for (const o of parsed) {
-                  if (o && o.id) map.set(o.id, o);
-                }
-              }
-            }
-          } catch (e) {}
-
-          // 2. Add current state orders
-          for (const o of prevOrders) {
-            if (o && o.id) map.set(o.id, o);
-          }
-
-          // Status weight helper: never allow polling to revert higher status back to lower status
-          const getStatusWeight = (st?: string) => {
-            if (!st) return 0;
-            if (['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(st)) return 3;
-            if (['APPROVED', 'PRINTING'].includes(st)) return 2;
-            return 1;
-          };
-
-          // 3. Merge server response orders intelligently
-          for (const s of data.orders) {
-            if (s && s.id) {
-              const existing = map.get(s.id);
-              if (!existing || getStatusWeight(s.order_status) >= getStatusWeight(existing.order_status)) {
-                map.set(s.id, s);
-              }
-            }
-          }
-
-          const merged = Array.from(map.values()).sort(
-            (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-
-          // Deep stringify check: if fetched data is identical to current state, keep existing array identity to prevent DOM re-renders
-          const currentJson = JSON.stringify(prevOrders);
-          const mergedJson = JSON.stringify(merged);
-          if (currentJson === mergedJson) {
-            return prevOrders;
-          }
-
-          try {
-            localStorage.setItem('qp_admin_cached_orders', JSON.stringify(merged));
-          } catch (e) {}
-
-          return merged;
-        });
+        setOrders(data.orders);
       }
     } catch (err) {
       console.error('Error fetching orders:', err);
@@ -162,98 +100,6 @@ export default function AdminLiveOrdersPage() {
     }, 3000);
     return () => clearInterval(interval);
   }, [fetchOrders, actionLoadingKey]);
-
-  const handleOrderAction = async (
-    orderId: string,
-    action: 'APPROVE_PRINT' | 'REJECT' | 'VERIFY_PAYMENT' | 'MARK_PRINTED' | 'RETRY_PRINT'
-  ) => {
-    const actionKey = `${orderId}_${action}`;
-    setActionLoadingKey(actionKey);
-
-    // Save previous snapshot for rollback if needed
-    const previousOrders = [...orders];
-
-    // OPTIMISTIC UPDATE: Update local state instantly (0ms latency)
-    setOrders((currentOrders) =>
-      currentOrders.map((order) => {
-        if (order.id !== orderId) return order;
-
-        if (action === 'APPROVE_PRINT' || action === 'RETRY_PRINT') {
-          return {
-            ...order,
-            order_status: 'APPROVED' as OrderStatus,
-            payment_status: 'VERIFIED' as const,
-            approved_at: new Date().toISOString(),
-          };
-        } else if (action === 'REJECT') {
-          return {
-            ...order,
-            order_status: 'REJECTED' as OrderStatus,
-            payment_status: 'REJECTED' as const,
-          };
-        } else if (action === 'MARK_PRINTED') {
-          return {
-            ...order,
-            order_status: 'PRINTED' as OrderStatus,
-            payment_status: 'VERIFIED' as const,
-            printed_at: new Date().toISOString(),
-          };
-        } else if (action === 'VERIFY_PAYMENT') {
-          return {
-            ...order,
-            payment_status: 'VERIFIED' as const,
-          };
-        }
-        return order;
-      })
-    );
-
-    if (action === 'APPROVE_PRINT') {
-      showToast('Payment verified & Print job spooled to agent!', 'success');
-    } else if (action === 'RETRY_PRINT') {
-      showToast('Reprint spooled! Order moved to Printing queue.', 'success');
-      if (filter === 'COMPLETED') {
-        setFilter('PRINTING');
-      }
-    } else if (action === 'MARK_PRINTED') {
-      showToast('Order marked as Completed!', 'success');
-    } else if (action === 'REJECT') {
-      showToast('Order marked as Rejected', 'success');
-    }
-
-    try {
-      const res = await fetch('/api/admin/actions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, action }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.order) {
-        // Merge the server-confirmed order object directly
-        setOrders((currentOrders) => {
-          const updated = currentOrders.map((o) => (o.id === orderId ? { ...o, ...data.order } : o));
-          try {
-            localStorage.setItem('qp_admin_cached_orders', JSON.stringify(updated));
-          } catch (e) {}
-          return updated;
-        });
-      } else {
-        throw new Error(data.error || 'Server rejected action');
-      }
-    } catch (err) {
-      console.error('Action error:', err);
-      // Rollback to previous state
-      setOrders(previousOrders);
-      try {
-        localStorage.setItem('qp_admin_cached_orders', JSON.stringify(previousOrders));
-      } catch (e) {}
-      showToast(err instanceof Error ? err.message : 'Action failed. Reverted.', 'error');
-    } finally {
-      setActionLoadingKey(null);
-    }
-  };
 
   // Counts for tabs
   const currentOrdersCount = useMemo(
@@ -776,68 +622,7 @@ export default function AdminLiveOrdersPage() {
                         </div>
                       </div>
 
-                      {/* Rightmost Action Button Toolbar */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {isPending && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOrderAction(order.id, 'APPROVE_PRINT');
-                              }}
-                              disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
-                              style={{ touchAction: 'manipulation' }}
-                              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-500/20 active:scale-95 disabled:opacity-50 cursor-pointer transition-all"
-                            >
-                              {isApproving ? (
-                                <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                              ) : (
-                                <Printer className="w-3.5 h-3.5" />
-                              )}
-                              <span>Verify & Print</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOrderAction(order.id, 'REJECT');
-                              }}
-                              disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
-                              style={{ touchAction: 'manipulation' }}
-                              className="px-2.5 py-2 rounded-xl bg-white hover:bg-rose-50 border border-rose-200 text-rose-600 font-bold text-xs active:scale-95 disabled:opacity-50 cursor-pointer transition-all"
-                            >
-                              {isRejecting ? (
-                                <div className="w-3.5 h-3.5 border-2 border-rose-500/40 border-t-rose-600 rounded-full animate-spin" />
-                              ) : (
-                                <span>Reject</span>
-                              )}
-                            </button>
-                          </>
-                        )}
-
-                        {isPrinting && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOrderAction(order.id, 'MARK_PRINTED');
-                            }}
-                            disabled={Boolean(actionLoadingKey && actionLoadingKey.startsWith(order.id))}
-                            style={{ touchAction: 'manipulation' }}
-                            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-500/20 active:scale-95 disabled:opacity-50 cursor-pointer transition-all"
-                          >
-                            {isCompleting ? (
-                              <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            )}
-                            <span>Mark Completed</span>
-                          </button>
-                        )}
-
-                      </div>
+                      <p className="text-xs text-slate-500">Payment and printing status update automatically.</p>
                     </div>
                   </div>
                 );

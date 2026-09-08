@@ -35,6 +35,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
     { label: 'Orders & History', href: '/admin', icon: '📋' },
     { label: 'Shop QR Code', href: '/admin/poster', icon: '📱' },
     { label: 'Shop Settings', href: '/admin/settings', icon: '⚙️' },
+    { label: 'Setup & Health', href: '/admin/setup', icon: '🔧' },
   ];
 
   const handleLockPortal = async () => {
