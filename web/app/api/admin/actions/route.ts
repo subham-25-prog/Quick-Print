@@ -29,11 +29,18 @@ export async function POST(req: NextRequest) {
     if (body.action === 'CLEAR_HISTORY') {
       const shopId = getCurrentShopId();
       const db = database();
+      const scope = body.scope === 'COMPLETED' ? 'COMPLETED' : 'ALL';
 
-      const { data: orders, error: fetchErr } = await db
+      let query = db
         .from('orders')
         .select('id, payment_id, uploaded_file_id, storage_path')
         .eq('shop_id', shopId);
+
+      if (scope === 'COMPLETED') {
+        query = query.in('order_status', ['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED']);
+      }
+
+      const { data: orders, error: fetchErr } = await query;
 
       if (fetchErr) throw fetchErr;
 
