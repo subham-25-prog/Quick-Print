@@ -127,6 +127,7 @@ export async function POST(req: NextRequest) {
         customer_notes: customerNotes,
       };
 
+      // Step 1: Insert payment record with order_id null initially to respect foreign key constraint
       const paymentRecord = {
         id: paymentId,
         shop_id: shopId,
@@ -142,15 +143,16 @@ export async function POST(req: NextRequest) {
         amount: price.totalAmount,
         currency: 'INR',
         status: 'SUCCESS',
-        order_id: orderId,
+        order_id: null,
         transaction_id: transactionId,
         verified_at: new Date().toISOString(),
         draft_order: draftOrderData,
       };
 
       const { error: paymentError } = await db.from('payments').insert(paymentRecord);
-      if (paymentError) throw paymentError;
+      if (paymentError) throw new HttpError(409, `Payment creation failed: ${paymentError.message}`);
 
+      // Step 2: Insert order in PENDING_PAYMENT state to bypass trigger before payment linkage
       const orderNumber = `QP-${orderId.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
       const orderRecord = {
         id: orderId,
@@ -175,8 +177,8 @@ export async function POST(req: NextRequest) {
         currency: 'INR',
         pricing_snapshot: pricing,
         payment_method: 'CASH',
-        payment_status: 'PAID',
-        order_status: 'CONFIRMED',
+        payment_status: 'PENDING',
+        order_status: 'PENDING_PAYMENT',
         customer_name: customerName,
         customer_phone: customerPhone,
         customer_notes: customerNotes,
@@ -184,15 +186,36 @@ export async function POST(req: NextRequest) {
       };
 
       const { error: orderError } = await db.from('orders').insert(orderRecord);
-      if (orderError) throw orderError;
+      if (orderError) throw new HttpError(409, `Order creation failed: ${orderError.message}`);
 
+      // Step 3: Link payment to order now that order exists
+      const { error: linkError } = await db
+        .from('payments')
+        .update({ order_id: orderId })
+        .eq('id', paymentId)
+        .eq('shop_id', shopId);
+      if (linkError) throw new HttpError(409, `Payment linkage failed: ${linkError.message}`);
+
+      // Step 4: Confirm order now that payment is verified and linked
+      const { error: confirmError } = await db
+        .from('orders')
+        .update({
+          payment_status: 'PAID',
+          order_status: 'CONFIRMED',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', orderId)
+        .eq('shop_id', shopId);
+      if (confirmError) throw new HttpError(409, `Order confirmation failed: ${confirmError.message}`);
+
+      // Step 5: Queue print job for print agent
       const { error: jobError } = await db.from('print_jobs').insert({
         order_id: orderId,
         shop_id: shopId,
         status: 'PENDING',
         is_test: isSandbox,
       });
-      if (jobError) throw jobError;
+      if (jobError) throw new HttpError(409, `Print job queue failed: ${jobError.message}`);
 
       return NextResponse.json(
         {
