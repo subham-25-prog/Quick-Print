@@ -1,8 +1,8 @@
 import {beforeEach,afterEach,expect,test,vi} from 'vitest';
 import {NextRequest} from 'next/server';
 import {defaultPricingConfig} from '@/lib/config';
-const mocks=vi.hoisted(()=>({insert:vi.fn(),from:vi.fn(),rate:vi.fn()}));
-vi.mock('@/lib/db',()=>({database:()=>({from:mocks.from}),getActivePricing:async()=>({...defaultPricingConfig,a4_bw_per_page:2,form_fields:{minOrderAmount:1}}),getAllOrders:vi.fn(),claimNextPrintJob:vi.fn()}));
+const mocks=vi.hoisted(()=>({insert:vi.fn(),from:vi.fn(),rate:vi.fn(),rpc:vi.fn()}));
+vi.mock('@/lib/db',()=>({database:()=>({from:mocks.from,rpc:mocks.rpc}),getActivePricing:async()=>({...defaultPricingConfig,a4_bw_per_page:2,form_fields:{minOrderAmount:1}}),getAllOrders:vi.fn(),claimNextPrintJob:vi.fn()}));
 vi.mock('@/lib/security',async importOriginal=>({...await importOriginal<any>(),rateLimit:mocks.rate}));
 vi.mock('@/lib/payments',()=>({paymentProvider:async()=>({name:'phonepe',merchantId:'merchant',environment:'sandbox',fingerprint:'fp'})}));
 vi.mock('@/lib/payments/service',()=>({openPayment:async(p:any)=>({paymentId:p.id,status:p.status})}));
@@ -12,7 +12,7 @@ import {POST as upload} from '@/app/api/upload/route';
 const id='00000000-0000-4000-8000-000000000003';
 beforeEach(()=>{
   vi.stubEnv('QUICKPRINT_SHOP_ID','00000000-0000-4000-8000-000000000001');
-  mocks.insert.mockReset();mocks.rate.mockReset();
+  mocks.insert.mockReset();mocks.rate.mockReset();mocks.rpc.mockReset().mockResolvedValue({data:id,error:null});
   mocks.from.mockReset().mockImplementation((table:string)=>{
     const chain:any={select:()=>chain,eq:()=>chain,is:()=>chain,in:()=>chain,
       maybeSingle:async()=>({data:table==='uploaded_files'?{id,page_count:3,expires_at:new Date(Date.now()+60000).toISOString()}:null,error:null}),
@@ -39,7 +39,8 @@ test('cash payment creates verified payment, order and print job immediately',as
   const data=await res.json();
   expect(data.paymentMethod).toBe('CASH');
   expect(data.status).toBe('SUCCESS');
-  expect(mocks.insert).toHaveBeenCalledTimes(3); // payments, orders, print_jobs
+  expect(mocks.insert).toHaveBeenCalledTimes(1);
+  expect(mocks.rpc).toHaveBeenCalledOnce();
 });
 test('anonymous dashboard and invalid agent are denied before database access',async()=>{
   expect((await GET(new NextRequest('https://shop.test/api/orders'))).status).toBe(401);
