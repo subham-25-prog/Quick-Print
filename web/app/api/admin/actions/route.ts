@@ -25,22 +25,20 @@ export async function POST(req: NextRequest) {
       if (fetchErr) throw fetchErr;
 
       if (orders && orders.length > 0) {
-        const orderIds = orders.map((o) => o.id);
-        const paymentIds = orders.map((o) => o.payment_id).filter(Boolean);
-        const fileIds = orders.map((o) => o.uploaded_file_id).filter(Boolean);
-
-        await db.from('print_jobs').delete().in('order_id', orderIds);
-        if (paymentIds.length > 0) {
-          await db.from('payments').update({ order_id: null }).in('id', paymentIds);
-        }
-        await db.from('order_events').delete().in('order_id', orderIds);
-        await db.from('audit_logs').delete().in('order_id', orderIds);
-        await db.from('orders').delete().in('id', orderIds);
-        if (paymentIds.length > 0) {
-          await db.from('payments').delete().in('id', paymentIds);
-        }
-        if (fileIds.length > 0) {
-          await db.from('uploaded_files').delete().in('id', fileIds);
+        for (const order of orders) {
+          await db.from('print_jobs').delete().eq('order_id', order.id);
+          if (order.payment_id) {
+            await db.from('payments').update({ order_id: null }).eq('id', order.payment_id);
+          }
+          await db.from('order_events').delete().eq('order_id', order.id);
+          await db.from('audit_logs').delete().eq('order_id', order.id);
+          await db.from('orders').delete().eq('id', order.id);
+          if (order.payment_id) {
+            await db.from('payments').delete().eq('id', order.payment_id);
+          }
+          if (order.uploaded_file_id) {
+            await db.from('uploaded_files').delete().eq('id', order.uploaded_file_id);
+          }
         }
       }
 
