@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { database, getOrderById } from '@/lib/db';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
