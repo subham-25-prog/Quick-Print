@@ -222,7 +222,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-28">
-      <AdminHeader showSave={true} onSave={handleSave} saving={saving} saveButtonText="Save Settings" />
+      <AdminHeader />
 
       {/* Floating Action Toast Notification */}
       {toast && (

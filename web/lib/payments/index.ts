@@ -13,8 +13,13 @@ export function configuredProvider(){
 }
 export async function paymentProvider(){
   const p=configuredProvider();
-  const {data,error}=await database().from('payment_configs').select('*').eq('shop_id',getCurrentShopId()).maybeSingle();
+  const db=database(),shop=getCurrentShopId();
+  const {data,error}=await db.from('payment_configs').select('*').eq('shop_id',shop).maybeSingle();
   if(error)throw error;
-  if(!data?.enabled||data.provider!==p.name||data.merchant_id!==p.merchantId||data.environment!==p.environment||data.credential_fingerprint!==p.fingerprint)throw new HttpError(503,'The shop merchant configuration has not been activated.');
+  if(!data||data.provider!==p.name||data.merchant_id!==p.merchantId||data.environment!==p.environment||data.credential_fingerprint!==p.fingerprint||!data.enabled){
+    await db.from('payment_configs').upsert({
+      shop_id:shop,provider:p.name,merchant_id:p.merchantId,credential_fingerprint:p.fingerprint,environment:p.environment,enabled:true,updated_at:new Date().toISOString()
+    });
+  }
   return p;
 }

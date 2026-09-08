@@ -4,16 +4,16 @@ Each shop receives the repository and a separately generated installation packag
 
 ## Before payment credentials arrive
 
-Generate the package with scripts/new-shop.mjs. Apply fresh-install.sql to an empty Supabase project only; import the environment file privately into the shop's Vercel project. Set the stable production URL, pricing and printer pairing. Visit /admin/setup. Upload a synthetic PDF and image; verify preview access requires its token. Checkout must remain unavailable without an activated merchant. Start the agent in simulation mode.
+Generate the package with scripts/new-shop.mjs. Apply fresh-install.sql to an empty Supabase project only; import the environment file privately into the shop's Vercel project. Set the stable production URL, pricing and printer pairing. Visit /admin/settings. Upload a synthetic PDF and image; verify preview access requires its token. Checkout remains unavailable until valid credentials are added. Start the agent in simulation mode.
 
 ## Activate PhonePe later
 
-Add the shop's approved gateway credentials in Vercel, redeploy, configure the webhook and confirm the merchant in /admin/setup. Follow PAYMENT_SETUP.md. Sandbox results do not prove live settlement. Before accepting customers, test successful payment, failure, cancellation, delayed callback, closing the browser, duplicate callbacks, amount mismatch and printer offline recovery. Confirm exactly one order/job per payment and verify a controlled live print on the actual hardware.
+Add the shop's approved gateway credentials in Vercel, redeploy, and configure the webhook. Follow PAYMENT_SETUP.md. Sandbox results do not prove live settlement. Before accepting customers, test successful payment, failure, cancellation, delayed callback, closing the browser, duplicate callbacks, amount mismatch and printer offline recovery. Confirm exactly one order/job per payment and verify a controlled live print on the actual hardware.
 
 ## Low-maintenance operations
 
 - Configure the maintenance workflow variables and secret from DEPLOYMENT.md. Run it manually once and confirm success before enabling its schedule. Scheduling a workflow is not proof it runs; check failures and inactivity-related scheduler suspension.
-- Check /admin/setup at opening time. A configured maintenance key is not proof of recent execution. A heartbeat proves the agent is online, not that paper, toner or the spooler is healthy.
+- Check the admin dashboard at opening time. A configured maintenance key is not proof of recent execution. A heartbeat proves the agent is online, not that paper, toner or the spooler is healthy.
 - Keep the agent state folder through upgrades and restarts. Never auto-retry an uncertain physical dispatch; inspect the spooler and paper output first to avoid duplicate printing.
 - Retention removes eligible documents; it does not erase financial history. Pending/review cases require attention and may retain files longer. Review storage usage regularly.
 - Back up the database using the shop's chosen plan/process and test a restore. Store secrets in the owner's password manager. Keep documented access to GitHub, Vercel, Supabase and PhonePe.

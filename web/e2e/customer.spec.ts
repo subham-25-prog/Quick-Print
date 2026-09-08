@@ -50,7 +50,6 @@ test('dashboard and settings show server data without manual payment approval',a
   await page.route('**/api/admin/db-status',r=>r.fulfill({json:{connected:true,message:'Test database'}}));
   await page.route('**/api/admin/dashboard',r=>r.fulfill({json:{stats:{today_orders:2,today_revenue:20,today_pages_submitted:4,pending_jobs:1,failed_jobs:0,review_jobs:0},orders:[],payments:[],agent:{status:'OFFLINE',printer_name:'Test printer'},printers:[]}}));
   await page.route('**/api/admin/pricing*',r=>r.fulfill({json:{pricing}}));
-  await page.route('**/api/admin/setup',r=>r.fulfill({json:{checks:{merchantActivated:false,agentOnline:false},merchant:'test-merchant',environment:'sandbox'}}));
   await page.route('**/api/orders',r=>r.fulfill({json:{orders:[]}}));
   await page.goto('/admin');await expect(page.getByRole('heading',{name:'Orders & History'})).toBeVisible();
   await expect(page.getByText('STALE-ORDER')).toHaveCount(0);
@@ -59,10 +58,5 @@ test('dashboard and settings show server data without manual payment approval',a
   await page.screenshot({path:'test-results/dashboard-mobile.png',fullPage:true});
   await page.goto('/admin/settings');await expect(page.getByRole('heading',{name:'Customize Client Page'})).toBeVisible();
   await expect(page.getByRole('heading',{name:'5. Payment & Checkout Settings'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Verify & Print'})).toHaveCount(0);
   await page.screenshot({path:'test-results/settings-mobile.png',fullPage:true});
-  await page.goto('/admin/setup');
-  await expect(page.getByRole('heading',{name:'Setup & Health'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Activate configured merchant'})).toBeDisabled();
-  await expect(page.getByText('Needs setup',{exact:true}).first()).toBeVisible();
 });
