@@ -31,8 +31,8 @@ export function loadConfig(): AgentConfig {
   }
 
   const agentSecret = process.env.PRINT_AGENT_SECRET || '';
-  const agentId = process.env.AGENT_ID || '';
-  const mode = process.env.AGENT_MODE;
+  const agentId = process.env.AGENT_ID || process.env.PRINT_AGENT_ID || 'counter-01';
+  const mode = process.env.AGENT_MODE || (process.env.SIMULATE_PRINT === 'true' ? 'sandbox' : 'live');
 
   if (agentSecret.length < 32 || !agentId || !['live', 'sandbox'].includes(mode || '')) {
     throw new Error('Agent ID, 32-character secret and AGENT_MODE are required');

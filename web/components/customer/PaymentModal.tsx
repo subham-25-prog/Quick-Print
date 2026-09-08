@@ -27,7 +27,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   error,
 }) => {
   const allowOnline = pricing?.form_fields?.allowUpiPayment !== false;
-  const allowCash = false; // The automatic installation requires provider-verified payment.
+  const allowCash = pricing?.form_fields?.allowCashPayment !== false;
 
   if (!isOpen) return null;
 

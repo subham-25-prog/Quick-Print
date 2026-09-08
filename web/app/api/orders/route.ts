@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     requireSameOrigin(req);
-    await rateLimit(req, 'checkout', 10);
+    await rateLimit(req, 'checkout', 20);
 
     if (!createOrderAccessToken(randomUUID())) {
       throw new HttpError(503, 'Checkout security is not configured.');
@@ -38,8 +38,9 @@ export async function POST(req: NextRequest) {
     const uploadId = uuid(body.uploadId);
     const idempotencyKey = uuid(body.idempotencyKey);
 
-    if (body.paymentMethod && body.paymentMethod !== 'UPI') {
-      throw new HttpError(400, 'This installation accepts verified online payments only.');
+    const paymentMethod = body.paymentMethod === 'CASH' ? 'CASH' : 'UPI';
+    if (body.paymentMethod && !['UPI', 'CASH'].includes(String(body.paymentMethod))) {
+      throw new HttpError(400, 'This installation accepts UPI or Cash payments.');
     }
 
     const token = textField(body.uploadToken, 128);
@@ -66,7 +67,10 @@ export async function POST(req: NextRequest) {
     }
 
     const pricing = await getActivePricing();
-    if (pricing.form_fields?.allowUpiPayment === false) {
+    if (paymentMethod === 'CASH' && pricing.form_fields?.allowCashPayment === false) {
+      throw new HttpError(400, 'Cash payment is unavailable.');
+    }
+    if (paymentMethod === 'UPI' && pricing.form_fields?.allowUpiPayment === false) {
       throw new HttpError(503, 'Online payment is unavailable.');
     }
 
@@ -92,6 +96,122 @@ export async function POST(req: NextRequest) {
       JSON.stringify({ uploadId, options, name: customerName, phone: customerPhone, notes: customerNotes })
     );
 
+    // Handle CASH payment flow
+    if (paymentMethod === 'CASH') {
+      const orderId = randomUUID();
+      const paymentId = randomUUID();
+      const accessToken = createOrderAccessToken(orderId);
+      if (!accessToken) {
+        throw new HttpError(503, 'Checkout access security is not configured.');
+      }
+
+      const paymentReference = `QP_CASH_${paymentId.replace(/-/g, '').slice(0, 16)}`;
+      const transactionId = `CASH_${paymentId.replace(/-/g, '').slice(0, 12)}`;
+      const isSandbox = (process.env.PAYMENT_ENVIRONMENT || 'sandbox') === 'sandbox';
+
+      const draftOrderData = {
+        paper_size: options.paperSize,
+        color_mode: options.colorMode,
+        print_sides: options.printSides,
+        copies: options.copies,
+        add_ons: options.addOns,
+        advanced_config: (options as unknown as Record<string, unknown>).advancedConfig,
+        per_page_rate: price.effectiveRatePerPage,
+        print_subtotal: price.printSubtotal,
+        addons_subtotal: price.addOnsSubtotal,
+        total_amount: price.totalAmount,
+        currency: 'INR',
+        pricing_snapshot: pricing,
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_notes: customerNotes,
+      };
+
+      const paymentRecord = {
+        id: paymentId,
+        shop_id: shopId,
+        uploaded_file_id: uploadId,
+        owner_hash: owner,
+        idempotency_key: idempotencyKey,
+        request_hash: requestHash,
+        provider: 'cash',
+        merchant_id: 'cash',
+        environment: process.env.PAYMENT_ENVIRONMENT || 'sandbox',
+        credential_fingerprint: 'cash',
+        payment_reference: paymentReference,
+        amount: price.totalAmount,
+        currency: 'INR',
+        status: 'SUCCESS',
+        order_id: orderId,
+        transaction_id: transactionId,
+        verified_at: new Date().toISOString(),
+        draft_order: draftOrderData,
+      };
+
+      const { error: paymentError } = await db.from('payments').insert(paymentRecord);
+      if (paymentError) throw paymentError;
+
+      const orderNumber = `QP-${orderId.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+      const orderRecord = {
+        id: orderId,
+        shop_id: shopId,
+        order_number: orderNumber,
+        payment_id: paymentId,
+        uploaded_file_id: uploadId,
+        file_name: file.file_name,
+        storage_path: file.storage_path,
+        file_type: 'application/pdf',
+        file_size_bytes: file.file_size_bytes,
+        page_count: file.page_count,
+        paper_size: options.paperSize,
+        color_mode: options.colorMode,
+        print_sides: options.printSides,
+        copies: options.copies,
+        add_ons: options.addOns,
+        per_page_rate: price.effectiveRatePerPage,
+        print_subtotal: price.printSubtotal,
+        addons_subtotal: price.addOnsSubtotal,
+        total_amount: price.totalAmount,
+        currency: 'INR',
+        pricing_snapshot: pricing,
+        payment_method: 'CASH',
+        payment_status: 'PAID',
+        order_status: 'CONFIRMED',
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_notes: customerNotes,
+        transaction_ref: transactionId,
+      };
+
+      const { error: orderError } = await db.from('orders').insert(orderRecord);
+      if (orderError) throw orderError;
+
+      const { error: jobError } = await db.from('print_jobs').insert({
+        order_id: orderId,
+        shop_id: shopId,
+        status: 'PENDING',
+        is_test: isSandbox,
+      });
+      if (jobError) throw jobError;
+
+      return NextResponse.json(
+        {
+          success: true,
+          paymentId,
+          accessToken,
+          orderId,
+          orderAccessToken: accessToken,
+          amount: price.totalAmount,
+          reference: paymentReference,
+          status: 'SUCCESS',
+          paymentMethod: 'CASH',
+          environment: paymentRecord.environment,
+        },
+        { status: 201 }
+      );
+    }
+
+    // Handle UPI / Online payment flow
     const provider = await paymentProvider();
 
     // Idempotent checkout retry check

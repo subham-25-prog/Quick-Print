@@ -227,11 +227,18 @@ export default function CustomerHomePage() {
         }),
       });
       const data=await res.json();
-      if(!res.ok||!data.paymentId)throw new Error(data.error||'Checkout could not be opened.');
-      const statusUrl=`/payment/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
-      try{localStorage.setItem('quickprint_last_checkout',statusUrl);}catch{}
+      if (!res.ok || !data.paymentId) throw new Error(data.error || 'Checkout could not be opened.');
+      if (data.status === 'SUCCESS' && data.orderId) {
+        const successUrl = `/order/success/${data.orderId}?access_token=${encodeURIComponent(data.accessToken || data.orderAccessToken)}`;
+        try { localStorage.setItem('quickprint_last_checkout', successUrl); } catch {}
+        setIsPaymentModalOpen(false);
+        router.push(successUrl);
+        return;
+      }
+      const statusUrl = `/payment/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
+      try { localStorage.setItem('quickprint_last_checkout', statusUrl); } catch {}
       setIsPaymentModalOpen(false);
-      if(data.paymentUrl){window.location.assign(data.paymentUrl);return;}
+      if (data.paymentUrl) { window.location.assign(data.paymentUrl); return; }
       router.push(statusUrl);
     }catch(e){setCheckoutError(e instanceof Error?e.message:'Unable to start payment. Please retry.');}
     finally{setSubmitting(false);}
