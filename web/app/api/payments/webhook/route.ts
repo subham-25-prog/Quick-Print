@@ -5,6 +5,7 @@ import { getCurrentShopId } from '@/lib/shop';
 import { paymentProvider } from '@/lib/payments';
 import { apiError, HttpError } from '@/lib/http';
 
+export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 export async function GET() {
