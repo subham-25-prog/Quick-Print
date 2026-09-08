@@ -4,5 +4,6 @@
   "migrations/20260906_payment_first_printing.sql",
   "migrations/20260906_switch_to_sbiepay.sql",
   "migrations/20260906_multishop_foundation.sql",
-  "migrations/20260907_production_invariants.sql"
+  "migrations/20260907_production_invariants.sql",
+  "migrations/20260908_fix_order_status_constraint.sql"
 ]

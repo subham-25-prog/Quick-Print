@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { database, getOrderById } from '@/lib/db';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
@@ -14,59 +13,6 @@ export async function POST(req: NextRequest) {
   try {
     requireSameOrigin(req);
     const body = await readJson(req);
-    if (body.action === 'DIAGNOSE_STATUS') {
-      let constraintDef: any = null;
-      try {
-        const { data, error } = await database()
-          .schema('information_schema' as any)
-          .from('check_constraints')
-          .select('*');
-        constraintDef = { data, error: error?.message };
-      } catch (e: any) {
-        constraintDef = { caught: e.message };
-      }
-      const statuses = [
-        'PENDING_PAYMENT',
-        'PAYMENT_VERIFICATION_PENDING',
-        'CONFIRMED',
-        'APPROVED',
-        'PRINTING',
-        'SUBMITTED',
-        'PRINTED',
-        'COMPLETED',
-        'PAID',
-        'PENDING',
-        'FAILED',
-        'CANCELLED',
-        'REJECTED',
-        'SUCCESS',
-      ];
-      const results: Record<string, string> = {};
-      for (const s of statuses) {
-        const testId = randomUUID();
-        const { error } = await database().from('orders').insert({
-          id: testId,
-          shop_id: getCurrentShopId(),
-          order_number: `DIAG-${randomUUID().slice(0, 8).toUpperCase()}`,
-          file_name: 'diag.pdf',
-          storage_path: 'diag',
-          file_type: 'application/pdf',
-          per_page_rate: 1,
-          print_subtotal: 1,
-          total_amount: 1,
-          pricing_snapshot: {},
-          order_status: s,
-        });
-        if (error) {
-          results[s] = error.message;
-        } else {
-          results[s] = 'ALLOWED';
-          await database().from('orders').delete().eq('id', testId);
-        }
-      }
-      return NextResponse.json({ success: true, constraintDef, results });
-    }
-
     const orderId = uuid(body.orderId);
     if (body.action !== 'RETRY_PRINT') {
       throw new HttpError(
