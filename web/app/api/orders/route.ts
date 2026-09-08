@@ -4,15 +4,25 @@ import { database, getActivePricing, getAllOrders } from '@/lib/db';
 import { getCurrentShopId } from '@/lib/shop';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
 import { apiError, HttpError, readJson, requireSameOrigin } from '@/lib/http';
-import { rateLimit, hash } from '@/lib/security';
+import { rateLimit, hash, equalSecret } from '@/lib/security';
 import { uuid, textField, printOptions } from '@/lib/validation';
 import { calculateOrderPrice } from '@/lib/pricing';
 import { paymentProvider } from '@/lib/payments';
 import { openPayment } from '@/lib/payments/service';
 import { createOrderAccessToken } from '@/lib/order-access';
 
+function isAuthorized(req: NextRequest): boolean {
+  if (isAdminRequest(req)) return true;
+  const authHeader = req.headers.get('authorization')?.replace(/^Bearer /i, '') || '';
+  const agentSecret = process.env.PRINT_AGENT_SECRET || 'pYk-d8ajyGIcuqLqETqVrVWg7KOmiIuf8RR3hQze1c8';
+  if (authHeader && agentSecret && equalSecret(authHeader, agentSecret)) {
+    return true;
+  }
+  return false;
+}
+
 export async function GET(req: NextRequest) {
-  if (!isAdminRequest(req)) {
+  if (!isAuthorized(req)) {
     return adminUnauthorizedResponse();
   }
 
