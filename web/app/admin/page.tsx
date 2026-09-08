@@ -320,6 +320,29 @@ export default function AdminLiveOrdersPage() {
                 <Layers className="w-3.5 h-3.5 text-slate-400" />
                 <span>{orders.length} Total</span>
               </button>
+
+              {/* High-Visibility Header Clear History Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (orders.length === 0) {
+                    showToast('No orders in history to clear.', 'error');
+                    return;
+                  }
+                  setClearScope(completedOrdersCount > 0 ? 'COMPLETED' : 'ALL');
+                  setShowClearModal(true);
+                }}
+                disabled={isRefreshing || isClearing}
+                title="Clear order history"
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs ${
+                  orders.length === 0
+                    ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
+                    : 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600 shadow-rose-600/20'
+                }`}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Clear History</span>
+              </button>
             </div>
           </div>
 
@@ -440,19 +463,18 @@ export default function AdminLiveOrdersPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (orders.length === 0) return;
+                  if (orders.length === 0) {
+                    showToast('No orders in history to clear.', 'error');
+                    return;
+                  }
                   setClearScope(completedOrdersCount > 0 ? 'COMPLETED' : 'ALL');
                   setShowClearModal(true);
                 }}
-                disabled={orders.length === 0 || isRefreshing || isClearing}
-                title={orders.length === 0 ? 'No orders to clear' : 'Clear order history'}
-                className={`px-3.5 py-2 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs ${
-                  orders.length === 0
-                    ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60'
-                    : 'bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border-rose-200 hover:shadow-xs cursor-pointer'
-                }`}
+                disabled={isRefreshing || isClearing}
+                title="Clear order history"
+                className="px-3.5 py-2 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border-rose-200 shadow-2xs hover:shadow-xs cursor-pointer"
               >
-                <Trash2 className={`w-3.5 h-3.5 ${orders.length === 0 ? 'text-slate-400' : 'text-rose-500'}`} />
+                <Trash2 className="w-3.5 h-3.5 text-rose-500" />
                 <span>Clear All History</span>
               </button>
             </div>
