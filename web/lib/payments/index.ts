@@ -14,7 +14,6 @@ export function configuredProvider(): PhonePeProvider {
   const requiredFields = [
     'PHONEPE_MERCHANT_ID',
     'PHONEPE_CLIENT_ID',
-    'PHONEPE_CLIENT_VERSION',
     'PHONEPE_CLIENT_SECRET',
     'PHONEPE_WEBHOOK_USERNAME',
     'PHONEPE_WEBHOOK_PASSWORD',
@@ -31,11 +30,13 @@ export function configuredProvider(): PhonePeProvider {
     throw new HttpError(503, 'Payment environment is not configured.');
   }
 
+  const clientVersion = process.env.PHONEPE_CLIENT_VERSION?.trim() || '1';
+
   return new PhonePeProvider(
     process.env.PHONEPE_MERCHANT_ID!,
     mode,
     process.env.PHONEPE_CLIENT_ID!,
-    process.env.PHONEPE_CLIENT_VERSION!,
+    clientVersion,
     process.env.PHONEPE_CLIENT_SECRET!,
     process.env.PHONEPE_WEBHOOK_USERNAME!,
     process.env.PHONEPE_WEBHOOK_PASSWORD!
