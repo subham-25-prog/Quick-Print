@@ -7,6 +7,14 @@ import { apiError, HttpError } from '@/lib/http';
 
 export const maxDuration = 60;
 
+export async function GET() {
+  return NextResponse.json({ ok: true, service: 'payment-webhook' });
+}
+
+export async function HEAD() {
+  return new NextResponse(null, { status: 200 });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const contentLength = Number(req.headers.get('content-length'));
@@ -21,6 +29,15 @@ export async function POST(req: NextRequest) {
       event = await provider.handleWebhook(req);
     } catch {
       throw new HttpError(401, 'Webhook rejected.');
+    }
+
+    // Handle test/validation probes from payment gateway during registration
+    if (
+      event.reference === 'TEST_PROBE' ||
+      event.reference.toLowerCase().includes('test') ||
+      event.reference.toLowerCase().includes('ping')
+    ) {
+      return NextResponse.json({ received: true, status: 'TEST_ACK' });
     }
 
     const db = database();

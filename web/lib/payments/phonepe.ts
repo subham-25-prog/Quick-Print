@@ -225,7 +225,7 @@ export class PhonePeProvider implements PaymentProvider {
     const expected = createHash('sha256')
       .update(`${this.webhookUser}:${this.webhookPassword}`)
       .digest('hex');
-    const supplied = req.headers.get('authorization') || '';
+    const supplied = (req.headers.get('authorization') || '').replace(/^(SHA256|Bearer|Basic)\s+/i, '').trim();
 
     if (
       !this.webhookUser ||
@@ -237,7 +237,25 @@ export class PhonePeProvider implements PaymentProvider {
     }
 
     const raw = await readText(req, 65536);
-    const data = JSON.parse(raw);
+    let data: any = {};
+    try {
+      data = raw.trim() ? JSON.parse(raw) : {};
+    } catch {
+      data = {};
+    }
+
+    // Accept webhook registration probe / test events
+    if (
+      !data.event ||
+      ['test', 'ping', 'check', 'validation'].includes(data.event) ||
+      data.payload?.merchantOrderId === 'test'
+    ) {
+      return {
+        reference: 'TEST_PROBE',
+        merchantId: this.merchantId,
+        eventHash: createHash('sha256').update(raw || 'probe').digest('hex'),
+      };
+    }
 
     if (
       !['checkout.order.completed', 'checkout.order.failed'].includes(data.event) ||
