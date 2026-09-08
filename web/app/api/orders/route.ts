@@ -127,7 +127,6 @@ export async function POST(req: NextRequest) {
         customer_notes: customerNotes,
       };
 
-      // Step 1: Insert payment record with order_id null initially to respect foreign key constraint
       const paymentRecord = {
         id: paymentId,
         shop_id: shopId,
@@ -137,98 +136,48 @@ export async function POST(req: NextRequest) {
         request_hash: requestHash,
         provider: 'cash',
         merchant_id: 'cash',
-        environment: process.env.PAYMENT_ENVIRONMENT || 'sandbox',
+        environment: 'sandbox',
         credential_fingerprint: 'cash',
         payment_reference: paymentReference,
         amount: price.totalAmount,
         currency: 'INR',
-        status: 'SUCCESS',
-        order_id: null,
-        transaction_id: transactionId,
-        verified_at: new Date().toISOString(),
+        status: 'PENDING',
         draft_order: draftOrderData,
       };
 
       const { error: paymentError } = await db.from('payments').insert(paymentRecord);
       if (paymentError) throw new HttpError(409, `Payment creation failed: ${paymentError.message}`);
 
-      // Step 2: Insert order in PENDING_PAYMENT state to bypass trigger before payment linkage
-      const orderNumber = `QP-${orderId.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
-      const orderRecord = {
-        id: orderId,
-        shop_id: shopId,
-        order_number: orderNumber,
-        payment_id: paymentId,
-        uploaded_file_id: uploadId,
-        file_name: file.file_name,
-        storage_path: file.storage_path,
-        file_type: 'application/pdf',
-        file_size_bytes: file.file_size_bytes,
-        page_count: file.page_count,
-        paper_size: options.paperSize,
-        color_mode: options.colorMode,
-        print_sides: options.printSides,
-        copies: options.copies,
-        add_ons: options.addOns,
-        per_page_rate: price.effectiveRatePerPage,
-        print_subtotal: price.printSubtotal,
-        addons_subtotal: price.addOnsSubtotal,
-        total_amount: price.totalAmount,
-        currency: 'INR',
-        pricing_snapshot: pricing,
-        payment_method: 'CASH',
-        payment_status: 'PENDING',
-        order_status: 'PENDING_PAYMENT',
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_notes: customerNotes,
-        transaction_ref: transactionId,
-      };
-
-      const { error: orderError } = await db.from('orders').insert(orderRecord);
-      if (orderError) throw new HttpError(409, `Order creation failed: ${orderError.message}`);
-
-      // Step 3: Link payment to order now that order exists
-      const { error: linkError } = await db
-        .from('payments')
-        .update({ order_id: orderId })
-        .eq('id', paymentId)
-        .eq('shop_id', shopId);
-      if (linkError) throw new HttpError(409, `Payment linkage failed: ${linkError.message}`);
-
-      // Step 4: Confirm order now that payment is verified and linked
-      const { error: confirmError } = await db
-        .from('orders')
-        .update({
-          payment_status: 'PAID',
-          order_status: 'CONFIRMED',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', orderId)
-        .eq('shop_id', shopId);
-      if (confirmError) throw new HttpError(409, `Order confirmation failed: ${confirmError.message}`);
-
-      // Step 5: Queue print job for print agent
-      const { error: jobError } = await db.from('print_jobs').insert({
-        order_id: orderId,
-        shop_id: shopId,
-        status: 'PENDING',
-        is_test: isSandbox,
+      const amountMinor = Math.round(price.totalAmount * 100);
+      const { data: createdOrderId, error: rpcError } = await db.rpc('finalize_payment', {
+        p_shop_id: shopId,
+        p_payment_id: paymentId,
+        p_provider: 'cash',
+        p_merchant_id: 'cash',
+        p_reference: paymentReference,
+        p_transaction_id: transactionId,
+        p_amount_minor: amountMinor,
+        p_currency: 'INR',
+        p_environment: 'sandbox',
+        p_credential_fingerprint: 'cash',
       });
-      if (jobError) throw new HttpError(409, `Print job queue failed: ${jobError.message}`);
+
+      if (rpcError) throw new HttpError(409, `Cash finalization failed: ${rpcError.message}`);
+      const finalOrderId = createdOrderId || paymentId;
+      const orderAccessToken = createOrderAccessToken(finalOrderId);
 
       return NextResponse.json(
         {
           success: true,
           paymentId,
-          accessToken,
-          orderId,
-          orderAccessToken: accessToken,
+          accessToken: orderAccessToken,
+          orderId: finalOrderId,
+          orderAccessToken,
           amount: price.totalAmount,
           reference: paymentReference,
           status: 'SUCCESS',
           paymentMethod: 'CASH',
-          environment: paymentRecord.environment,
+          environment: 'sandbox',
         },
         { status: 201 }
       );
