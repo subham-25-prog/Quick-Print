@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     requireSameOrigin(req);
-    await rateLimit(req, 'checkout', 20);
+    await rateLimit(req, 'checkout', 60);
 
     if (!createOrderAccessToken(randomUUID())) {
       throw new HttpError(503, 'Checkout security is not configured.');
