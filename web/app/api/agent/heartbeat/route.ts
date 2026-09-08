@@ -28,7 +28,8 @@ export async function POST(req: NextRequest) {
       throw new HttpError(400, 'Agent mode is required.');
     }
 
-    if (mode !== process.env.PAYMENT_ENVIRONMENT) {
+    const expectedEnv = process.env.PAYMENT_ENVIRONMENT || 'sandbox';
+    if (mode !== expectedEnv) {
       throw new HttpError(409, 'Agent and payment environment must match.');
     }
 
