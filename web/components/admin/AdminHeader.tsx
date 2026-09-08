@@ -11,6 +11,7 @@ interface AdminHeaderProps {
   saving?: boolean;
   saveButtonText?: string;
   showSave?: boolean;
+  shopName?: string;
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({
@@ -18,18 +19,40 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   saving = false,
   saveButtonText = 'Save Changes',
   showSave = false,
+  shopName,
 }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const storeName = shopConfig.name;
-  const [dbStatus, setDbStatus] = React.useState<{ connected: boolean; mode: string; message: string } | null>(null);
+  const [storeName, setStoreName] = React.useState(shopName || shopConfig.name);
+  const [dbStatus, setDbStatus] = React.useState<{ connected: boolean; mode: string; message: string; shopName?: string } | null>(null);
 
   React.useEffect(() => {
+    if (shopName) {
+      setStoreName(shopName);
+      return;
+    }
+    try {
+      const cached = localStorage.getItem('quickprint_live_pricing');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.shop_name) setStoreName(parsed.shop_name);
+      }
+    } catch {}
+
     fetch('/api/admin/db-status')
       .then((res) => res.json())
-      .then((data) => setDbStatus(data))
+      .then((data) => {
+        setDbStatus(data);
+        if (data.shopName) setStoreName(data.shopName);
+      })
       .catch(() => setDbStatus({ connected: false, mode: 'LOCAL_MEMORY', message: 'Offline' }));
-  }, []);
+
+    const handleUpdate = (e: any) => {
+      if (e.detail) setStoreName(e.detail);
+    };
+    window.addEventListener('quickprint_shop_name_updated', handleUpdate);
+    return () => window.removeEventListener('quickprint_shop_name_updated', handleUpdate);
+  }, [shopName]);
 
   const navItems = [
     { label: 'Orders & History', href: '/admin', icon: '📋' },

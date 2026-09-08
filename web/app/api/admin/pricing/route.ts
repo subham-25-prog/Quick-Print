@@ -47,6 +47,9 @@ export async function POST(req: NextRequest) {
     try {
       revalidatePath('/');
       revalidatePath('/admin');
+      revalidatePath('/admin/settings');
+      revalidatePath('/admin/poster');
+      revalidatePath('/admin/login');
     } catch (e) {}
 
     return NextResponse.json(

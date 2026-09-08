@@ -11,11 +11,16 @@ export function database() {
   return db;
 }
 export async function getActivePricing(): Promise<PricingConfig> {
-  const {data,error}=await database().from('shop_settings').select('pricing').eq('shop_id',getCurrentShopId()).maybeSingle();
+  const shopId=getCurrentShopId();
+  const {data,error}=await database().from('shop_settings').select('pricing').eq('shop_id',shopId).maybeSingle();
   if(error) throw error;
   if(!data?.pricing) throw new HttpError(503,'The shopkeeper must finish setting up pricing before checkout.');
   const {admin_pin:_pin,...pricing}=data.pricing;
-  return validatePricing({...defaultPricingConfig,...pricing});
+  const {data:shop}=await database().from('shops').select('name, address, phone').eq('id',shopId).maybeSingle();
+  const shopName=pricing.shop_name||shop?.name||defaultPricingConfig.shop_name;
+  const shopAddress=pricing.shop_address||shop?.address||defaultPricingConfig.shop_address;
+  const shopPhone=pricing.shop_phone||shop?.phone||defaultPricingConfig.shop_phone;
+  return validatePricing({...defaultPricingConfig,...pricing,shop_name:shopName,shop_address:shopAddress,shop_phone:shopPhone});
 }
 export async function updatePricing(patch:Partial<PricingConfig>):Promise<PricingConfig>{
   if(!patch || typeof patch!=='object' || Array.isArray(patch)) throw new HttpError(400,'Invalid pricing.');
@@ -27,6 +32,13 @@ export async function updatePricing(patch:Partial<PricingConfig>):Promise<Pricin
   const pricing=validatePricing({...defaultPricingConfig,...data?.pricing,...clean,updated_at:new Date().toISOString()});
   const {error}=await db.from('shop_settings').upsert({id:shopId,shop_id:shopId,pricing,updated_at:new Date().toISOString()});
   if(error) throw error;
+  if(clean.shop_name || clean.shop_address || clean.shop_phone){
+    const shopUpdate: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (clean.shop_name) shopUpdate.name = clean.shop_name;
+    if (clean.shop_address) shopUpdate.address = clean.shop_address;
+    if (clean.shop_phone) shopUpdate.phone = clean.shop_phone;
+    await db.from('shops').update(shopUpdate).eq('id', shopId);
+  }
   return pricing;
 }
 export async function getOrderById(id:string):Promise<Order|null>{

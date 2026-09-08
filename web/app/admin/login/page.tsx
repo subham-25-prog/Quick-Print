@@ -8,9 +8,27 @@ import { Lock, AlertCircle, ArrowRight } from '@/components/ui/Icons';
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const [shopName, setShopName] = useState(shopConfig.name);
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    try {
+      const cached = localStorage.getItem('quickprint_live_pricing');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.shop_name) setShopName(parsed.shop_name);
+      }
+    } catch {}
+
+    fetch('/api/admin/pricing')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.pricing?.shop_name) setShopName(data.pricing.shop_name);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleUnlock = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +71,7 @@ export default function AdminLoginPage() {
             Admin Access Required
           </h1>
           <p className="text-xs text-slate-400">
-            {shopConfig.name} • Enter password to manage orders and prices
+            {shopName} • Enter password to manage orders and prices
           </p>
         </div>
 

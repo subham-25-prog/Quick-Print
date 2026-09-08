@@ -72,7 +72,7 @@ export default function ShopWallPosterPage() {
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-20 print:bg-white print:p-0">
       <div className="print:hidden">
-        <AdminHeader />
+        <AdminHeader shopName={shopName} />
       </div>
 
       <main className="max-w-3xl mx-auto w-full px-4 pt-6 space-y-6">

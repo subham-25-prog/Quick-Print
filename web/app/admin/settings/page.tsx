@@ -195,6 +195,10 @@ export default function AdminSettingsPage() {
       const data = await res.json();
       if (res.ok && data.pricing) {
         setForm(data.pricing);
+        try {
+          localStorage.setItem('quickprint_live_pricing', JSON.stringify(data.pricing));
+        } catch {}
+        window.dispatchEvent(new CustomEvent('quickprint_shop_name_updated', { detail: data.pricing.shop_name }));
         showToast('Shop configuration & rates saved! Customer page updated live.', 'success');
       } else {
         throw new Error(data.error || 'Failed to update shop settings');
@@ -209,7 +213,7 @@ export default function AdminSettingsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col">
-        <AdminHeader />
+        <AdminHeader shopName={form.shop_name} />
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="flex flex-col items-center gap-3 text-slate-500">
             <RefreshCw className="w-8 h-8 animate-spin text-indigo-600" />
@@ -222,7 +226,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-28">
-      <AdminHeader />
+      <AdminHeader shopName={form.shop_name} />
 
       {/* Floating Action Toast Notification */}
       {toast && (

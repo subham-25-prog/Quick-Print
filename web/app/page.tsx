@@ -79,6 +79,9 @@ export default function CustomerHomePage() {
 
     const applyPricingConfig = (cfg: PricingConfig) => {
       setPricing(cfg);
+      if (cfg.shop_name) {
+        document.title = `${cfg.shop_name} – Self-Service Document Printing`;
+      }
       try {
         localStorage.setItem('quickprint_live_pricing', JSON.stringify(cfg));
       } catch {}
