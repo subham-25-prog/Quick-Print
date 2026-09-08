@@ -29,6 +29,7 @@ import {
   RotateCcw,
   X,
   Tag,
+  Trash2,
 } from '@/components/ui/Icons';
 
 export default function AdminLiveOrdersPage() {
@@ -57,6 +58,50 @@ export default function AdminLiveOrdersPage() {
     setTimeout(() => {
       setCopiedOrderId(null);
     }, 2000);
+  };
+
+  const handleClearHistory = async () => {
+    if (!window.confirm('Are you sure you want to clear all order history? This will permanently remove all past orders.')) {
+      return;
+    }
+    try {
+      setIsRefreshing(true);
+      const res = await fetch('/api/admin/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'CLEAR_HISTORY' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to clear history');
+      showToast(`Cleared ${data.clearedCount ?? 0} order(s) from history.`, 'success');
+      await fetchOrders(true);
+    } catch (err: any) {
+      showToast(err.message || 'Could not clear history.', 'error');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!window.confirm('Are you sure you want to remove this order from history?')) {
+      return;
+    }
+    try {
+      setActionLoadingKey(`${orderId}_DELETE`);
+      const res = await fetch('/api/admin/actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'DELETE_ORDER', orderId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to delete order');
+      showToast('Order removed from history.', 'success');
+      await fetchOrders(true);
+    } catch (err: any) {
+      showToast(err.message || 'Could not delete order.', 'error');
+    } finally {
+      setActionLoadingKey(null);
+    }
   };
 
   // Load cached orders and pricing on mount
@@ -389,6 +434,20 @@ export default function AdminLiveOrdersPage() {
                 <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-indigo-600' : 'text-slate-500'}`} />
                 <span>{isRefreshing ? 'Syncing...' : 'Sync'}</span>
               </button>
+
+              {/* Clear History Button */}
+              {orders.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleClearHistory}
+                  disabled={isRefreshing}
+                  title="Clear all past orders and history"
+                  className="px-3.5 py-2 rounded-2xl bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-rose-200 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs hover:shadow-xs disabled:opacity-60"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Clear History</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -622,7 +681,17 @@ export default function AdminLiveOrdersPage() {
                         </div>
                       </div>
 
-                      <p className="text-xs text-slate-500">Payment and printing status update automatically.</p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOrder(order.id)}
+                          disabled={actionLoadingKey === `${order.id}_DELETE`}
+                          title="Delete order from history"
+                          className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );

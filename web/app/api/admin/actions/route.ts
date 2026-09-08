@@ -13,7 +13,74 @@ export async function POST(req: NextRequest) {
   try {
     requireSameOrigin(req);
     const body = await readJson(req);
+    if (body.action === 'CLEAR_HISTORY') {
+      const shopId = getCurrentShopId();
+      const db = database();
+
+      const { data: orders, error: fetchErr } = await db
+        .from('orders')
+        .select('id, payment_id, uploaded_file_id')
+        .eq('shop_id', shopId);
+
+      if (fetchErr) throw fetchErr;
+
+      if (orders && orders.length > 0) {
+        const orderIds = orders.map((o) => o.id);
+        const paymentIds = orders.map((o) => o.payment_id).filter(Boolean);
+        const fileIds = orders.map((o) => o.uploaded_file_id).filter(Boolean);
+
+        await db.from('print_jobs').delete().in('order_id', orderIds);
+        if (paymentIds.length > 0) {
+          await db.from('payments').update({ order_id: null }).in('id', paymentIds);
+        }
+        await db.from('order_events').delete().in('order_id', orderIds);
+        await db.from('audit_logs').delete().in('order_id', orderIds);
+        await db.from('orders').delete().in('id', orderIds);
+        if (paymentIds.length > 0) {
+          await db.from('payments').delete().in('id', paymentIds);
+        }
+        if (fileIds.length > 0) {
+          await db.from('uploaded_files').delete().in('id', fileIds);
+        }
+      }
+
+      return NextResponse.json({ success: true, clearedCount: orders?.length || 0 });
+    }
+
     const orderId = uuid(body.orderId);
+
+    if (body.action === 'DELETE_ORDER') {
+      const shopId = getCurrentShopId();
+      const db = database();
+
+      const { data: order, error: fetchErr } = await db
+        .from('orders')
+        .select('id, payment_id, uploaded_file_id')
+        .eq('id', orderId)
+        .eq('shop_id', shopId)
+        .maybeSingle();
+
+      if (fetchErr) throw fetchErr;
+
+      if (order) {
+        await db.from('print_jobs').delete().eq('order_id', orderId);
+        if (order.payment_id) {
+          await db.from('payments').update({ order_id: null }).eq('id', order.payment_id);
+        }
+        await db.from('order_events').delete().eq('order_id', orderId);
+        await db.from('audit_logs').delete().eq('order_id', orderId);
+        await db.from('orders').delete().eq('id', orderId);
+        if (order.payment_id) {
+          await db.from('payments').delete().eq('id', order.payment_id);
+        }
+        if (order.uploaded_file_id) {
+          await db.from('uploaded_files').delete().eq('id', order.uploaded_file_id);
+        }
+      }
+
+      return NextResponse.json({ success: true });
+    }
+
     if (body.action !== 'RETRY_PRINT') {
       throw new HttpError(
         409,
