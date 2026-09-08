@@ -41,7 +41,7 @@
     "requireCustomerName": true,
     "showCustomerPhone": false,
     "requireCustomerPhone": false,
-    "allowCashPayment": true,
+    "allowCashPayment": false,
     "allowUpiPayment": true,
     "allowColorPrinting": true,
     "allowDoubleSided": true,

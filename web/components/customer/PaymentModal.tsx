@@ -27,7 +27,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   error,
 }) => {
   const allowOnline = pricing?.form_fields?.allowUpiPayment !== false;
-  const allowCash = pricing?.form_fields?.allowCashPayment !== false;
+  const allowCash = Boolean(pricing?.form_fields?.allowCashPayment);
 
   if (!isOpen) return null;
 

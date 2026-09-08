@@ -11,7 +11,7 @@ import { rateLimit, hash } from '@/lib/security';
 export async function POST(req: NextRequest) {
   try {
     requireSameOrigin(req);
-    await rateLimit(req, 'upload', 60);
+    await rateLimit(req, 'upload', 10);
 
     const contentLength = Number(req.headers.get('content-length'));
     if (contentLength > 4300000) {

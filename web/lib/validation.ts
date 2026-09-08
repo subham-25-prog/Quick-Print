@@ -206,7 +206,7 @@ export function validatePricing(value: PricingConfig): PricingConfig {
     ...clean,
     form_fields: {
       ...clean.form_fields,
-      allowCashPayment: clean.form_fields?.allowCashPayment !== false,
+      allowCashPayment: Boolean(clean.form_fields?.allowCashPayment),
       autoApproveUpiOrders: false,
     },
   };
