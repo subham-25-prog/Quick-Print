@@ -1,28 +1,108 @@
-import {PricingConfig,OrderItemOptions,PriceBreakdown} from '@/types';
-import {defaultPricingConfig} from './config';
-/** All rates, including duplex, are per document page; arithmetic uses paisa. */
-export function calculateOrderPrice(pageCount:number,options:OrderItemOptions,pricing:PricingConfig=defaultPricingConfig):PriceBreakdown{
-  if(!Number.isSafeInteger(pageCount)||pageCount<1||!Number.isSafeInteger(options.copies)||options.copies<1)throw new Error('Invalid page or copy count');
-  const prefix=options.paperSize.toLowerCase(),color=options.colorMode==='COLOR'?'color':'bw';
-  const key=prefix==='photo'?'photo_paper_per_page':prefix+'_'+color+(options.printSides==='DOUBLE'?'_double':'')+'_per_page';
-  const rate=Number((pricing as any)[key]);
-  if(!Number.isFinite(rate)||rate<0)throw new Error('Pricing unavailable for this option');
-  const rateMinor=Math.round(rate*100),printMinor=pageCount*options.copies*rateMinor;
-  const addOnsBreakdown:PriceBreakdown['addOnsBreakdown']=[];
-  for(const [key,config,label,perPage] of [
-    ['stapling','addon_stapling','Stapling',false],['spiralBinding','addon_spiral_binding','Spiral binding',false],
-    ['lamination','addon_lamination','Lamination',true],['hardBinding','addon_hard_binding','Hard binding',false],['softBinding','addon_soft_binding','Soft binding',false]
-  ] as const){
-    if(options.addOns?.[key]&&pricing.enabled_addons?.[key]===true){
-      const value=Math.round(pricing[config]*100);addOnsBreakdown.push({name:label,unitPrice:value/100,total:value*options.copies*(perPage?pageCount:1)/100});
+import { PricingConfig, OrderItemOptions, PriceBreakdown } from '@/types';
+import { defaultPricingConfig } from './config';
+
+/**
+ * Calculates item totals, per-page rates, add-on costs, and total price.
+ * All rates (including duplex) are per document page; internal arithmetic uses integer paisa (minor currency units).
+ */
+export function calculateOrderPrice(
+  pageCount: number,
+  options: OrderItemOptions,
+  pricing: PricingConfig = defaultPricingConfig
+): PriceBreakdown {
+  if (!Number.isSafeInteger(pageCount) || pageCount < 1) {
+    throw new Error('Invalid page count');
+  }
+  if (!Number.isSafeInteger(options.copies) || options.copies < 1) {
+    throw new Error('Invalid copy count');
+  }
+
+  const paperPrefix = options.paperSize.toLowerCase();
+  const colorMode = options.colorMode === 'COLOR' ? 'color' : 'bw';
+  const duplexSuffix = options.printSides === 'DOUBLE' ? '_double' : '';
+
+  const rateKey =
+    paperPrefix === 'photo'
+      ? 'photo_paper_per_page'
+      : `${paperPrefix}_${colorMode}${duplexSuffix}_per_page`;
+
+  const perPageRate = Number((pricing as unknown as Record<string, unknown>)[rateKey]);
+  if (!Number.isFinite(perPageRate) || perPageRate < 0) {
+    throw new Error('Pricing unavailable for this option');
+  }
+
+  const rateMinor = Math.round(perPageRate * 100);
+  const printSubtotalMinor = pageCount * options.copies * rateMinor;
+
+  const addOnsBreakdown: PriceBreakdown['addOnsBreakdown'] = [];
+
+  // Standard Add-ons mapping
+  const standardAddonDefinitions = [
+    { key: 'stapling', configKey: 'addon_stapling', label: 'Stapling', perPage: false },
+    { key: 'spiralBinding', configKey: 'addon_spiral_binding', label: 'Spiral binding', perPage: false },
+    { key: 'lamination', configKey: 'addon_lamination', label: 'Lamination', perPage: true },
+    { key: 'hardBinding', configKey: 'addon_hard_binding', label: 'Hard binding', perPage: false },
+    { key: 'softBinding', configKey: 'addon_soft_binding', label: 'Soft binding', perPage: false },
+  ] as const;
+
+  for (const addon of standardAddonDefinitions) {
+    const isSelected = Boolean(options.addOns?.[addon.key]);
+    const isEnabled = pricing.enabled_addons?.[addon.key] === true;
+
+    if (isSelected && isEnabled) {
+      const unitPriceValue = Number(pricing[addon.configKey as keyof PricingConfig] || 0);
+      const unitPriceMinor = Math.round(unitPriceValue * 100);
+      const multiplier = addon.perPage ? pageCount * options.copies : options.copies;
+      const addonTotalMinor = unitPriceMinor * multiplier;
+
+      addOnsBreakdown.push({
+        name: addon.label,
+        unitPrice: unitPriceMinor / 100,
+        total: addonTotalMinor / 100,
+      });
     }
   }
-  for(const a of pricing.custom_addons||[])if(a.enabled&&options.addOns?.customAddons?.[a.id]){
-    const value=Math.round(a.price*100),count=a.unit==='per_page'?pageCount*options.copies:a.unit==='per_copy'?options.copies:1;
-    addOnsBreakdown.push({name:a.name,unitPrice:value/100,total:value*count/100});
-  }
-  const addonMinor=addOnsBreakdown.reduce((sum,a)=>sum+Math.round(a.total*100),0);
-  const totalMinor=Math.max(printMinor+addonMinor,Math.round((pricing.form_fields?.minOrderAmount??1)*100));
-  return{pageCount,copies:options.copies,baseRatePerPage:rateMinor/100,effectiveRatePerPage:rateMinor/100,printSubtotal:printMinor/100,addOnsBreakdown,addOnsSubtotal:addonMinor/100,totalAmount:totalMinor/100,currency:'INR'};
-}
 
+  // Custom Add-ons
+  const customAddonsList = pricing.custom_addons || [];
+  for (const customAddon of customAddonsList) {
+    const isSelected = Boolean(options.addOns?.customAddons?.[customAddon.id]);
+    if (customAddon.enabled && isSelected) {
+      const unitPriceMinor = Math.round(customAddon.price * 100);
+      let multiplier = 1;
+      if (customAddon.unit === 'per_page') {
+        multiplier = pageCount * options.copies;
+      } else if (customAddon.unit === 'per_copy') {
+        multiplier = options.copies;
+      }
+
+      const totalMinor = unitPriceMinor * multiplier;
+      addOnsBreakdown.push({
+        name: customAddon.name,
+        unitPrice: unitPriceMinor / 100,
+        total: totalMinor / 100,
+      });
+    }
+  }
+
+  const addOnsSubtotalMinor = addOnsBreakdown.reduce(
+    (sum, item) => sum + Math.round(item.total * 100),
+    0
+  );
+
+  const minOrderAmount = pricing.form_fields?.minOrderAmount ?? 1;
+  const minOrderMinor = Math.round(minOrderAmount * 100);
+  const totalAmountMinor = Math.max(printSubtotalMinor + addOnsSubtotalMinor, minOrderMinor);
+
+  return {
+    pageCount,
+    copies: options.copies,
+    baseRatePerPage: rateMinor / 100,
+    effectiveRatePerPage: rateMinor / 100,
+    printSubtotal: printSubtotalMinor / 100,
+    addOnsBreakdown,
+    addOnsSubtotal: addOnsSubtotalMinor / 100,
+    totalAmount: totalAmountMinor / 100,
+    currency: 'INR',
+  };
+}

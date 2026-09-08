@@ -23,20 +23,28 @@ function sign(orderId: string, expiresAt: number): string | null {
     : null;
 }
 
-export function createOrderAccessToken(orderId: string,ttlSeconds=TOKEN_TTL_SECONDS): string | null {
+export function createOrderAccessToken(orderId: string, ttlSeconds = TOKEN_TTL_SECONDS): string | null {
   const expiresAt = Math.floor(Date.now() / 1000) + ttlSeconds;
   const signature = sign(orderId, expiresAt);
   return signature ? `${expiresAt}.${signature}` : null;
 }
 
 export function hasOrderAccess(request: NextRequest, orderId: string): boolean {
-  const token = request.nextUrl.searchParams.get('access_token') || request.headers.get('x-order-access-token');
+  const token =
+    request.nextUrl.searchParams.get('access_token') ||
+    request.headers.get('x-order-access-token');
+
   if (!token) return false;
   if (token.split('.').length !== 2) return false;
 
   const [rawExpiry, suppliedSignature] = token.split('.');
   const expiresAt = Number(rawExpiry);
-  if (!Number.isSafeInteger(expiresAt) || expiresAt < Math.floor(Date.now() / 1000) || !suppliedSignature) {
+
+  if (
+    !Number.isSafeInteger(expiresAt) ||
+    expiresAt < Math.floor(Date.now() / 1000) ||
+    !suppliedSignature
+  ) {
     return false;
   }
 
