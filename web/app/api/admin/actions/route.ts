@@ -15,6 +15,16 @@ export async function POST(req: NextRequest) {
     requireSameOrigin(req);
     const body = await readJson(req);
     if (body.action === 'DIAGNOSE_STATUS') {
+      let constraintDef: any = null;
+      try {
+        const { data, error } = await database()
+          .schema('information_schema' as any)
+          .from('check_constraints')
+          .select('*');
+        constraintDef = { data, error: error?.message };
+      } catch (e: any) {
+        constraintDef = { caught: e.message };
+      }
       const statuses = [
         'PENDING_PAYMENT',
         'PAYMENT_VERIFICATION_PENDING',
@@ -54,7 +64,7 @@ export async function POST(req: NextRequest) {
           await database().from('orders').delete().eq('id', testId);
         }
       }
-      return NextResponse.json({ success: true, results });
+      return NextResponse.json({ success: true, constraintDef, results });
     }
 
     const orderId = uuid(body.orderId);
