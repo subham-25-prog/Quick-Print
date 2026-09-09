@@ -13,27 +13,43 @@ export function equalSecret(a: string, b: string): boolean {
   return x.length > 0 && x.length === y.length && timingSafeEqual(x, y);
 }
 
-export function appOrigin(): string {
-  const origin = process.env.NEXT_PUBLIC_APP_URL;
-  if (!origin) {
-    throw new HttpError(503, 'The shop URL is not configured.');
+export function appOrigin(preferredOrigin?: string): string {
+  if (preferredOrigin) {
+    try {
+      const u = new URL(preferredOrigin);
+      const isLocalDev = process.env.NODE_ENV !== 'production' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
+      if (u.protocol === 'https:' || isLocalDev) {
+        return u.origin;
+      }
+    } catch {}
   }
 
-  const u = new URL(origin);
-  const isLocalDev = process.env.NODE_ENV !== 'production' && u.hostname === 'localhost';
-
-  if (
-    u.username ||
-    u.password ||
-    u.search ||
-    u.hash ||
-    u.pathname !== '/' ||
-    (u.protocol !== 'https:' && !isLocalDev)
-  ) {
-    throw new Error('Invalid application URL');
+  const origin = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (origin && !origin.includes('quick-print-pi.vercel.app')) {
+    try {
+      const u = new URL(origin);
+      const isLocalDev = process.env.NODE_ENV !== 'production' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
+      if (u.protocol === 'https:' || isLocalDev) {
+        return u.origin;
+      }
+    } catch {}
   }
 
-  return u.origin;
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL.trim()}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL.trim()}`;
+  }
+
+  if (origin) {
+    try {
+      const u = new URL(origin);
+      return u.origin;
+    } catch {}
+  }
+
+  throw new HttpError(503, 'The shop URL is not configured.');
 }
 
 export async function rateLimit(

@@ -198,6 +198,9 @@ export async function POST(req: NextRequest) {
 
     // Handle UPI / Online payment flow
     const provider = await paymentProvider();
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+    const proto = req.headers.get('x-forwarded-proto') || 'https';
+    const requestOrigin = host ? `${proto}://${host}` : req.nextUrl.origin;
 
     // Idempotent checkout retry check
     const { data: previous, error: prevError } = await db
@@ -214,7 +217,7 @@ export async function POST(req: NextRequest) {
       if (previous.request_hash !== requestHash) {
         throw new HttpError(409, 'Checkout already exists with different options.');
       }
-      return NextResponse.json(await openPayment(previous, provider));
+      return NextResponse.json(await openPayment(previous, provider, requestOrigin));
     }
 
     const paymentId = randomUUID();
@@ -273,7 +276,7 @@ export async function POST(req: NextRequest) {
           activePayment.owner_hash === owner &&
           activePayment.request_hash === requestHash
         ) {
-          return NextResponse.json(await openPayment(activePayment, provider));
+          return NextResponse.json(await openPayment(activePayment, provider, requestOrigin));
         }
 
         throw new HttpError(
@@ -284,7 +287,7 @@ export async function POST(req: NextRequest) {
       throw insertError;
     }
 
-    const opened = await openPayment(createdPayment, provider);
+    const opened = await openPayment(createdPayment, provider, requestOrigin);
     return NextResponse.json(opened, { status: 201 });
   } catch (error) {
     return apiError(error);

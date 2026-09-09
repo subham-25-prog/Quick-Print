@@ -13,7 +13,11 @@ export type StoredPayment = PaymentContext & {
   creation_started_at?: string;
 };
 
-export async function openPayment(payment: StoredPayment, provider: PaymentProvider) {
+export async function openPayment(
+  payment: StoredPayment,
+  provider: PaymentProvider,
+  preferredOrigin?: string
+) {
   const token = createOrderAccessToken(payment.id);
   if (!token) {
     throw new HttpError(503, 'Checkout access security is unavailable.');
@@ -38,7 +42,8 @@ export async function openPayment(payment: StoredPayment, provider: PaymentProvi
 
     if (lock) {
       try {
-        const returnUrl = `${appOrigin()}/payment/${payment.id}?access_token=${encodeURIComponent(token)}`;
+        const origin = appOrigin(preferredOrigin);
+        const returnUrl = `${origin}/payment/${payment.id}?access_token=${encodeURIComponent(token)}`;
         const session = await provider.createPayment(payment, returnUrl);
 
         const { error: saveError } = await db
