@@ -19,7 +19,7 @@ import {
   PaymentMethod,
   AdvancedPrintConfig,
 } from '@/types';
-import { User, Phone, MessageSquare, Sliders, CheckCircle2 } from '@/components/ui/Icons';
+import { User, Phone, MessageSquare, Sliders, CheckCircle2, XCircle } from '@/components/ui/Icons';
 
 const PaymentModal = dynamic(
   () => import('@/components/customer/PaymentModal').then((module) => module.PaymentModal),
@@ -69,13 +69,22 @@ export default function CustomerHomePage() {
   const [checkoutError,setCheckoutError]=useState('');
   const [pricingReady,setPricingReady]=useState(false);
   const [checkoutEnabled,setCheckoutEnabled]=useState(false);
-  const [resumeUrl,setResumeUrl]=useState('');
+  const [paymentErrorNotice, setPaymentErrorNotice] = useState<string | null>(null);
   const [tempOrderNumber, setTempOrderNumber] = useState<string>('QP-PREV');
 
   // Fetch shop pricing on mount & listen for live admin updates
   useEffect(() => {
     setMounted(true);
-    try{const saved=localStorage.getItem('quickprint_last_checkout');if(saved?.startsWith('/payment/')||saved?.startsWith('/order/success/'))setResumeUrl(saved);}catch{}
+    try {
+      localStorage.removeItem('quickprint_last_checkout');
+      if (typeof window !== 'undefined') {
+        const err = new URLSearchParams(window.location.search).get('payment_error');
+        if (err) {
+          setPaymentErrorNotice(err);
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      }
+    } catch {}
 
     const applyPricingConfig = (cfg: PricingConfig) => {
       setPricing(cfg);
@@ -230,13 +239,11 @@ export default function CustomerHomePage() {
       if (!res.ok || !data.paymentId) throw new Error(data.error || 'Checkout could not be opened.');
       if (data.status === 'SUCCESS' && data.orderId) {
         const successUrl = `/order/success/${data.orderId}?access_token=${encodeURIComponent(data.accessToken || data.orderAccessToken)}`;
-        try { localStorage.setItem('quickprint_last_checkout', successUrl); } catch {}
         setIsPaymentModalOpen(false);
         router.push(successUrl);
         return;
       }
       const statusUrl = `/payment/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
-      try { localStorage.setItem('quickprint_last_checkout', statusUrl); } catch {}
       setIsPaymentModalOpen(false);
       if (data.paymentUrl) { window.location.assign(data.paymentUrl); return; }
       router.push(statusUrl);
@@ -281,7 +288,26 @@ export default function CustomerHomePage() {
       <Header shopName={pricing.shop_name} />
 
       <main className="max-w-xl mx-auto w-full px-4 pt-4 space-y-4">
-        {resumeUrl&&<a href={resumeUrl} className="block p-3 bg-indigo-50 rounded-xl text-indigo-800 text-sm">Resume your last payment / order →</a>}
+        {paymentErrorNotice && (
+          <div role="alert" className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between text-sm shadow-xs animate-fadeIn">
+            <div className="flex items-center gap-2.5">
+              <XCircle className="w-5 h-5 text-rose-600 shrink-0" />
+              <span className="font-medium">
+                {paymentErrorNotice === 'cancelled'
+                  ? 'Payment was cancelled. You can retry or choose another payment method.'
+                  : paymentErrorNotice === 'expired'
+                  ? 'Payment session expired. Please proceed with checkout again.'
+                  : 'Previous payment was not completed. You can re-verify and retry below.'}
+              </span>
+            </div>
+            <button
+              onClick={() => setPaymentErrorNotice(null)}
+              className="text-xs font-bold text-rose-600 hover:text-rose-800 underline ml-2 shrink-0 cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {!pricingReady&&<p role="status" className="p-3 bg-amber-50 text-amber-900 rounded-xl text-sm">Checking shop availability…</p>}
         {checkoutError&&<p role="alert" className="p-3 bg-rose-50 text-rose-800 rounded-xl text-sm">{checkoutError}</p>}
         {/* Card 1: 1. Upload Document */}
