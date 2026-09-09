@@ -19,15 +19,30 @@ export async function GET(
       throw new HttpError(404, 'Order not found.');
     }
 
-    const order = await getOrderById(id);
+    let order = await getOrderById(id);
+    if (!order) {
+      const { data: orderByPayment } = await database()
+        .from('orders')
+        .select('*')
+        .eq('payment_id', id)
+        .eq('shop_id', getCurrentShopId())
+        .maybeSingle();
+
+      if (orderByPayment) {
+        order = orderByPayment as typeof order;
+      }
+    }
+
     if (!order || !order.payment_id || order.payment_status !== 'PAID') {
       throw new HttpError(404, 'Verified order not found.');
     }
 
+    const resolvedOrderId = order.id;
+
     const { data: job, error } = await database()
       .from('print_jobs')
       .select('status, is_test, submitted_at')
-      .eq('order_id', id)
+      .eq('order_id', resolvedOrderId)
       .eq('shop_id', getCurrentShopId())
       .maybeSingle();
 
@@ -55,7 +70,7 @@ export async function GET(
         order: isAdmin
           ? order
           : {
-              id,
+              id: resolvedOrderId,
               order_number,
               created_at,
               file_name,

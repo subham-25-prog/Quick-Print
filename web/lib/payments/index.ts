@@ -25,7 +25,7 @@ export function configuredProvider(): PhonePeProvider {
     }
   }
 
-  const mode = process.env.PAYMENT_ENVIRONMENT;
+  const mode = process.env.PAYMENT_ENVIRONMENT?.trim();
   if (mode !== 'live' && mode !== 'sandbox') {
     throw new HttpError(503, 'Payment environment is not configured.');
   }
@@ -33,13 +33,13 @@ export function configuredProvider(): PhonePeProvider {
   const clientVersion = process.env.PHONEPE_CLIENT_VERSION?.trim() || '1';
 
   return new PhonePeProvider(
-    process.env.PHONEPE_MERCHANT_ID!,
+    process.env.PHONEPE_MERCHANT_ID!.trim(),
     mode,
-    process.env.PHONEPE_CLIENT_ID!,
+    process.env.PHONEPE_CLIENT_ID!.trim(),
     clientVersion,
-    process.env.PHONEPE_CLIENT_SECRET!,
-    process.env.PHONEPE_WEBHOOK_USERNAME!,
-    process.env.PHONEPE_WEBHOOK_PASSWORD!
+    process.env.PHONEPE_CLIENT_SECRET!.trim(),
+    process.env.PHONEPE_WEBHOOK_USERNAME!.trim(),
+    process.env.PHONEPE_WEBHOOK_PASSWORD!.trim()
   );
 }
 

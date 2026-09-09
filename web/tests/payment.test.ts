@@ -32,4 +32,13 @@ test('forged and wrong-merchant webhook rejected; valid notification carries no 
   payload.payload.merchantId='other';await expect(f.provider.handleWebhook(new Request('https://test',{method:'POST',headers:{authorization},body:JSON.stringify(payload)}))).rejects.toThrow();
 });
 test('untrusted browser-like success does not satisfy normalized proof',()=>{const f=fixture();expect(()=>assertVerified(f.p,{state:'SUCCESS'} as never)).toThrow();});
+test('whitespace and tab padded provider metadata is correctly trimmed and accepted',async()=>{
+  const f=fixture();
+  f.response.metaInfo.udf3='\tmerchant\n';
+  f.response.metaInfo.udf1='  shop ';
+  f.response.merchantId='  merchant ';
+  f.transport.mockReset().mockResolvedValueOnce(Response.json({access_token:'token',expires_at:Date.now()/1000+3600})).mockResolvedValueOnce(Response.json(f.response));
+  const r=await f.provider.verifyPayment(f.p);
+  expect(r.state).toBe('SUCCESS');
+});
 test('production configuration never selects mock provider',async()=>{vi.stubEnv('PAYMENT_PROVIDER','mock');const{paymentProvider}=await import('@/lib/payments');await expect(paymentProvider()).rejects.toThrow('unavailable');vi.unstubAllEnvs();});

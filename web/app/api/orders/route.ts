@@ -173,7 +173,10 @@ export async function POST(req: NextRequest) {
       });
 
       if (rpcError) throw new HttpError(409, `Cash finalization failed: ${rpcError.message}`);
-      const finalOrderId = createdOrderId || paymentId;
+      if (!createdOrderId) {
+        throw new HttpError(500, 'Cash order could not be finalized.');
+      }
+      const finalOrderId = createdOrderId;
       const orderAccessToken = createOrderAccessToken(finalOrderId);
 
       return NextResponse.json(

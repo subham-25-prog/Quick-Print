@@ -56,7 +56,8 @@ export async function GET(
         try {
           const provider = await paymentProvider();
           currentPayment = await reconcilePayment(currentPayment, provider);
-        } catch {
+        } catch (reconcileErr) {
+          console.error('Payment reconciliation error for payment', id, reconcileErr);
           verificationPending = true;
         }
       }

@@ -11,26 +11,43 @@ import {
 export class PhonePeProvider implements PaymentProvider {
   readonly name = 'phonepe';
   readonly fingerprint: string;
+  readonly merchantId: string;
+  readonly environment: 'sandbox' | 'live';
+  private clientId: string;
+  private clientVersion: string;
+  private clientSecret: string;
+  private webhookUser: string;
+  private webhookPassword: string;
+  private transport: typeof fetch;
   private token?: { value: string; expires: number };
   private baseUrl: string;
 
   constructor(
-    readonly merchantId: string,
-    readonly environment: 'sandbox' | 'live',
-    private clientId: string,
-    private clientVersion: string,
-    private clientSecret: string,
-    private webhookUser: string,
-    private webhookPassword: string,
-    private transport: typeof fetch = fetch
+    merchantId: string,
+    environment: 'sandbox' | 'live',
+    clientId: string,
+    clientVersion: string,
+    clientSecret: string,
+    webhookUser: string,
+    webhookPassword: string,
+    transport: typeof fetch = fetch
   ) {
+    this.merchantId = merchantId.trim();
+    this.environment = environment;
+    this.clientId = clientId.trim();
+    this.clientVersion = clientVersion.trim();
+    this.clientSecret = clientSecret.trim();
+    this.webhookUser = webhookUser.trim();
+    this.webhookPassword = webhookPassword.trim();
+    this.transport = transport;
+
     this.baseUrl =
       environment === 'live'
         ? 'https://api.phonepe.com/apis/pg'
         : 'https://api-preprod.phonepe.com/apis/pg-sandbox';
 
     this.fingerprint = createHash('sha256')
-      .update(`${clientId}:${clientVersion}:${environment}`)
+      .update(`${this.clientId}:${this.clientVersion}:${this.environment}`)
       .digest('hex');
   }
 
@@ -174,12 +191,18 @@ export class PhonePeProvider implements PaymentProvider {
     // in INR paisa; it does not supply a currency/merchant field on every status.
     // Metadata plus stored provider order ID bind this response to this checkout.
     const meta = data.metaInfo;
+    const metaShopId = typeof meta?.udf1 === 'string' ? meta.udf1.trim() : meta?.udf1;
+    const metaPaymentId = typeof meta?.udf2 === 'string' ? meta.udf2.trim() : meta?.udf2;
+    const metaMerchantId = typeof meta?.udf3 === 'string' ? meta.udf3.trim() : meta?.udf3;
+    const metaFingerprint = typeof meta?.udf4 === 'string' ? meta.udf4.trim() : meta?.udf4;
+    const responseMerchantId = typeof data.merchantId === 'string' ? data.merchantId.trim() : data.merchantId;
+
     if (
-      meta?.udf1 !== payment.shop_id ||
-      meta?.udf2 !== payment.id ||
-      meta?.udf3 !== this.merchantId ||
-      meta?.udf4 !== this.fingerprint ||
-      (data.merchantId && data.merchantId !== this.merchantId) ||
+      metaShopId !== payment.shop_id ||
+      metaPaymentId !== payment.id ||
+      metaMerchantId !== this.merchantId ||
+      metaFingerprint !== this.fingerprint ||
+      (responseMerchantId && responseMerchantId !== this.merchantId) ||
       (data.currency && data.currency !== 'INR') ||
       (payment.provider_link_id && data.orderId !== payment.provider_link_id)
     ) {
@@ -257,9 +280,10 @@ export class PhonePeProvider implements PaymentProvider {
       };
     }
 
+    const webhookMerchantId = typeof data.payload?.merchantId === 'string' ? data.payload.merchantId.trim() : data.payload?.merchantId;
     if (
       !['checkout.order.completed', 'checkout.order.failed'].includes(data.event) ||
-      data.payload?.merchantId !== this.merchantId ||
+      webhookMerchantId !== this.merchantId ||
       !/^[A-Za-z0-9_-]{1,63}$/.test(data.payload?.merchantOrderId || '')
     ) {
       throw new Error('Invalid webhook identity');
