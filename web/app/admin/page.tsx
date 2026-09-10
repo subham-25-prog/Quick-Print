@@ -65,6 +65,22 @@ export default function AdminLiveOrdersPage() {
   };
 
   const handleConfirmClear = async () => {
+    const previousOrders = [...orders];
+    const targetCount = clearScope === 'ALL'
+      ? orders.length
+      : orders.filter((o) => ['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status)).length;
+
+    // Instant Optimistic Update (0ms) - Close modal and remove from UI immediately
+    setShowClearModal(false);
+    if (clearScope === 'ALL') {
+      setOrders([]);
+    } else {
+      setOrders((prev) =>
+        prev.filter((o) => !['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status))
+      );
+    }
+    showToast(`Clearing ${targetCount} order(s)...`, 'success');
+
     try {
       setIsClearing(true);
       const res = await fetch('/api/admin/actions', {
@@ -74,10 +90,10 @@ export default function AdminLiveOrdersPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to clear history');
-      showToast(`Successfully cleared ${data.clearedCount ?? 0} order(s).`, 'success');
-      setShowClearModal(false);
-      await fetchOrders(true);
+      showToast(`History cleared successfully (${data.clearedCount ?? targetCount} orders removed).`, 'success');
     } catch (err: any) {
+      // Revert state if failed
+      setOrders(previousOrders);
       showToast(err.message || 'Could not clear history.', 'error');
     } finally {
       setIsClearing(false);
@@ -88,6 +104,12 @@ export default function AdminLiveOrdersPage() {
     if (!window.confirm('Are you sure you want to remove this order from history?')) {
       return;
     }
+
+    // Instant Optimistic Update (0ms) - remove from UI immediately
+    const previousOrders = [...orders];
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+    showToast('Order removed from history.', 'success');
+
     try {
       setActionLoadingKey(`${orderId}_DELETE`);
       const res = await fetch('/api/admin/actions', {
@@ -97,9 +119,9 @@ export default function AdminLiveOrdersPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete order');
-      showToast('Order removed from history.', 'success');
-      await fetchOrders(true);
     } catch (err: any) {
+      // Revert state if failed
+      setOrders(previousOrders);
       showToast(err.message || 'Could not delete order.', 'error');
     } finally {
       setActionLoadingKey(null);

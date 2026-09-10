@@ -45,26 +45,35 @@ export async function POST(req: NextRequest) {
       if (fetchErr) throw fetchErr;
 
       if (orders && orders.length > 0) {
-        for (const order of orders) {
-          if (order.storage_path) {
-            try {
-              await db.storage.from('shop-documents').remove([order.storage_path]);
-            } catch {}
-          }
-          await db.from('print_jobs').delete().eq('order_id', order.id);
-          if (order.payment_id) {
-            await db.from('payments').update({ order_id: null }).eq('id', order.payment_id);
-          }
-          await db.from('order_events').delete().eq('order_id', order.id);
-          await db.from('audit_logs').delete().eq('order_id', order.id);
-          await db.from('orders').delete().eq('id', order.id);
-          if (order.payment_id) {
-            await db.from('payments').delete().eq('id', order.payment_id);
-          }
-          if (order.uploaded_file_id) {
-            await db.from('uploaded_files').delete().eq('id', order.uploaded_file_id);
-          }
+        const orderIds = orders.map((o) => o.id);
+        const storagePaths = orders.map((o) => o.storage_path).filter(Boolean) as string[];
+        const paymentIds = orders.map((o) => o.payment_id).filter(Boolean) as string[];
+        const uploadedFileIds = orders.map((o) => o.uploaded_file_id).filter(Boolean) as string[];
+
+        // 1. Storage file deletion in one batch (non-blocking)
+        if (storagePaths.length > 0) {
+          db.storage.from('shop-documents').remove(storagePaths).catch(() => {});
         }
+
+        // 2. Bulk delete relational dependencies in parallel
+        await Promise.all([
+          db.from('print_jobs').delete().in('order_id', orderIds),
+          db.from('order_events').delete().in('order_id', orderIds),
+          db.from('audit_logs').delete().in('order_id', orderIds),
+        ]);
+
+        // 3. Unlink and delete orders in batch
+        if (paymentIds.length > 0) {
+          await db.from('payments').update({ order_id: null }).in('id', paymentIds);
+        }
+
+        await db.from('orders').delete().in('id', orderIds);
+
+        // 4. Clean up payments and uploaded file records in parallel
+        await Promise.all([
+          paymentIds.length > 0 ? db.from('payments').delete().in('id', paymentIds) : Promise.resolve(),
+          uploadedFileIds.length > 0 ? db.from('uploaded_files').delete().in('id', uploadedFileIds) : Promise.resolve(),
+        ]);
       }
 
       return NextResponse.json({ success: true, clearedCount: orders?.length || 0 });
@@ -86,24 +95,28 @@ export async function POST(req: NextRequest) {
       if (fetchErr) throw fetchErr;
 
       if (order) {
+        // Storage cleanup in background (non-blocking)
         if (order.storage_path) {
-          try {
-            await db.storage.from('shop-documents').remove([order.storage_path]);
-          } catch {}
+          db.storage.from('shop-documents').remove([order.storage_path]).catch(() => {});
         }
-        await db.from('print_jobs').delete().eq('order_id', orderId);
+
+        // Parallel delete of child relations
+        await Promise.all([
+          db.from('print_jobs').delete().eq('order_id', orderId),
+          db.from('order_events').delete().eq('order_id', orderId),
+          db.from('audit_logs').delete().eq('order_id', orderId),
+        ]);
+
         if (order.payment_id) {
           await db.from('payments').update({ order_id: null }).eq('id', order.payment_id);
         }
-        await db.from('order_events').delete().eq('order_id', orderId);
-        await db.from('audit_logs').delete().eq('order_id', orderId);
+
         await db.from('orders').delete().eq('id', orderId);
-        if (order.payment_id) {
-          await db.from('payments').delete().eq('id', order.payment_id);
-        }
-        if (order.uploaded_file_id) {
-          await db.from('uploaded_files').delete().eq('id', order.uploaded_file_id);
-        }
+
+        await Promise.all([
+          order.payment_id ? db.from('payments').delete().eq('id', order.payment_id) : Promise.resolve(),
+          order.uploaded_file_id ? db.from('uploaded_files').delete().eq('id', order.uploaded_file_id) : Promise.resolve(),
+        ]);
       }
 
       return NextResponse.json({ success: true });
