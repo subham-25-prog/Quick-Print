@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
+import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Order, OrderStatus, PricingConfig } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -728,6 +729,9 @@ export default function AdminLiveOrdersPage() {
             </div>
           )}
         </section>
+
+        {/* Developer Attribution */}
+        <DeveloperBadge variant="inline" className="mt-2 pb-4" />
       </main>
 
       {/* Clear History Confirmation Modal */}

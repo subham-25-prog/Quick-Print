@@ -5,6 +5,8 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PricingConfig, CustomAddon, CustomPaperType } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
 import { formatCurrency } from '@/lib/utils';
+import { publishShopNameUpdate } from '@/lib/shop-sync';
+import { DeveloperBadge } from '@/components/DeveloperBadge';
 import {
   Save,
   CheckCircle2,
@@ -195,10 +197,7 @@ export default function AdminSettingsPage() {
       const data = await res.json();
       if (res.ok && data.pricing) {
         setForm(data.pricing);
-        try {
-          localStorage.setItem('quickprint_live_pricing', JSON.stringify(data.pricing));
-        } catch {}
-        window.dispatchEvent(new CustomEvent('quickprint_shop_name_updated', { detail: data.pricing.shop_name }));
+        publishShopNameUpdate(data.pricing.shop_name || form.shop_name, data.pricing);
         showToast('Shop configuration & rates saved! Customer page updated live.', 'success');
       } else {
         throw new Error(data.error || 'Failed to update shop settings');
@@ -1004,6 +1003,9 @@ export default function AdminSettingsPage() {
             )}
           </button>
         </div>
+
+        {/* Developer Attribution */}
+        <DeveloperBadge variant="inline" className="pt-6 pb-2" />
       </main>
     </div>
   );

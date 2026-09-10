@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Zap, Lock, Save } from '@/components/ui/Icons';
 import { shopConfig } from '@/lib/config';
+import { useShopName } from '@/lib/shop-sync';
 
 interface AdminHeaderProps {
   onSave?: () => void;
@@ -23,36 +24,17 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const [storeName, setStoreName] = React.useState(shopName || shopConfig.name);
+  const storeName = useShopName(shopName);
   const [dbStatus, setDbStatus] = React.useState<{ connected: boolean; mode: string; message: string; shopName?: string } | null>(null);
 
   React.useEffect(() => {
-    if (shopName) {
-      setStoreName(shopName);
-      return;
-    }
-    try {
-      const cached = localStorage.getItem('quickprint_live_pricing');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed?.shop_name) setStoreName(parsed.shop_name);
-      }
-    } catch {}
-
     fetch('/api/admin/db-status')
       .then((res) => res.json())
       .then((data) => {
         setDbStatus(data);
-        if (data.shopName) setStoreName(data.shopName);
       })
       .catch(() => setDbStatus({ connected: false, mode: 'LOCAL_MEMORY', message: 'Offline' }));
-
-    const handleUpdate = (e: any) => {
-      if (e.detail) setStoreName(e.detail);
-    };
-    window.addEventListener('quickprint_shop_name_updated', handleUpdate);
-    return () => window.removeEventListener('quickprint_shop_name_updated', handleUpdate);
-  }, [shopName]);
+  }, []);
 
   const navItems = [
     { label: 'Orders & History', href: '/admin', icon: '📋' },

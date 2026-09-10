@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { CheckCircle2, RefreshCw, Printer, FileText, Sparkles, Clock, AlertCircle } from '@/components/ui/Icons';
+import { useShopName } from '@/lib/shop-sync';
 
 interface LivePrintVisualizerProps {
   jobStatus: string;
@@ -9,6 +10,7 @@ interface LivePrintVisualizerProps {
   copies?: number;
   fileName?: string;
   isTest?: boolean;
+  shopName?: string;
 }
 
 export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
@@ -17,7 +19,9 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
   copies = 1,
   fileName,
   isTest = false,
+  shopName,
 }) => {
+  const activeShopName = useShopName(shopName);
   const isPrinted = jobStatus === 'PRINTED';
   const isPrinting = jobStatus === 'PRINTING' || jobStatus === 'CLAIMED' || jobStatus === 'SUBMITTED';
   const isPending = jobStatus === 'PENDING';
@@ -87,8 +91,8 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
             <div className="flex items-center justify-between px-1">
               <div className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[9px] font-mono font-bold tracking-widest text-slate-300 uppercase">
-                  QuickPrint Station
+                <span className="text-[9px] font-mono font-bold tracking-widest text-slate-300 uppercase truncate max-w-[130px]">
+                  {activeShopName ? `${activeShopName} Station` : 'Print Station'}
                 </span>
               </div>
               <div className="flex items-center gap-1">

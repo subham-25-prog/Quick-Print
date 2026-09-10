@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Printer, Shield } from '@/components/ui/Icons';
 import { shopConfig } from '@/lib/config';
+import { useShopName } from '@/lib/shop-sync';
 
 interface HeaderProps {
   isAdmin?: boolean;
@@ -11,7 +12,17 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ isAdmin = false, shopName }) => {
-  const displayName = shopName || shopConfig.name;
+  const displayName = useShopName(shopName);
+
+  React.useEffect(() => {
+    if (displayName && typeof document !== 'undefined') {
+      const currentTitle = document.title;
+      // Update page title if it has default shop name or is empty
+      if (!currentTitle || currentTitle.includes(shopConfig.name) || currentTitle.includes('– Self-Service Document Printing')) {
+        document.title = `${displayName} – Self-Service Document Printing`;
+      }
+    }
+  }, [displayName]);
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">

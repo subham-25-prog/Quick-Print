@@ -19,12 +19,15 @@ import {
   Sparkles,
 } from '@/components/ui/Icons';
 import { LivePrintVisualizer } from '@/components/customer/LivePrintVisualizer';
+import { DeveloperBadge } from '@/components/DeveloperBadge';
+import { useShopName } from '@/lib/shop-sync';
 
 export default function OrderStatusPage() {
   const { id } = useParams<{ id: string }>();
   const search = useSearchParams();
   const router = useRouter();
   const token = search.get('access_token');
+  const shopName = useShopName();
 
   const [data, setData] = useState<{
     order: Order;
@@ -36,6 +39,12 @@ export default function OrderStatusPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+
+  useEffect(() => {
+    if (data?.order?.order_number && typeof document !== 'undefined') {
+      document.title = `${shopName} – Order #${data.order.order_number}`;
+    }
+  }, [data?.order?.order_number, shopName]);
 
   useEffect(() => {
     let stopped = false;
@@ -176,7 +185,7 @@ export default function OrderStatusPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-16">
-      <Header />
+      <Header shopName={shopName} />
 
       <main className="max-w-xl mx-auto w-full px-4 pt-5 space-y-4">
         {/* Top Connectivity & Live Indicator */}
@@ -238,6 +247,7 @@ export default function OrderStatusPage() {
               copies={data.order.copies}
               fileName={data.order.file_name}
               isTest={data.job?.is_test}
+              shopName={shopName}
             />
 
             {/* 1. Hero Live Status Card */}
@@ -408,6 +418,9 @@ export default function OrderStatusPage() {
           <ArrowLeft className="w-4 h-4" />
           <span>Print Another Document</span>
         </Link>
+
+        {/* Developer Attribution Card */}
+        <DeveloperBadge className="mt-3" />
       </main>
     </div>
   );

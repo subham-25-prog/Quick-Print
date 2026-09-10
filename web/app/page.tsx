@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
+import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { FileUploader, UploadedFileState } from '@/components/customer/FileUploader';
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
@@ -178,6 +179,29 @@ export default function CustomerHomePage() {
     };
     window.addEventListener('storage', handleStorageChange);
 
+    const handleCustomUpdate = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (detail && typeof detail === 'string') {
+        setPricing((prev) => ({ ...prev, shop_name: detail.trim() }));
+        document.title = `${detail.trim()} – Self-Service Document Printing`;
+      }
+    };
+    window.addEventListener('quickprint_shop_name_updated', handleCustomUpdate);
+
+    let channel: BroadcastChannel | null = null;
+    try {
+      if ('BroadcastChannel' in window) {
+        channel = new BroadcastChannel('quickprint_shop_broadcast_channel');
+        channel.onmessage = (event) => {
+          if (event.data?.type === 'SHOP_NAME_UPDATED' && event.data?.shopName) {
+            const name = event.data.shopName.trim();
+            setPricing((prev) => ({ ...prev, shop_name: name }));
+            document.title = `${name} – Self-Service Document Printing`;
+          }
+        };
+      }
+    } catch {}
+
     setTempOrderNumber(generateOrderNumber());
 
     return () => {
@@ -186,6 +210,8 @@ export default function CustomerHomePage() {
       clearInterval(syncInterval);
       document.removeEventListener('visibilitychange', fetchFreshPricing);
       window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('quickprint_shop_name_updated', handleCustomUpdate);
+      if (channel) channel.close();
     };
   }, []);
 
@@ -492,6 +518,9 @@ export default function CustomerHomePage() {
             </div>
           </section>
         )}
+
+        {/* Developer Attribution Card */}
+        <DeveloperBadge className="mt-4" />
       </main>
 
       {/* Floating Bottom Order Summary & Proceed Button Bar */}

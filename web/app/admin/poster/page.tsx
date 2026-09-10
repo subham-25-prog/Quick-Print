@@ -4,14 +4,17 @@ import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { shopConfig } from '@/lib/config';
+import { useShopName } from '@/lib/shop-sync';
+import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Printer, Download, Sparkles, FileText, CheckCircle2 } from '@/components/ui/Icons';
 
 export default function ShopWallPosterPage() {
   const [customUrl, setCustomUrl] = useState<string>('');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
-  const [shopName, setShopName] = useState(shopConfig.name);
+  const [rawShopName, setRawShopName] = useState(shopConfig.name);
   const [shopAddress, setShopAddress] = useState(shopConfig.address);
+  const shopName = useShopName(rawShopName);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -24,7 +27,7 @@ export default function ShopWallPosterPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.pricing) {
-          if (data.pricing.shop_name) setShopName(data.pricing.shop_name);
+          if (data.pricing.shop_name) setRawShopName(data.pricing.shop_name);
           if (data.pricing.shop_address) setShopAddress(data.pricing.shop_address);
         }
       })
@@ -57,7 +60,8 @@ export default function ShopWallPosterPage() {
     if (!qrDataUrl) return;
     const a = document.createElement('a');
     a.href = qrDataUrl;
-    a.download = `QuickPrint_Store_QR_${Date.now()}.png`;
+    const safePrefix = (shopName || 'Shop').replace(/[^a-zA-Z0-9_-]/g, '_');
+    a.download = `${safePrefix}_Store_QR_${Date.now()}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -234,10 +238,18 @@ export default function ShopWallPosterPage() {
             </div>
           </div>
 
-          {/* Footer Notice */}
-          <div className="pt-2 border-t border-slate-100 text-[10px] text-slate-400 font-medium">
-            ⚡ Powered by QuickPrint Self-Service System • Prints ready in 2–5 minutes
+          {/* Footer Notice & Developer Attribution */}
+          <div className="pt-3 border-t border-slate-200/80 space-y-2">
+            <DeveloperBadge variant="poster" />
+            <div className="text-[9px] text-slate-400 font-medium">
+              ⚡ Powered by {shopName || 'QuickPrint'} Self-Service System • Prints ready in 2–5 minutes
+            </div>
           </div>
+        </div>
+
+        {/* Screen Developer Card (Hidden on Print) */}
+        <div className="print:hidden">
+          <DeveloperBadge />
         </div>
       </main>
     </div>
