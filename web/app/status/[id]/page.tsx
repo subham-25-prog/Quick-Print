@@ -240,7 +240,7 @@ export default function OrderStatusPage() {
               </div>
             )}
 
-            {/* Live Animated Print Station Graphic */}
+            {/* Live Animated 5-Step Print Status Pipeline */}
             <LivePrintVisualizer
               jobStatus={jobState}
               pageCount={data.order.page_count}
@@ -248,6 +248,9 @@ export default function OrderStatusPage() {
               fileName={data.order.file_name}
               isTest={data.job?.is_test}
               shopName={shopName}
+              orderNumber={data.order.order_number}
+              paperSize={data.order.paper_size}
+              colorMode={data.order.color_mode}
             />
 
             {/* 1. Hero Live Status Card */}
