@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { shopConfig } from '@/lib/config';
 import { useShopName } from '@/lib/shop-sync';
+import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Lock, AlertCircle, ArrowRight } from '@/components/ui/Icons';
 
 export default function AdminLoginPage() {
@@ -117,25 +118,8 @@ export default function AdminLoginPage() {
             </Link>
           </div>
 
-          <div className="pt-3 border-t border-slate-800/80 text-[11px] text-slate-400 font-medium">
-            <span>Software Engineered by <strong className="text-white font-bold">Shubhamoy</strong></span>
-            <div className="mt-1 flex items-center justify-center gap-3 text-[10px] text-slate-400">
-              <a
-                href="tel:9144457475"
-                className="text-indigo-400 hover:text-indigo-300 font-bold hover:underline"
-              >
-                📞 Call: +91 9144457475
-              </a>
-              <span>•</span>
-              <a
-                href="https://wa.me/919144457475?text=Hi%20Shubhamoy,%20I%20am%20interested%20in%20the%20print%20shop%20software"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-emerald-400 hover:text-emerald-300 font-bold hover:underline"
-              >
-                💬 WhatsApp
-              </a>
-            </div>
+          <div className="pt-2 border-t border-slate-800/80">
+            <DeveloperBadge dark />
           </div>
         </div>
       </div>
