@@ -8,7 +8,8 @@ ALTER TABLE public.uploaded_files
   ADD CONSTRAINT uploaded_files_file_size_bytes_check
   CHECK (file_size_bytes BETWEEN 1 AND 104857600); -- 100 MB
 
--- 2. Update Supabase Storage bucket limit for 'shop-documents'
+-- 2. Update Supabase Storage bucket limit and allowed MIME types for 'shop-documents'
 UPDATE storage.buckets
-SET file_size_limit = 104857600 -- 100 MB
+SET file_size_limit = 104857600, -- 100 MB
+    allowed_mime_types = ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/octet-stream']
 WHERE id = 'shop-documents';

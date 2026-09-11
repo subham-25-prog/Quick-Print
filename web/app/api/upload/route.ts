@@ -33,7 +33,7 @@ async function ensurePrivateBucket(db: ReturnType<typeof database>) {
       await db.storage.updateBucket('shop-documents', {
         public: false,
         fileSizeLimit: MAX_FILE_SIZE_BYTES,
-        allowedMimeTypes: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'],
+        allowedMimeTypes: ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/octet-stream'],
       });
     } catch (e) {
       console.warn('Could not auto-update bucket fileSizeLimit:', e);
@@ -276,16 +276,19 @@ export async function POST(req: NextRequest) {
       await ensurePrivateBucket(db);
 
       const chunkBuffer = Buffer.from(await file.arrayBuffer());
-      const partPath = `${shopId}/orders/${clientUploadId}.part_${chunkIndex}`;
+      const partPath = `${shopId}/orders/${clientUploadId}_part_${chunkIndex}.pdf`;
 
       if (chunkIndex < totalChunks - 1) {
         const { error: partError } = await db.storage
           .from('shop-documents')
-          .upload(partPath, chunkBuffer, { upsert: true });
+          .upload(partPath, chunkBuffer, {
+            contentType: 'application/pdf',
+            upsert: true,
+          });
 
         if (partError) {
           console.error('Part upload error:', partError);
-          throw new HttpError(500, 'Failed to save upload chunk.');
+          throw new HttpError(500, partError.message || 'Failed to save upload chunk.');
         }
 
         return NextResponse.json({ success: true, chunkReceived: chunkIndex });
@@ -295,7 +298,7 @@ export async function POST(req: NextRequest) {
       const partPaths: string[] = [];
       const partPromises = [];
       for (let i = 0; i < totalChunks - 1; i++) {
-        const p = `${shopId}/orders/${clientUploadId}.part_${i}`;
+        const p = `${shopId}/orders/${clientUploadId}_part_${i}.pdf`;
         partPaths.push(p);
         partPromises.push(db.storage.from('shop-documents').download(p));
       }
@@ -305,7 +308,7 @@ export async function POST(req: NextRequest) {
       for (let i = 0; i < totalChunks - 1; i++) {
         const { data: blob, error } = downloadedParts[i];
         if (error || !blob) {
-          throw new HttpError(500, `Missing chunk ${i}. Please retry upload.`);
+          throw new HttpError(500, `Missing chunk ${i}: ${error?.message || 'Download failed'}. Please retry upload.`);
         }
         buffers.push(Buffer.from(await blob.arrayBuffer()));
       }

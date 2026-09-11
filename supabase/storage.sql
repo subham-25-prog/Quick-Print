@@ -10,12 +10,12 @@ VALUES (
     'shop-documents',
     false, -- Private bucket (no direct public URL browsing)
     104857600, -- 100 MB file limit
-    ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
+    ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/octet-stream']
 )
 ON CONFLICT (id) DO UPDATE SET
     public = false,
     file_size_limit = 104857600,
-    allowed_mime_types = ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+    allowed_mime_types = ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png', 'application/octet-stream'];
 
 
 -- 2. Storage RLS Policies
