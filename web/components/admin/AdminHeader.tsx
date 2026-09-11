@@ -88,63 +88,63 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
           {/* Shop Logo & Title */}
-          <Link
-            href="/admin"
-            prefetch={true}
-            className="flex items-center gap-2.5 group active:scale-95 transition-transform"
-          >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
-              <Zap className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                <span className="text-xs sm:text-sm font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Link
+              href="/admin"
+              prefetch={true}
+              className="flex items-center gap-2.5 group active:scale-95 transition-transform"
+            >
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+                <Zap className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <span className="text-xs sm:text-sm font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors block">
                   {storeName}
                 </span>
-
-                {/* Cloud DB Status */}
-                {dbStatus && (
-                  <span
-                    title={dbStatus.message}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      dbStatus.connected
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-amber-50 text-amber-700 border border-amber-200'
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${dbStatus.connected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                    <span>{dbStatus.connected ? 'Cloud DB' : 'DB Offline'}</span>
-                  </span>
-                )}
-
-                {/* Print Agent Status & 1-Click Launch Button */}
-                {dbStatus && (
-                  dbStatus.agentOnline ? (
-                    <span
-                      title={`Windows Print Agent connected (${dbStatus.agentName || 'Active'})`}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span>Printer Online</span>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleStartAgent}
-                      title="Click to launch Print Agent on this PC (quickprint://start)"
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 hover:border-indigo-300 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
-                    >
-                      <Play className="w-2.5 h-2.5 fill-indigo-600 text-indigo-600" />
-                      <span>Start Agent</span>
-                    </button>
-                  )
-                )}
+                <div className="text-[10px] text-slate-400 font-semibold">
+                  Shopkeeper Command Center
+                </div>
               </div>
-              <div className="text-[10px] text-slate-400 font-semibold">
-                Shopkeeper Command Center
-              </div>
-            </div>
-          </Link>
+            </Link>
+
+            {/* Cloud DB Status */}
+            {dbStatus && (
+              <span
+                title={dbStatus.message}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  dbStatus.connected
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    : 'bg-amber-50 text-amber-700 border border-amber-200'
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${dbStatus.connected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <span>{dbStatus.connected ? 'Cloud DB' : 'DB Offline'}</span>
+              </span>
+            )}
+
+            {/* Print Agent Status & 1-Click Launch Button */}
+            {dbStatus && (
+              dbStatus.agentOnline ? (
+                <span
+                  title={`Windows Print Agent connected (${dbStatus.agentName || 'Active'})`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Printer Online</span>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleStartAgent}
+                  title="Click to launch Print Agent on this PC (quickprint://start)"
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 hover:border-indigo-300 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
+                >
+                  <Play className="w-2.5 h-2.5 fill-indigo-600 text-indigo-600" />
+                  <span>Start Agent</span>
+                </button>
+              )
+            )}
+          </div>
 
           {/* Central Nav Tabs, Header Save Button & Lock Button */}
           <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
