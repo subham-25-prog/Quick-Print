@@ -392,11 +392,11 @@ export default function CustomerHomePage() {
           </section>
         )}
 
-        {/* Card: Live Print Preview & Advanced Settings (Positioned after all options chosen) */}
+        {/* Card: Advance Print Settings (Positioned after all options chosen) */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-900">
-              {hasAnyAddons ? '4. Live Print Preview & Advanced Settings' : '3. Live Print Preview & Advanced Settings'}
+              {hasAnyAddons ? '4. Advance Print Settings' : '3. Advance Print Settings'}
             </h2>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               {uploadedFile ? `${uploadedFile.pageCount} ${uploadedFile.pageCount === 1 ? 'Page' : 'Pages'}` : 'Optional'}
@@ -424,7 +424,7 @@ export default function CustomerHomePage() {
               </div>
               <div className="min-w-0">
                 <div className="text-xs sm:text-sm font-extrabold flex items-center gap-2">
-                  <span>Adobe Acrobat Advanced Settings &amp; Preview</span>
+                  <span>Advance Print Settings</span>
                   {hasActiveAdvanced && (
                     <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1 shrink-0">
                       <CheckCircle2 className="w-3 h-3" />
@@ -452,7 +452,7 @@ export default function CustomerHomePage() {
               }`}
             >
               <Sliders className="w-3.5 h-3.5" />
-              <span>Preview</span>
+              <span>Advance Print Setting</span>
             </div>
           </button>
         </section>

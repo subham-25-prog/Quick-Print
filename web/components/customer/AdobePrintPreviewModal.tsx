@@ -1,23 +1,18 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { AdvancedPrintConfig, PaperSize, ColorMode, PrintSides, PricingConfig } from '@/types';
 import { UploadedFileState } from './FileUploader';
-import { formatCurrency } from '@/lib/utils';
 import {
-  X,
-  FileText,
-  Image as ImageIcon,
-  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   ZoomIn,
   ZoomOut,
   RotateCw,
-  Sliders,
-  ChevronLeft,
-  ChevronRight,
-  Printer,
-  ChevronUp,
-  ChevronDown,
+  HelpCircle,
+  X,
 } from '@/components/ui/Icons';
 
 interface AdobePrintPreviewModalProps {
@@ -65,39 +60,86 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   onCopiesChange,
   onProceedToOrder,
 }) => {
-  // Local state for Section 2 settings inside the preview modal
-  const [modalPaperSize, setModalPaperSize] = useState<PaperSize>(paperSize);
-  const [modalColorMode, setModalColorMode] = useState<ColorMode>(colorMode);
-  const [modalPrintSides, setModalPrintSides] = useState<PrintSides>(printSides);
+  // --- Sidebar Settings State ---
   const [modalCopies, setModalCopies] = useState<number>(copies || 1);
+  const [modalLayout, setModalLayout] = useState<'PORTRAIT' | 'LANDSCAPE'>(
+    advancedConfig.orientation === 'LANDSCAPE' ? 'LANDSCAPE' : 'PORTRAIT'
+  );
+  const [pageRangeMode, setPageRangeMode] = useState<'ALL' | 'RANGE'>(
+    advancedConfig.pageRangeMode === 'RANGE' ? 'RANGE' : 'ALL'
+  );
+  const [customPageRange, setCustomPageRange] = useState<string>(
+    advancedConfig.customPageRange || ''
+  );
+  const [modalColorMode, setModalColorMode] = useState<ColorMode>(colorMode || 'BW');
 
-  const [config, setConfig] = useState<AdvancedPrintConfig>({
-    pageRangeMode: advancedConfig.pageRangeMode || 'ALL',
-    customPageRange: advancedConfig.customPageRange || '',
-    pagesPerSheet: advancedConfig.pagesPerSheet || '1',
-    pageScaling: advancedConfig.pageScaling || 'FIT',
-    customScalePercent: advancedConfig.customScalePercent || 100,
-    orientation: advancedConfig.orientation || 'AUTO',
-    printQuality: advancedConfig.printQuality || 'STANDARD',
-    watermark: advancedConfig.watermark || 'NONE',
-  });
+  // More Settings accordion
+  const [showMoreSettings, setShowMoreSettings] = useState<boolean>(true);
+  const [modalPaperSize, setModalPaperSize] = useState<PaperSize>(paperSize || 'A4');
+  const [scaleMode, setScaleMode] = useState<'FIT' | 'ACTUAL' | 'CUSTOM'>(
+    advancedConfig.pageScaling === 'ACTUAL'
+      ? 'ACTUAL'
+      : advancedConfig.pageScaling === 'CUSTOM'
+      ? 'CUSTOM'
+      : 'FIT'
+  );
+  const [customScalePercent, setCustomScalePercent] = useState<number>(
+    advancedConfig.customScalePercent || 100
+  );
+  const [pagesPerSheet, setPagesPerSheet] = useState<'1' | '2' | '4'>(
+    advancedConfig.pagesPerSheet === '2' || advancedConfig.pagesPerSheet === '4'
+      ? advancedConfig.pagesPerSheet
+      : '1'
+  );
+  const [modalPrintSides, setModalPrintSides] = useState<PrintSides>(printSides || 'SINGLE');
+  const [watermark, setWatermark] = useState<'NONE' | 'CONFIDENTIAL' | 'DRAFT' | 'SAMPLE'>(
+    advancedConfig.watermark || 'NONE'
+  );
 
-  // Local object URL for real-time file preview
-  const [localObjectUrl, setLocalObjectUrl] = useState<string | null>(null);
+  // Mobile View Switcher (Settings vs Preview)
+  const [mobileTab, setMobileTab] = useState<'preview' | 'settings'>('preview');
 
-  // Preview Canvas States
+  // --- Canvas & Viewer State ---
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
   const [rotationAngle, setRotationAngle] = useState<number>(0);
+  const [localObjectUrl, setLocalObjectUrl] = useState<string | null>(null);
 
-  // Mobile Drawer State
-  const [isDrawerExpanded, setIsDrawerExpanded] = useState<boolean>(false);
+  // Canvas ref
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Touch Swipe Gesture State
-  const touchStartX = useRef<number>(0);
-  const touchStartY = useRef<number>(0);
+  const totalDocPages = pageCount > 0 ? pageCount : 1;
 
-  // Lock body scroll when modal is open & add Esc key listener
+  // Sync state with incoming props when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    setModalCopies(copies || 1);
+    setModalColorMode(colorMode || 'BW');
+    setModalPaperSize(paperSize || 'A4');
+    setModalPrintSides(printSides || 'SINGLE');
+    setModalLayout(advancedConfig.orientation === 'LANDSCAPE' ? 'LANDSCAPE' : 'PORTRAIT');
+    setPageRangeMode(advancedConfig.pageRangeMode === 'RANGE' ? 'RANGE' : 'ALL');
+    setCustomPageRange(advancedConfig.customPageRange || '');
+    setScaleMode(
+      advancedConfig.pageScaling === 'ACTUAL'
+        ? 'ACTUAL'
+        : advancedConfig.pageScaling === 'CUSTOM'
+        ? 'CUSTOM'
+        : 'FIT'
+    );
+    setCustomScalePercent(advancedConfig.customScalePercent || 100);
+    setPagesPerSheet(
+      advancedConfig.pagesPerSheet === '2' || advancedConfig.pagesPerSheet === '4'
+        ? advancedConfig.pagesPerSheet
+        : '1'
+    );
+    setWatermark(advancedConfig.watermark || 'NONE');
+    setCurrentPage(1);
+    setZoomLevel(100);
+    setRotationAngle(0);
+  }, [isOpen, copies, colorMode, paperSize, printSides, advancedConfig]);
+
+  // Lock body scroll and handle Esc key
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -112,28 +154,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     }
   }, [isOpen, onClose]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    setModalPaperSize(paperSize);
-    setModalColorMode(colorMode);
-    setModalPrintSides(printSides);
-    setModalCopies(copies || 1);
-    setConfig({
-      pageRangeMode: advancedConfig.pageRangeMode || 'ALL',
-      customPageRange: advancedConfig.customPageRange || '',
-      pagesPerSheet: advancedConfig.pagesPerSheet || '1',
-      pageScaling: advancedConfig.pageScaling || 'FIT',
-      customScalePercent: advancedConfig.customScalePercent || 100,
-      orientation: advancedConfig.orientation || 'AUTO',
-      printQuality: advancedConfig.printQuality || 'STANDARD',
-      watermark: advancedConfig.watermark || 'NONE',
-    });
-    setCurrentPage(1);
-    setZoomLevel(100);
-    setRotationAngle(0);
-  }, [isOpen, paperSize, colorMode, printSides, copies, advancedConfig]);
-
-  // Generate object URL for file if blob
+  // Create Object URL for uploaded local file
   useEffect(() => {
     if (uploadedFile?.file) {
       try {
@@ -146,48 +167,420 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     }
   }, [uploadedFile]);
 
-  if (!isOpen) return null;
+  // Calculate selected page count based on range mode
+  const selectedPageCount = useMemo(() => {
+    if (pageRangeMode === 'ALL' || !customPageRange.trim()) {
+      return totalDocPages;
+    }
+    try {
+      const pageSet = new Set<number>();
+      const parts = customPageRange.split(',');
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (trimmed.includes('-')) {
+          const [startStr, endStr] = trimmed.split('-');
+          const start = parseInt(startStr, 10);
+          const end = parseInt(endStr, 10);
+          if (!isNaN(start) && !isNaN(end)) {
+            const minP = Math.max(1, Math.min(start, end));
+            const maxP = Math.min(totalDocPages, Math.max(start, end));
+            for (let p = minP; p <= maxP; p++) {
+              pageSet.add(p);
+            }
+          }
+        } else {
+          const p = parseInt(trimmed, 10);
+          if (!isNaN(p) && p >= 1 && p <= totalDocPages) {
+            pageSet.add(p);
+          }
+        }
+      }
+      return pageSet.size > 0 ? pageSet.size : totalDocPages;
+    } catch {
+      return totalDocPages;
+    }
+  }, [pageRangeMode, customPageRange, totalDocPages]);
 
-  const activePreviewUrl = localObjectUrl || previewUrl || fileSignedUrl || uploadedFile?.previewUrl || uploadedFile?.signedUrl;
-  // The server converts images to PDF, but the local object URL still contains the original image.
-  const activeFileType = (localObjectUrl ? uploadedFile?.file.type : undefined) || fileType || uploadedFile?.fileType || (fileName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg');
-  const isImage = activeFileType.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(fileName);
-  const isPdf = activeFileType === 'application/pdf' || fileName.toLowerCase().endsWith('.pdf');
+  // Dynamic calculation: "Total: X sheet(s) of paper"
+  const totalSheets = useMemo(() => {
+    const nUp = pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1;
+    const pagesOnSides = Math.ceil(selectedPageCount / nUp);
+    const sidesFactor = modalPrintSides === 'DOUBLE' ? 2 : 1;
+    const sheetsPerCopy = Math.ceil(pagesOnSides / sidesFactor);
+    return Math.max(1, sheetsPerCopy * Math.max(1, modalCopies));
+  }, [selectedPageCount, pagesPerSheet, modalPrintSides, modalCopies]);
 
-  const totalDocPages = pageCount > 0 ? pageCount : 1;
+  // Aspect ratio calculation for the Paper Preview Canvas
+  const isLandscape = modalLayout === 'LANDSCAPE';
+  const paperAspectRatio = useMemo(() => {
+    const size = (modalPaperSize || 'A4').toUpperCase();
+    if (size === 'A3') return isLandscape ? 420 / 297 : 297 / 420;
+    if (size === 'LEGAL') return isLandscape ? 14 / 8.5 : 8.5 / 14;
+    if (size === 'LETTER') return isLandscape ? 11 / 8.5 : 8.5 / 11;
+    if (size === 'TABLOID') return isLandscape ? 17 / 11 : 11 / 17;
+    // Default A4
+    return isLandscape ? 297 / 210 : 210 / 297;
+  }, [modalPaperSize, isLandscape]);
 
-  const handleZoomIn = () => setZoomLevel((prev) => Math.min(250, prev + 25));
-  const handleZoomOut = () => setZoomLevel((prev) => Math.max(50, prev - 25));
-  const handleZoomFit = () => setZoomLevel(100);
-  const handleRotate = () => setRotationAngle((prev) => (prev + 90) % 360);
+  // Compute effective scale factor for drawing
+  const effectiveScale = useMemo(() => {
+    if (scaleMode === 'FIT') return 0.94;
+    if (scaleMode === 'ACTUAL') return 1.0;
+    return Math.min(3.0, Math.max(0.2, (customScalePercent || 100) / 100));
+  }, [scaleMode, customScalePercent]);
 
-  // Double tap to toggle zoom
-  const handleCanvasDoubleTap = () => {
-    setZoomLevel((prev) => (prev === 100 ? 150 : 100));
-  };
+  // --- High-Fidelity Canvas Drawing Engine ---
+  const activePreviewUrl =
+    localObjectUrl || previewUrl || fileSignedUrl || uploadedFile?.previewUrl || uploadedFile?.signedUrl;
+  const isBw = modalColorMode === 'BW';
 
-  // Touch swipe handling for multi-page documents on mobile
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  };
+  const drawFallbackResumeMockup = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      pageNum: number
+    ) => {
+      // Clean page background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x, y, width, height);
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+      // Page boundary subtle shadow & border
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, width, height);
 
-    // Horizontal swipe for page navigation
-    if (Math.abs(deltaX) > 50 && Math.abs(deltaY) < 40) {
-      if (deltaX < 0 && currentPage < totalDocPages) {
-        setCurrentPage((p) => p + 1);
-      } else if (deltaX > 0 && currentPage > 1) {
-        setCurrentPage((p) => p - 1);
+      const isFirstPage = pageNum === 1;
+
+      if (isFirstPage) {
+        // Document Header
+        const headerY = y + height * 0.08;
+
+        // Profile Photo Circle (as seen in user screenshot)
+        const photoRadius = Math.min(width * 0.08, 48);
+        const photoX = x + width * 0.16;
+        const photoY = headerY + photoRadius * 0.8;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(photoX, photoY, photoRadius, 0, Math.PI * 2);
+        ctx.closePath();
+        ctx.clip();
+        // Inner circle portrait gradient/color
+        const grad = ctx.createLinearGradient(
+          photoX - photoRadius,
+          photoY - photoRadius,
+          photoX + photoRadius,
+          photoY + photoRadius
+        );
+        if (isBw) {
+          grad.addColorStop(0, '#555555');
+          grad.addColorStop(1, '#999999');
+        } else {
+          grad.addColorStop(0, '#3b82f6');
+          grad.addColorStop(1, '#8b5cf6');
+        }
+        ctx.fillStyle = grad;
+        ctx.fillRect(photoX - photoRadius, photoY - photoRadius, photoRadius * 2, photoRadius * 2);
+        // Stylized head & shoulders silhouette
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(photoX, photoY - photoRadius * 0.2, photoRadius * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(photoX, photoY + photoRadius * 0.9, photoRadius * 0.65, Math.PI, 0);
+        ctx.fill();
+        ctx.restore();
+
+        // Circle stroke
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(photoX, photoY, photoRadius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Name & Title
+        const titleX = x + width * 0.3;
+        ctx.fillStyle = '#111827';
+        ctx.font = `bold ${Math.max(14, Math.round(width * 0.038))}px sans-serif`;
+        const displayName = fileName ? fileName.replace(/\.[^/.]+$/, '').toUpperCase() : 'DOCUMENT PREVIEW';
+        ctx.fillText(displayName.slice(0, 24), titleX, headerY + photoRadius * 0.5);
+
+        ctx.fillStyle = isBw ? '#4b5563' : '#2563eb';
+        ctx.font = `bold ${Math.max(9, Math.round(width * 0.02))}px sans-serif`;
+        ctx.fillText('Official Print Document • Confidential', titleX, headerY + photoRadius * 0.95);
+
+        // Divider
+        const dividerY = headerY + photoRadius * 1.8;
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x + width * 0.08, dividerY);
+        ctx.lineTo(x + width * 0.92, dividerY);
+        ctx.stroke();
+
+        // 2-Column Body Layout
+        const col1X = x + width * 0.08;
+        const col1Width = width * 0.32;
+        const col2X = x + width * 0.44;
+        const col2Width = width * 0.48;
+        let curY1 = dividerY + height * 0.04;
+        let curY2 = dividerY + height * 0.04;
+
+        // Left Column: CONTACT & SKILLS
+        ctx.fillStyle = '#1f2937';
+        ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
+        ctx.fillText('DETAILS & CONTACT', col1X, curY1);
+        curY1 += height * 0.022;
+
+        for (let i = 0; i < 4; i++) {
+          ctx.fillStyle = '#6b7280';
+          ctx.fillRect(col1X, curY1, col1Width * (0.6 + (i % 3) * 0.15), Math.max(3, height * 0.007));
+          curY1 += height * 0.02;
+        }
+
+        curY1 += height * 0.025;
+        ctx.fillStyle = '#1f2937';
+        ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
+        ctx.fillText('TECHNICAL SKILLS', col1X, curY1);
+        curY1 += height * 0.022;
+
+        for (let i = 0; i < 5; i++) {
+          ctx.fillStyle = '#9ca3af';
+          ctx.fillRect(col1X, curY1, col1Width * (0.5 + (i % 4) * 0.12), Math.max(3, height * 0.007));
+          curY1 += height * 0.018;
+        }
+
+        // Right Column: PROFILE, EXPERIENCE, EDUCATION
+        ctx.fillStyle = '#1f2937';
+        ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
+        ctx.fillText('PROFILE SUMMARY', col2X, curY2);
+        curY2 += height * 0.022;
+
+        for (let i = 0; i < 3; i++) {
+          ctx.fillStyle = '#6b7280';
+          ctx.fillRect(col2X, curY2, col2Width * (0.85 + (i % 2) * 0.1), Math.max(3, height * 0.007));
+          curY2 += height * 0.018;
+        }
+
+        curY2 += height * 0.03;
+        ctx.fillStyle = '#1f2937';
+        ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
+        ctx.fillText('WORK EXPERIENCE', col2X, curY2);
+        curY2 += height * 0.022;
+
+        for (let i = 0; i < 6; i++) {
+          ctx.fillStyle = '#9ca3af';
+          ctx.fillRect(col2X, curY2, col2Width * (0.7 + (i % 3) * 0.14), Math.max(3, height * 0.007));
+          curY2 += height * 0.018;
+        }
+
+        curY2 += height * 0.03;
+        ctx.fillStyle = '#1f2937';
+        ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
+        ctx.fillText('EDUCATION & CREDENTIALS', col2X, curY2);
+        curY2 += height * 0.022;
+
+        for (let i = 0; i < 4; i++) {
+          ctx.fillStyle = '#9ca3af';
+          ctx.fillRect(col2X, curY2, col2Width * (0.8 - (i % 2) * 0.15), Math.max(3, height * 0.007));
+          curY2 += height * 0.018;
+        }
+      } else {
+        // Multi-page subsequent page layout
+        let cy = y + height * 0.08;
+        ctx.fillStyle = '#111827';
+        ctx.font = `bold ${Math.max(11, Math.round(width * 0.028))}px sans-serif`;
+        ctx.fillText(`PAGE ${pageNum} • CONTINUATION`, x + width * 0.08, cy);
+        cy += height * 0.03;
+
+        ctx.strokeStyle = '#e5e7eb';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + width * 0.08, cy);
+        ctx.lineTo(x + width * 0.92, cy);
+        ctx.stroke();
+        cy += height * 0.04;
+
+        for (let block = 0; block < 4; block++) {
+          ctx.fillStyle = '#374151';
+          ctx.fillRect(x + width * 0.08, cy, width * 0.35, Math.max(4, height * 0.012));
+          cy += height * 0.025;
+          for (let l = 0; l < 4; l++) {
+            ctx.fillStyle = '#9ca3af';
+            ctx.fillRect(x + width * 0.08, cy, width * (0.75 + (l % 3) * 0.08), Math.max(3, height * 0.007));
+            cy += height * 0.018;
+          }
+          cy += height * 0.03;
+        }
+      }
+
+      // Page footer note
+      ctx.fillStyle = '#9ca3af';
+      ctx.font = `${Math.max(8, Math.round(width * 0.016))}px monospace`;
+      ctx.fillText(
+        `Page ${pageNum} of ${totalDocPages} • ${modalPaperSize} • ${isBw ? 'B&W' : 'Color'}`,
+        x + width * 0.08,
+        y + height * 0.96
+      );
+    },
+    [fileName, totalDocPages, modalPaperSize, isBw]
+  );
+
+  // Main canvas render hook
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Fixed High-DPI canvas dimensions
+    const baseW = isLandscape ? 1600 : 1131;
+    const baseH = isLandscape ? 1131 : 1600;
+
+    canvas.width = baseW;
+    canvas.height = baseH;
+
+    // Reset transform & clear
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, baseW, baseH);
+
+    // Apply Grayscale Filter if B&W
+    ctx.filter = isBw ? 'grayscale(100%)' : 'none';
+
+    // Background sheet
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, baseW, baseH);
+
+    const nUp = pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1;
+
+    // Render Slots based on pagesPerSheet
+    const renderSlot = (slotIndex: number, pageToDraw: number) => {
+      let slotX = 0;
+      let slotY = 0;
+      let slotW = baseW;
+      let slotH = baseH;
+
+      if (nUp === 2) {
+        if (isLandscape) {
+          slotW = baseW / 2;
+          slotH = baseH;
+          slotX = slotIndex * slotW;
+          slotY = 0;
+        } else {
+          slotW = baseW;
+          slotH = baseH / 2;
+          slotX = 0;
+          slotY = slotIndex * slotH;
+        }
+      } else if (nUp === 4) {
+        slotW = baseW / 2;
+        slotH = baseH / 2;
+        slotX = (slotIndex % 2) * slotW;
+        slotY = Math.floor(slotIndex / 2) * slotH;
+      }
+
+      // Slot padding & border
+      const padding = nUp > 1 ? 14 : 0;
+      const targetW = slotW - padding * 2;
+      const targetH = slotH - padding * 2;
+      const targetX = slotX + padding;
+      const targetY = slotY + padding;
+
+      // Apply Scale transformation
+      const scaledW = targetW * effectiveScale;
+      const scaledH = targetH * effectiveScale;
+      const offsetX = targetX + (targetW - scaledW) / 2;
+      const offsetY = targetY + (targetH - scaledH) / 2;
+
+      // If user uploaded an image file directly, render image
+      const isImgFile =
+        fileType?.startsWith('image/') ||
+        uploadedFile?.fileType?.startsWith('image/') ||
+        /\.(jpg|jpeg|png|webp)$/i.test(fileName);
+
+      if (isImgFile && activePreviewUrl) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = activePreviewUrl;
+        img.onload = () => {
+          ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
+        };
+        img.onerror = () => {
+          drawFallbackResumeMockup(ctx, offsetX, offsetY, scaledW, scaledH, pageToDraw);
+        };
+      } else {
+        // Render crisp vector document layout
+        drawFallbackResumeMockup(ctx, offsetX, offsetY, scaledW, scaledH, pageToDraw);
+      }
+
+      // Draw faint boundary for multi-page slots
+      if (nUp > 1) {
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.strokeRect(slotX + 4, slotY + 4, slotW - 8, slotH - 8);
+        ctx.setLineDash([]);
+      }
+    };
+
+    // Draw all slots for current sheet
+    for (let i = 0; i < nUp; i++) {
+      const pageIndex = (currentPage - 1) * nUp + i + 1;
+      if (pageIndex <= totalDocPages || nUp === 1) {
+        renderSlot(i, Math.min(pageIndex, totalDocPages));
       }
     }
-  };
 
-  const handleApplyAndClose = () => {
-    onSaveAdvancedConfig(config);
+    // Watermark Stamp (if enabled)
+    if (watermark && watermark !== 'NONE') {
+      ctx.save();
+      ctx.translate(baseW / 2, baseH / 2);
+      ctx.rotate(-Math.PI / 4);
+      ctx.font = `900 ${Math.round(baseW * 0.08)}px sans-serif`;
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.18)';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.strokeStyle = 'rgba(239, 68, 68, 0.28)';
+      ctx.lineWidth = 6;
+      ctx.strokeText(watermark, 0, 0);
+      ctx.fillText(watermark, 0, 0);
+      ctx.restore();
+    }
+  }, [
+    currentPage,
+    isLandscape,
+    modalPaperSize,
+    modalColorMode,
+    pagesPerSheet,
+    scaleMode,
+    customScalePercent,
+    effectiveScale,
+    watermark,
+    isBw,
+    fileName,
+    totalDocPages,
+    activePreviewUrl,
+    uploadedFile,
+    drawFallbackResumeMockup,
+  ]);
+
+  // Handle Apply and Close / Print
+  const handlePrintApply = () => {
+    const updatedConfig: AdvancedPrintConfig = {
+      pageRangeMode,
+      customPageRange,
+      pagesPerSheet,
+      pageScaling: scaleMode,
+      customScalePercent,
+      orientation: modalLayout === 'LANDSCAPE' ? 'LANDSCAPE' : 'PORTRAIT',
+      printQuality: advancedConfig.printQuality || 'STANDARD',
+      watermark,
+    };
+
+    onSaveAdvancedConfig(updatedConfig);
     if (onPaperSizeChange && modalPaperSize !== paperSize) {
       onPaperSizeChange(modalPaperSize);
     }
@@ -200,6 +593,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     if (onCopiesChange && modalCopies !== copies) {
       onCopiesChange(modalCopies);
     }
+
     if (onProceedToOrder) {
       onProceedToOrder();
     } else {
@@ -210,684 +604,447 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   const enabledPapers = pricing?.enabled_papers || { a4: true, a3: true, legal: true, photo: true };
   const customPapers = (pricing?.custom_papers || []).filter((p) => p.enabled);
 
-  const isSelectedColor = modalColorMode === 'COLOR';
-  const isSelectedDouble = modalPrintSides === 'DOUBLE';
-
-  // Calculate dynamic per-page rate helper
-  const getPaperRate = (size: PaperSize) => {
-    if (size === 'A4') {
-      if (isSelectedColor) return isSelectedDouble ? (pricing?.a4_color_double_per_page ?? 18) : (pricing?.a4_color_per_page ?? 10);
-      return isSelectedDouble ? (pricing?.a4_bw_double_per_page ?? 4) : (pricing?.a4_bw_per_page ?? 3);
-    }
-    if (size === 'A3') {
-      if (isSelectedColor) return isSelectedDouble ? (pricing?.a3_color_double_per_page ?? 35) : (pricing?.a3_color_per_page ?? 20);
-      return isSelectedDouble ? (pricing?.a3_bw_double_per_page ?? 8) : (pricing?.a3_bw_per_page ?? 5);
-    }
-    if (size === 'LEGAL') {
-      if (isSelectedColor) return isSelectedDouble ? (pricing?.legal_color_double_per_page ?? 22) : (pricing?.legal_color_per_page ?? 12);
-      return isSelectedDouble ? (pricing?.legal_bw_double_per_page ?? 5) : (pricing?.legal_bw_per_page ?? 3);
-    }
-    if (size === 'PHOTO') {
-      return pricing?.photo_paper_per_page ?? 25;
-    }
-    const custom = customPapers.find((p) => p.id === size);
-    if (custom) {
-      if (isSelectedColor) return isSelectedDouble ? custom.color_double : custom.color_single;
-      return isSelectedDouble ? custom.bw_double : custom.bw_single;
-    }
-    return 3;
-  };
-
-  const isLandscape = config.orientation === 'LANDSCAPE';
-  const isBw = modalColorMode === 'BW';
-
-  // Calculate WYSIWYG Page Dimensions (mm aspect ratio)
-  const getAspectRatio = () => {
-    if (modalPaperSize === 'A3') return isLandscape ? '1.414 / 1' : '1 / 1.414';
-    if (modalPaperSize === 'LEGAL') return isLandscape ? '1.64 / 1' : '1 / 1.64';
-    if (modalPaperSize === 'PHOTO') return isLandscape ? '1.5 / 1' : '1 / 1.5';
-    return isLandscape ? '1.414 / 1' : '1 / 1.414'; // A4 Default
-  };
+  if (!isOpen) return null;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Advanced print preview" className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex flex-col h-[100dvh] w-screen overflow-hidden font-sans select-none pb-safe pt-safe">
-      {/* 1. Mobile & Desktop Sticky Top Header Bar */}
-      <header className="bg-slate-950 border-b border-slate-800/90 px-4 py-3 flex items-center justify-between shrink-0 z-50 shadow-md">
-        {/* Left: Close Button */}
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Print preview"
+      className="fixed inset-0 z-50 bg-[#202124] text-slate-100 flex flex-col md:flex-row h-[100dvh] w-screen overflow-hidden font-sans select-none"
+    >
+      {/* Mobile Top Navigation Switcher */}
+      <div className="md:hidden bg-[#202124] border-b border-slate-800 px-4 py-2 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setMobileTab('preview')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold ${
+              mobileTab === 'preview' ? 'bg-blue-600 text-white' : 'text-slate-400'
+            }`}
+          >
+            Preview
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab('settings')}
+            className={`px-3 py-1.5 rounded-md text-xs font-semibold ${
+              mobileTab === 'settings' ? 'bg-blue-600 text-white' : 'text-slate-400'
+            }`}
+          >
+            Settings
+          </button>
+        </div>
         <button
+          type="button"
           onClick={onClose}
-          className="min-h-[44px] min-w-[44px] rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer active:scale-95"
-          aria-label="Close Print Preview"
+          className="p-1.5 text-slate-400 hover:text-white"
         >
           <X className="w-5 h-5" />
         </button>
+      </div>
 
-        {/* Center: Title & Page Count */}
-        <div className="flex items-center gap-2 text-center min-w-0 px-2">
-          <div className="w-6 h-6 rounded-md bg-red-600 flex items-center justify-center font-black text-white text-[10px] shadow-xs shrink-0">
-            PDF
+      {/* =========================================================================
+          LEFT SIDEBAR: Adobe Acrobat / Chromium Print Settings Panel
+          (Matches user screenshots 1 & 2 exactly, with Printer choosing removed)
+         ========================================================================= */}
+      <aside
+        className={`w-full md:w-[320px] lg:w-[340px] bg-[#202124] flex flex-col shrink-0 border-r border-[#3c4043]/50 h-full overflow-hidden ${
+          mobileTab === 'preview' ? 'hidden md:flex' : 'flex'
+        }`}
+      >
+        {/* Header: Title, Dynamic Sheet Count, Help Button */}
+        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-[#3c4043]/40 shrink-0">
+          <div>
+            <h1 className="text-xl font-semibold text-white tracking-tight">Print</h1>
+            <p className="text-xs text-[#9aa0a6] font-normal mt-0.5">
+              Total: {totalSheets} sheet{totalSheets === 1 ? '' : 's'} of paper
+            </p>
           </div>
-          <div className="min-w-0">
-            <h2 className="text-xs sm:text-sm font-extrabold text-white truncate max-w-[160px] sm:max-w-xs">
-              {fileName}
-            </h2>
-            <div className="text-[10px] text-slate-400 font-mono">
-              Advance Print Preview • Page {currentPage} of {totalDocPages}
-            </div>
-          </div>
+          <button
+            type="button"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-[#9aa0a6] hover:text-white hover:bg-[#35363a] transition-colors"
+            title="Help"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Right: Primary Apply / Print Action Button */}
-        <button
-          type="button"
-          onClick={handleApplyAndClose}
-          className="min-h-[44px] px-4 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-red-600/30 transition-all cursor-pointer"
-        >
-          <Printer className="w-4 h-4" />
-          <span>Apply</span>
-        </button>
-      </header>
+        {/* Scrollable Form Settings */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5 text-xs text-[#e8eaed]">
+          {/* Note: Printer choosing part removed per user instruction */}
 
-      {/* 2. Main Body Split: Canvas Left / Drawer Right (Desktop Two-Panel, Mobile Stacked) */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-        {/* Left/Main Panel: Large WYSIWYG Preview Canvas */}
-        <div
-          className="flex-1 bg-slate-950/70 p-3 sm:p-6 flex flex-col items-center justify-between overflow-hidden relative touch-none"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          onDoubleClick={handleCanvasDoubleTap}
-        >
-          {/* Top Canvas Toolbar: Page Nav & Zoom Controls */}
-          <div className="w-full max-w-xl bg-slate-900/90 backdrop-blur-md p-1.5 sm:p-2 rounded-2xl border border-slate-800/80 flex items-center justify-between text-xs font-semibold shrink-0 mb-3 shadow-lg z-20">
-            {/* Page Navigation */}
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage <= 1}
-                className="min-h-[38px] min-w-[38px] rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-200 flex items-center justify-center transition-colors cursor-pointer"
-                title="Previous Page"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="px-2 font-mono text-[11px] text-slate-300">
-                <strong className="text-white font-bold">{currentPage}</strong> / {totalDocPages}
-              </span>
-              <button
-                type="button"
-                onClick={() => setCurrentPage((p) => Math.min(totalDocPages, p + 1))}
-                disabled={currentPage >= totalDocPages}
-                className="min-h-[38px] min-w-[38px] rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-200 flex items-center justify-center transition-colors cursor-pointer"
-                title="Next Page"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Zoom & Rotate Controls */}
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={handleZoomOut}
-                className="min-h-[38px] min-w-[38px] rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition-colors cursor-pointer"
-                title="Zoom Out"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={handleZoomFit}
-                className="px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono text-[10px] font-bold"
-                title="Reset Zoom to 100%"
-              >
-                {zoomLevel}%
-              </button>
-              <button
-                type="button"
-                onClick={handleZoomIn}
-                className="min-h-[38px] min-w-[38px] rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition-colors cursor-pointer"
-                title="Zoom In"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={handleRotate}
-                className="min-h-[38px] min-w-[38px] rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition-colors cursor-pointer ml-1"
-                title="Rotate Page 90°"
-              >
-                <RotateCw className="w-4 h-4" />
-              </button>
-            </div>
+          {/* 1. Copies */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-normal text-[#9aa0a6]">Copies</label>
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={modalCopies}
+              onChange={(e) => setModalCopies(Math.max(1, parseInt(e.target.value) || 1))}
+              className="w-24 px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs font-sans focus:outline-none focus:border-[#8ab4f8]"
+            />
           </div>
 
-          {/* WYSIWYG Render Box */}
-          <div className="flex-1 w-full flex items-center justify-center overflow-auto p-2 sm:p-4 relative">
-            <div
-              className="bg-white text-slate-900 shadow-2xl rounded-xs transition-all duration-200 flex flex-col justify-between relative overflow-hidden select-none border border-slate-300 ring-8 ring-black/20"
-              style={{
-                aspectRatio: getAspectRatio(),
-                width: isLandscape ? `${340 * (zoomLevel / 100)}px` : `${240 * (zoomLevel / 100)}px`,
-                maxWidth: '92vw',
-                maxHeight: '65vh',
-                transform: `rotate(${rotationAngle}deg)`,
-                filter: isBw ? 'grayscale(100%)' : 'none',
-              }}
-            >
-              {/* Security Watermark Overlay */}
-              {config.watermark && config.watermark !== 'NONE' && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
-                  <span className="text-2xl sm:text-3xl font-black text-rose-500/30 -rotate-45 tracking-widest uppercase border-4 border-rose-500/30 px-4 py-2 rounded-xl">
-                    {config.watermark}
-                  </span>
-                </div>
-              )}
-
-              {/* Document Paper Header */}
-              <div className="px-3 py-1.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between text-[9px] text-slate-500 font-mono z-20 shrink-0">
-                <span className="font-bold truncate max-w-[140px]">{fileName}</span>
-                <span>{modalPaperSize} • {isBw ? 'B&W' : 'COLOR'} • {modalCopies} {modalCopies === 1 ? 'copy' : 'copies'}</span>
-              </div>
-
-              {/* Document Image / PDF Page Render */}
-              <div className="flex-1 w-full h-full p-2 flex items-center justify-center relative overflow-hidden bg-slate-50">
-                {activePreviewUrl ? (
-                  isImage ? (
-                    config.pagesPerSheet === '2' ? (
-                      <div className="grid grid-cols-2 gap-1.5 w-full h-full items-center">
-                        <img src={activePreviewUrl} alt="Preview 1" className="w-full h-full object-contain rounded-xs border border-slate-200" />
-                        <img src={activePreviewUrl} alt="Preview 2" className="w-full h-full object-contain rounded-xs border border-slate-200" />
-                      </div>
-                    ) : config.pagesPerSheet === '4' ? (
-                      <div className="grid grid-cols-2 grid-rows-2 gap-1 w-full h-full items-center">
-                        {[1, 2, 3, 4].map((i) => (
-                          <img key={i} src={activePreviewUrl} alt={`Preview ${i}`} className="w-full h-full object-contain rounded-xs border border-slate-200" />
-                        ))}
-                      </div>
-                    ) : (
-                      <img
-                        src={activePreviewUrl}
-                        alt="Document Preview"
-                        className="w-full h-full object-contain max-h-full transition-transform"
-                      />
-                    )
-                  ) : isPdf ? (
-                    <iframe
-                      src={`${activePreviewUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-                      className="w-full h-full border-none pointer-events-none rounded-xs"
-                      title="PDF Preview"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-slate-400 p-4 text-center">
-                      <FileText className="w-10 h-10 text-slate-300" />
-                      <span className="text-xs font-bold text-slate-700">{fileName}</span>
-                    </div>
-                  )
-                ) : (
-                  <div className="p-4 flex-1 flex flex-col justify-center gap-2 w-full">
-                    <div className="h-3 bg-slate-800/80 rounded-xs w-3/4" />
-                    <div className="h-2 bg-slate-300 rounded-xs w-full" />
-                    <div className="h-2 bg-slate-300 rounded-xs w-5/6" />
-                    <div className="h-2 bg-slate-200 rounded-xs w-full" />
-                  </div>
-                )}
-              </div>
-
-              {/* Document Paper Footer */}
-              <div className="px-3 py-1.5 border-t border-slate-200 bg-slate-100 flex items-center justify-between text-[9px] text-slate-500 font-mono z-20 shrink-0">
-                <span>Document preview</span>
-                <span>Page {currentPage} of {totalDocPages}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Mobile Drawer Handle (Mobile Only Trigger) */}
-          <div className="md:hidden w-full bg-slate-900 border-t border-slate-800 p-2.5 flex items-center justify-between text-xs text-slate-300 shrink-0 z-30 shadow-lg">
-            <button
-              type="button"
-              onClick={() => setIsDrawerExpanded(!isDrawerExpanded)}
-              className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-slate-800/90 text-white font-bold cursor-pointer"
-            >
-              <div className="flex items-center gap-2">
-                <Sliders className="w-4 h-4 text-red-500" />
-                <span>Print Options & Adobe Settings</span>
-              </div>
-              <div className="flex items-center gap-1 text-[11px] text-red-400 font-mono">
-                <span>{modalPaperSize} • {isBw ? 'B&W' : 'Color'} • {modalCopies}x</span>
-                {isDrawerExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
-              </div>
-            </button>
-          </div>
-        </div>
-
-        {/* 3. Settings Panel (Right Sidebar on Desktop, Sliding Bottom Sheet on Mobile) */}
-        <aside
-          className={`w-full md:w-[400px] lg:w-[420px] bg-slate-900 p-5 space-y-5 overflow-y-auto text-xs shrink-0 border-t md:border-t-0 md:border-l border-slate-800 transition-all duration-300 z-40 ${
-            isDrawerExpanded ? 'max-h-[75vh] border-t-2 border-red-500' : 'max-h-0 md:max-h-full hidden md:block'
-          }`}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-            <div className="flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-red-500" />
-              <h3 className="font-extrabold text-sm text-white">Print Options & Adobe Settings</h3>
-            </div>
-            <button
-              type="button"
-              onClick={() => setIsDrawerExpanded(false)}
-              className="md:hidden p-1 text-slate-400 hover:text-white cursor-pointer"
-            >
-              <ChevronDown className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Section 2: Core Print Specifications */}
-          <p role="note" className="rounded-xl bg-amber-950 p-3 text-amber-200">Paper, colour, sides and copies apply to your order. Advanced range, layout, scale and watermark controls are preview only; all uploaded pages will print.</p>
-          <div className="space-y-4 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800/80">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-red-400 flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5" />
-                Section 2 • Print Specifications
-              </span>
-              <span className="text-[10px] text-slate-400 font-mono">Live Sync</span>
-            </div>
-
-            {/* A. Paper Size & Type */}
-            <div className="space-y-1.5">
-              <label className="block font-bold text-slate-300 text-[11px]">Paper Size & Type</label>
-              <div className="grid grid-cols-2 gap-2">
-                {enabledPapers.a4 !== false && (
-                  <button
-                    type="button"
-                    onClick={() => setModalPaperSize('A4')}
-                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer active:scale-95 ${
-                      modalPaperSize === 'A4'
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="w-5 h-6 border border-slate-700 rounded-xs flex items-center justify-center text-slate-400 mb-1">
-                      <FileText className="w-3 h-3" />
-                    </div>
-                    <div className="font-bold text-xs">A4 Standard</div>
-                    <div className="text-[10px] text-slate-400 font-medium">210×297 mm</div>
-                    <div className="mt-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-slate-200">
-                      {formatCurrency(getPaperRate('A4'))}/page
-                    </div>
-                  </button>
-                )}
-
-                {enabledPapers.a3 !== false && (
-                  <button
-                    type="button"
-                    onClick={() => setModalPaperSize('A3')}
-                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer active:scale-95 ${
-                      modalPaperSize === 'A3'
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="w-5 h-6 border border-slate-700 rounded-xs flex items-center justify-center text-slate-400 mb-1">
-                      <FileText className="w-3 h-3" />
-                    </div>
-                    <div className="font-bold text-xs">A3 Poster</div>
-                    <div className="text-[10px] text-slate-400 font-medium">297×420 mm</div>
-                    <div className="mt-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-slate-200">
-                      {formatCurrency(getPaperRate('A3'))}/page
-                    </div>
-                  </button>
-                )}
-
-                {enabledPapers.legal !== false && (
-                  <button
-                    type="button"
-                    onClick={() => setModalPaperSize('LEGAL')}
-                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer active:scale-95 ${
-                      modalPaperSize === 'LEGAL'
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="w-5 h-6 border border-slate-700 rounded-xs flex items-center justify-center text-slate-400 mb-1">
-                      <FileText className="w-3 h-3" />
-                    </div>
-                    <div className="font-bold text-xs">Legal / Stamp</div>
-                    <div className="text-[10px] text-slate-400 font-medium">216×356 mm</div>
-                    <div className="mt-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-slate-200">
-                      {formatCurrency(getPaperRate('LEGAL'))}/page
-                    </div>
-                  </button>
-                )}
-
-                {enabledPapers.photo !== false && (
-                  <button
-                    type="button"
-                    onClick={() => setModalPaperSize('PHOTO')}
-                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer active:scale-95 ${
-                      modalPaperSize === 'PHOTO'
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="w-5 h-6 border border-slate-700 rounded-xs flex items-center justify-center text-slate-400 mb-1">
-                      <ImageIcon className="w-3 h-3" />
-                    </div>
-                    <div className="font-bold text-xs">Photo Glossy</div>
-                    <div className="text-[10px] text-slate-400 font-medium">240 GSM Glossy</div>
-                    <div className="mt-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-slate-200">
-                      {formatCurrency(getPaperRate('PHOTO'))}/page
-                    </div>
-                  </button>
-                )}
-
-                {customPapers.map((paper) => (
-                  <button
-                    key={paper.id}
-                    type="button"
-                    onClick={() => setModalPaperSize(paper.id)}
-                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer active:scale-95 ${
-                      modalPaperSize === paper.id
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="w-5 h-6 border border-cyan-800 bg-cyan-950/40 rounded-xs flex items-center justify-center text-cyan-400 mb-1">
-                      <FileText className="w-3 h-3" />
-                    </div>
-                    <div className="font-bold text-xs text-slate-200 truncate max-w-full">{paper.name}</div>
-                    <div className="text-[10px] text-slate-400 font-medium truncate max-w-full">
-                      {paper.description || 'Custom'}
-                    </div>
-                    <div className="mt-1 px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-bold text-slate-200">
-                      {formatCurrency(getPaperRate(paper.id))}/page
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* B. Color Mode */}
-            {pricing?.form_fields?.allowColorPrinting !== false && (
-              <div className="space-y-1.5">
-                <label className="block font-bold text-slate-300 text-[11px]">Color Mode</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setModalColorMode('BW')}
-                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
-                      modalColorMode === 'BW'
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="w-3.5 h-3.5 rounded-full bg-slate-300 border border-slate-500 mb-1" />
-                    <div className="font-bold text-xs">Black & White</div>
-                    <div className="text-[10px] text-slate-400">Standard Xerox</div>
-                    <div className="text-[10px] text-red-400 font-bold mt-0.5">
-                      From {formatCurrency(pricing?.a4_bw_per_page || 2)}/pg
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setModalColorMode('COLOR')}
-                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
-                      modalColorMode === 'COLOR'
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="w-3.5 h-3.5 rounded-full bg-gradient-to-tr from-pink-500 via-amber-400 to-indigo-500 mb-1 shadow-xs" />
-                    <div className="font-bold text-xs">Full Color</div>
-                    <div className="text-[10px] text-slate-400">Vibrant Laser</div>
-                    <div className="text-[10px] text-red-400 font-bold mt-0.5">
-                      From {formatCurrency(pricing?.a4_color_per_page || 10)}/pg
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* C. Print Sides */}
-            {pricing?.form_fields?.allowDoubleSided !== false && (
-              <div className="space-y-1.5">
-                <label className="block font-bold text-slate-300 text-[11px]">Print Sides</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setModalPrintSides('SINGLE')}
-                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
-                      modalPrintSides === 'SINGLE'
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="w-4 h-4 rounded bg-red-600 text-white font-bold text-[10px] flex items-center justify-center mb-1">
-                      1
-                    </div>
-                    <div className="font-bold text-xs">Single Sided</div>
-                    <div className="text-[10px] text-slate-400">1 side only</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setModalPrintSides('DOUBLE')}
-                    className={`p-2.5 rounded-xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer active:scale-95 ${
-                      modalPrintSides === 'DOUBLE'
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold ring-1 ring-red-500 shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white hover:border-slate-700'
-                    }`}
-                  >
-                    <div className="w-4 h-4 rounded bg-red-600 text-white font-bold text-[10px] flex items-center justify-center mb-1">
-                      2
-                    </div>
-                    <div className="font-bold text-xs">Both Sides</div>
-                    <div className="text-[10px] text-slate-400">Back to back</div>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* D. Number of Copies */}
-            <div className="space-y-1.5">
-              <label className="block font-bold text-slate-300 text-[11px]">Number of Copies</label>
-              <div className="flex items-center justify-between border border-slate-800 rounded-xl bg-slate-950 p-1 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setModalCopies((prev) => Math.max(1, prev - 1))}
-                  disabled={modalCopies <= 1}
-                  className="w-10 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-slate-200 font-bold text-sm flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  -
-                </button>
-                <span className="font-bold text-xs text-white">
-                  {modalCopies} {modalCopies === 1 ? 'Copy' : 'Copies'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setModalCopies((prev) => Math.min(100, prev + 1))}
-                  className="w-10 h-9 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm flex items-center justify-center transition-colors cursor-pointer"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Section: Adobe Acrobat Advanced Settings */}
-          <div className="space-y-4 pt-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-extrabold uppercase tracking-wider text-red-400 flex items-center gap-1.5">
-                <Sliders className="w-3.5 h-3.5" />
-                Adobe Advanced Layout
-              </span>
-            </div>
-
-            {/* 1. Page Range */}
+          {/* 2. Layout */}
+          <div className="space-y-2">
+            <label className="block text-xs font-normal text-[#9aa0a6]">Layout</label>
             <div className="space-y-2">
-              <label className="block font-bold text-slate-300 text-[11px]">1. Page Range / Selection</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { key: 'ALL', label: 'All Pages' },
-                  { key: 'RANGE', label: 'Custom Range' },
-                  { key: 'ODD', label: 'Odd Pages Only' },
-                  { key: 'EVEN', label: 'Even Pages Only' },
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setConfig((prev) => ({ ...prev, pageRangeMode: item.key as any }))}
-                    className={`min-h-[44px] px-3 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
-                      config.pageRangeMode === item.key
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="layout"
+                  checked={modalLayout === 'PORTRAIT'}
+                  onChange={() => setModalLayout('PORTRAIT')}
+                  className="accent-[#8ab4f8] w-4 h-4 cursor-pointer"
+                />
+                <span className="text-xs text-[#e8eaed]">Portrait</span>
+              </label>
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="layout"
+                  checked={modalLayout === 'LANDSCAPE'}
+                  onChange={() => setModalLayout('LANDSCAPE')}
+                  className="accent-[#8ab4f8] w-4 h-4 cursor-pointer"
+                />
+                <span className="text-xs text-[#e8eaed]">Landscape</span>
+              </label>
+            </div>
+          </div>
 
-              {config.pageRangeMode === 'RANGE' && (
+          {/* 3. Pages */}
+          <div className="space-y-2">
+            <label className="block text-xs font-normal text-[#9aa0a6]">Pages</label>
+            <div className="space-y-2.5">
+              <label className="flex items-center gap-2.5 cursor-pointer">
+                <input
+                  type="radio"
+                  name="pages"
+                  checked={pageRangeMode === 'ALL'}
+                  onChange={() => setPageRangeMode('ALL')}
+                  className="accent-[#8ab4f8] w-4 h-4 cursor-pointer"
+                />
+                <span className="text-xs text-[#e8eaed]">All</span>
+              </label>
+
+              <div className="flex items-center gap-2.5">
+                <input
+                  type="radio"
+                  name="pages"
+                  checked={pageRangeMode === 'RANGE'}
+                  onChange={() => setPageRangeMode('RANGE')}
+                  className="accent-[#8ab4f8] w-4 h-4 cursor-pointer shrink-0"
+                />
                 <input
                   type="text"
-                  placeholder="e.g. 1-5, 8, 10-12"
-                  value={config.customPageRange || ''}
-                  onChange={(e) => setConfig((prev) => ({ ...prev, customPageRange: e.target.value }))}
-                  className="w-full min-h-[44px] px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-red-500 mt-2"
+                  placeholder="e.g. 1-5, 8, 11-13"
+                  value={customPageRange}
+                  onFocus={() => setPageRangeMode('RANGE')}
+                  onChange={(e) => {
+                    setPageRangeMode('RANGE');
+                    setCustomPageRange(e.target.value);
+                  }}
+                  className="flex-1 px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs placeholder:text-[#80868b] focus:outline-none focus:border-[#8ab4f8]"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Color */}
+          <div className="space-y-1.5">
+            <label className="block text-xs font-normal text-[#9aa0a6]">Color</label>
+            <select
+              value={modalColorMode}
+              onChange={(e) => setModalColorMode(e.target.value as ColorMode)}
+              className="w-full px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
+            >
+              <option value="BW">Black and white</option>
+              <option value="COLOR">Color</option>
+            </select>
+          </div>
+
+          {/* 5. More / Fewer Settings Collapsible Toggle */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowMoreSettings(!showMoreSettings)}
+              className="flex items-center gap-1.5 text-xs text-[#8ab4f8] hover:text-[#aecbfa] font-normal transition-colors cursor-pointer py-1"
+            >
+              {showMoreSettings ? (
+                <>
+                  <span>Fewer settings</span>
+                  <ChevronUp className="w-3.5 h-3.5" />
+                </>
+              ) : (
+                <>
+                  <span>More settings</span>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </>
               )}
-            </div>
+            </button>
+          </div>
 
-            {/* 2. Pages Per Sheet (N-Up) */}
-            <div className="space-y-2 pt-2 border-t border-slate-800">
-              <label className="block font-bold text-slate-300 text-[11px]">2. Pages Per Sheet (N-Up Layout)</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { key: '1', label: '1 Page / Sheet' },
-                  { key: '2', label: '2 Pages / Sheet' },
-                  { key: '4', label: '4 Pages Grid' },
-                  { key: 'booklet', label: 'Booklet Fold' },
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setConfig((prev) => ({ ...prev, pagesPerSheet: item.key as any }))}
-                    className={`min-h-[44px] px-3 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
-                      config.pagesPerSheet === item.key
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 3. Page Scaling */}
-            <div className="space-y-2 pt-2 border-t border-slate-800">
-              <label className="block font-bold text-slate-300 text-[11px]">3. Page Sizing & Handling</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { key: 'FIT', label: 'Fit Printable Area' },
-                  { key: 'ACTUAL', label: 'Actual Size (100%)' },
-                  { key: 'SHRINK', label: 'Shrink Oversized' },
-                  { key: 'CUSTOM', label: 'Custom Scale' },
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setConfig((prev) => ({ ...prev, pageScaling: item.key as any }))}
-                    className={`min-h-[44px] px-3 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
-                      config.pageScaling === item.key
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+          {/* Collapsible Section: Screenshot 2 Controls */}
+          {showMoreSettings && (
+            <div className="space-y-5 pt-1 border-t border-[#3c4043]/30">
+              {/* Paper Size */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-normal text-[#9aa0a6]">Paper size</label>
+                <select
+                  value={modalPaperSize}
+                  onChange={(e) => setModalPaperSize(e.target.value as PaperSize)}
+                  className="w-full px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
+                >
+                  {enabledPapers.a4 !== false && <option value="A4">A4</option>}
+                  <option value="LETTER">Letter</option>
+                  {enabledPapers.legal !== false && <option value="LEGAL">Legal</option>}
+                  {enabledPapers.a3 !== false && <option value="A3">Tabloid / A3</option>}
+                  {customPapers.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {config.pageScaling === 'CUSTOM' && (
-                <div className="flex items-center gap-3 mt-2">
-                  <input
-                    type="range"
-                    min="50"
-                    max="150"
-                    value={config.customScalePercent || 100}
-                    onChange={(e) => setConfig((prev) => ({ ...prev, customScalePercent: parseInt(e.target.value) || 100 }))}
-                    className="flex-1 accent-red-500 min-h-[44px]"
-                  />
-                  <span className="font-mono font-bold text-slate-200 text-xs w-12 text-right">
-                    {config.customScalePercent}%
-                  </span>
+              {/* Scale (%) */}
+              <div className="space-y-2">
+                <label className="block text-xs font-normal text-[#9aa0a6]">Scale (%)</label>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="scale"
+                      checked={scaleMode === 'FIT'}
+                      onChange={() => setScaleMode('FIT')}
+                      className="accent-[#8ab4f8] w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-xs text-[#e8eaed]">Fit to printable area</span>
+                  </label>
+
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="scale"
+                      checked={scaleMode === 'ACTUAL'}
+                      onChange={() => setScaleMode('ACTUAL')}
+                      className="accent-[#8ab4f8] w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-xs text-[#e8eaed]">Actual size</span>
+                  </label>
+
+                  <div className="flex items-center gap-2.5">
+                    <input
+                      type="radio"
+                      name="scale"
+                      checked={scaleMode === 'CUSTOM'}
+                      onChange={() => setScaleMode('CUSTOM')}
+                      className="accent-[#8ab4f8] w-4 h-4 cursor-pointer shrink-0"
+                    />
+                    <input
+                      type="number"
+                      min={25}
+                      max={400}
+                      value={customScalePercent}
+                      onFocus={() => setScaleMode('CUSTOM')}
+                      onChange={(e) => {
+                        setScaleMode('CUSTOM');
+                        setCustomScalePercent(parseInt(e.target.value) || 100);
+                      }}
+                      className="w-20 px-2.5 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs font-sans focus:outline-none focus:border-[#8ab4f8]"
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* 4. Orientation */}
-            <div className="space-y-2 pt-2 border-t border-slate-800">
-              <label className="block font-bold text-slate-300 text-[11px]">4. Orientation</label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { key: 'AUTO', label: 'Auto' },
-                  { key: 'PORTRAIT', label: 'Portrait 📄' },
-                  { key: 'LANDSCAPE', label: 'Landscape 📑' },
-                ].map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setConfig((prev) => ({ ...prev, orientation: item.key as any }))}
-                    className={`min-h-[44px] px-2 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer active:scale-95 ${
-                      config.orientation === item.key
-                        ? 'border-red-500 bg-red-500/20 text-white font-extrabold shadow-2xs'
-                        : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+              {/* Pages per Sheet */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-normal text-[#9aa0a6]">Pages per sheet</label>
+                <select
+                  value={pagesPerSheet}
+                  onChange={(e) => setPagesPerSheet(e.target.value as '1' | '2' | '4')}
+                  className="w-full px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
+                >
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="4">4</option>
+                </select>
+              </div>
+
+              {/* Two-Sided Printing */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-normal text-[#9aa0a6]">Two-sided</label>
+                <label className="flex items-center gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={modalPrintSides === 'DOUBLE'}
+                    onChange={(e) => setModalPrintSides(e.target.checked ? 'DOUBLE' : 'SINGLE')}
+                    className="accent-[#8ab4f8] w-4 h-4 rounded cursor-pointer"
+                  />
+                  <span className="text-xs text-[#e8eaed]">Print on both sides</span>
+                </label>
+              </div>
+
+              {/* Watermark */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-normal text-[#9aa0a6]">Security Watermark</label>
+                <select
+                  value={watermark}
+                  onChange={(e) => setWatermark(e.target.value as any)}
+                  className="w-full px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
+                >
+                  <option value="NONE">None</option>
+                  <option value="CONFIDENTIAL">CONFIDENTIAL</option>
+                  <option value="DRAFT">DRAFT</option>
+                  <option value="SAMPLE">SAMPLE</option>
+                </select>
               </div>
             </div>
+          )}
+        </div>
 
-            {/* 5. Watermark Stamp */}
-            <div className="space-y-2 pt-2 border-t border-slate-800">
-              <label className="block font-bold text-slate-300 text-[11px]">5. Security Watermark</label>
-              <select
-                value={config.watermark || 'NONE'}
-                onChange={(e) => setConfig((prev) => ({ ...prev, watermark: e.target.value as any }))}
-                className="w-full min-h-[44px] px-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs font-bold focus:outline-none focus:border-red-500 cursor-pointer"
-              >
-                <option value="NONE">No Watermark</option>
-                <option value="CONFIDENTIAL">CONFIDENTIAL</option>
-                <option value="DRAFT">DRAFT</option>
-                <option value="SAMPLE">SAMPLE / FOR REVIEW</option>
-              </select>
-            </div>
+        {/* Footer Buttons (Fixed at bottom of left panel) */}
+        <div className="px-6 py-4 border-t border-[#3c4043]/40 flex items-center gap-3 shrink-0 bg-[#202124]">
+          <button
+            type="button"
+            onClick={handlePrintApply}
+            className="px-6 py-2 rounded bg-[#1a73e8] hover:bg-[#1b66c9] active:bg-[#185abc] text-white text-xs font-medium shadow-sm transition-colors cursor-pointer"
+          >
+            Print
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2 rounded bg-[#3c4043] hover:bg-[#4a4d51] active:bg-[#35373a] text-[#e8eaed] text-xs font-medium border border-[#5f6368]/50 transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+        </div>
+      </aside>
+
+      {/* =========================================================================
+          RIGHT WORKSPACE: Full Adobe Acrobat / Edge Preview Canvas Area
+         ========================================================================= */}
+      <main
+        className={`flex-1 bg-[#323639] flex flex-col items-center justify-between p-4 sm:p-6 relative overflow-hidden h-full ${
+          mobileTab === 'settings' ? 'hidden md:flex' : 'flex'
+        }`}
+      >
+        {/* Top Floating Info Tag */}
+        <div className="w-full flex items-center justify-between text-xs text-[#9aa0a6] px-2 shrink-0 z-10">
+          <span className="truncate max-w-[200px] sm:max-w-xs font-mono text-[11px]">
+            {fileName}
+          </span>
+          <span className="text-[11px] font-mono">
+            {modalPaperSize} • {modalLayout === 'LANDSCAPE' ? 'Landscape' : 'Portrait'} •{' '}
+            {isBw ? 'Black & White' : 'Color'}
+          </span>
+        </div>
+
+        {/* Centered Document Canvas Container */}
+        <div className="flex-1 w-full flex items-center justify-center overflow-auto p-2 sm:p-4 my-auto relative">
+          <div
+            className="relative bg-white shadow-[0_12px_40px_rgba(0,0,0,0.65)] transition-all duration-150 rounded-xs flex items-center justify-center overflow-hidden border border-slate-400/20"
+            style={{
+              aspectRatio: `${paperAspectRatio}`,
+              width: isLandscape
+                ? `${Math.round(440 * (zoomLevel / 100))}px`
+                : `${Math.round(330 * (zoomLevel / 100))}px`,
+              maxWidth: '92%',
+              maxHeight: '82vh',
+              transform: `rotate(${rotationAngle}deg)`,
+              filter: isBw ? 'grayscale(100%)' : 'none',
+            }}
+          >
+            <canvas
+              ref={canvasRef}
+              className="w-full h-full object-contain block select-none pointer-events-none"
+            />
           </div>
+        </div>
 
-          {/* Apply Settings Action */}
-          <div className="pt-4 border-t border-slate-800 flex items-center justify-between gap-2">
+        {/* Bottom Floating Navigation & Zoom Bar */}
+        <div className="bg-[#202124]/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#3c4043] flex items-center gap-3 text-xs text-white shadow-xl z-20 shrink-0">
+          {/* Page Navigator */}
+          <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={onClose}
-              className="min-h-[44px] px-4 rounded-xl border border-slate-700 text-slate-300 font-bold hover:bg-slate-800 transition-colors cursor-pointer"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="p-1 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+              title="Previous sheet"
             >
-              Cancel
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="font-mono text-[11px] px-1 text-slate-300">
+              <strong className="text-white">{currentPage}</strong> / {Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1))}
+            </span>
+            <button
+              type="button"
+              onClick={() =>
+                setCurrentPage((p) =>
+                  Math.min(
+                    Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1)),
+                    p + 1
+                  )
+                )
+              }
+              disabled={
+                currentPage >=
+                Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1))
+              }
+              className="p-1 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+              title="Next sheet"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="w-[1px] h-4 bg-[#3c4043]" />
+
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setZoomLevel((z) => Math.max(50, z - 20))}
+              className="p-1 rounded-full hover:bg-slate-700 cursor-pointer"
+              title="Zoom out"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
             </button>
             <button
               type="button"
-              onClick={handleApplyAndClose}
-              className="min-h-[44px] flex-1 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white font-extrabold flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
+              onClick={() => setZoomLevel(100)}
+              className="text-[11px] font-mono text-slate-300 hover:text-white px-1"
+              title="Reset Zoom"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Apply All Settings</span>
+              {zoomLevel}%
+            </button>
+            <button
+              type="button"
+              onClick={() => setZoomLevel((z) => Math.min(200, z + 20))}
+              className="p-1 rounded-full hover:bg-slate-700 cursor-pointer"
+              title="Zoom in"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
             </button>
           </div>
-        </aside>
-      </div>
+
+          <div className="w-[1px] h-4 bg-[#3c4043]" />
+
+          {/* Rotate View */}
+          <button
+            type="button"
+            onClick={() => setRotationAngle((r) => (r + 90) % 360)}
+            className="p-1 rounded-full hover:bg-slate-700 cursor-pointer"
+            title="Rotate View 90°"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </main>
     </div>
   );
 };
