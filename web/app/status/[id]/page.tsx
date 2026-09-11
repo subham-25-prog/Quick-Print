@@ -361,20 +361,7 @@ export default function OrderStatusPage() {
               </div>
             </section>
 
-            {/* 3. Counter Pickup Guide */}
-            <section className="bg-gradient-to-r from-indigo-50/70 via-white to-indigo-50/70 rounded-3xl p-5 border border-indigo-100/80 shadow-xs flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
-                <Printer className="w-6 h-6" />
-              </div>
-              <div className="space-y-0.5">
-                <h3 className="text-sm font-extrabold text-slate-900">
-                  Pickup Counter Instructions
-                </h3>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  Show Order ID <span className="font-mono font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded">{data.order.order_number}</span> at the counter, or collect your printed documents directly from the output tray.
-                </p>
-              </div>
-            </section>
+
           </>
         )}
 

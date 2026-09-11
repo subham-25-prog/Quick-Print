@@ -101,9 +101,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                 <span className="text-xs sm:text-sm font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors block">
                   {storeName}
                 </span>
-                <div className="text-[10px] text-slate-400 font-semibold">
-                  Shopkeeper Command Center
-                </div>
               </div>
             </Link>
 
