@@ -264,20 +264,21 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     };
   }, [isOpen, isPdfFile, uploadedFile?.file, activePreviewUrl]);
 
-  // Calculate selected page count based on range mode
-  const selectedPageCount = useMemo(() => {
+  // Calculate selected pages array based on range mode
+  const selectedPages = useMemo<number[]>(() => {
     if (pageRangeMode === 'ALL' || !customPageRange.trim()) {
-      return totalDocPages;
+      return Array.from({ length: totalDocPages }, (_, i) => i + 1);
     }
     try {
       const pageSet = new Set<number>();
       const parts = customPageRange.split(',');
       for (const part of parts) {
         const trimmed = part.trim();
+        if (!trimmed) continue;
         if (trimmed.includes('-')) {
           const [startStr, endStr] = trimmed.split('-');
-          const start = parseInt(startStr, 10);
-          const end = parseInt(endStr, 10);
+          const start = parseInt(startStr?.trim() || '', 10);
+          const end = parseInt(endStr?.trim() || '', 10);
           if (!isNaN(start) && !isNaN(end)) {
             const minP = Math.max(1, Math.min(start, end));
             const maxP = Math.min(totalDocPages, Math.max(start, end));
@@ -292,20 +293,47 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           }
         }
       }
-      return pageSet.size > 0 ? pageSet.size : totalDocPages;
+      const sorted = Array.from(pageSet).sort((a, b) => a - b);
+      return sorted.length > 0 ? sorted : Array.from({ length: totalDocPages }, (_, i) => i + 1);
     } catch {
-      return totalDocPages;
+      return Array.from({ length: totalDocPages }, (_, i) => i + 1);
     }
   }, [pageRangeMode, customPageRange, totalDocPages]);
 
+  const selectedPageCount = selectedPages.length;
+
+  // Number of pages per sheet (1, 2, or 4)
+  const nUp = pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1;
+
+  // Total physical preview sheets needed to render selectedPages with nUp layout
+  const totalSheetsToPreview = useMemo(() => {
+    return Math.max(1, Math.ceil(selectedPages.length / nUp));
+  }, [selectedPages.length, nUp]);
+
+  // Keep currentPage within valid bounds when range or layout changes
+  useEffect(() => {
+    setCurrentPage((prev) => Math.min(prev, totalSheetsToPreview));
+  }, [totalSheetsToPreview]);
+
+  // Page numbers displayed on the currently viewed sheet
+  const currentSheetPages = useMemo<number[]>(() => {
+    const pages: number[] = [];
+    for (let i = 0; i < nUp; i++) {
+      const idx = (currentPage - 1) * nUp + i;
+      if (idx < selectedPages.length) {
+        pages.push(selectedPages[idx]);
+      }
+    }
+    return pages;
+  }, [currentPage, nUp, selectedPages]);
+
   // Dynamic calculation: "Total: X sheet(s) of paper"
   const totalSheets = useMemo(() => {
-    const nUp = pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1;
     const pagesOnSides = Math.ceil(selectedPageCount / nUp);
     const sidesFactor = modalPrintSides === 'DOUBLE' ? 2 : 1;
     const sheetsPerCopy = Math.ceil(pagesOnSides / sidesFactor);
     return Math.max(1, sheetsPerCopy * Math.max(1, modalCopies));
-  }, [selectedPageCount, pagesPerSheet, modalPrintSides, modalCopies]);
+  }, [selectedPageCount, nUp, modalPrintSides, modalCopies]);
 
   // Aspect ratio calculation for the Paper Preview Canvas
   const isLandscape = modalLayout === 'LANDSCAPE';
@@ -606,8 +634,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
       for (let i = 0; i < nUp; i++) {
         if (cancelled) return;
-        const pageToDraw = (currentPage - 1) * nUp + i + 1;
-        if (pageToDraw > totalDocPages && nUp > 1) continue;
+        const pageIndex = (currentPage - 1) * nUp + i;
+        if (pageIndex >= selectedPages.length) continue;
+        const pageToDraw = selectedPages[pageIndex];
 
         let slotX = 0;
         let slotY = 0;
@@ -700,6 +729,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     isBw,
     fileName,
     totalDocPages,
+    selectedPages,
     activePreviewUrl,
     isImgFile,
     pdfDoc,
@@ -1118,9 +1148,18 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       >
         {/* Top Info Bar */}
         <div className="w-full flex items-center justify-between text-xs text-[#9aa0a6] px-2 shrink-0 z-10">
-          <span className="truncate max-w-[180px] sm:max-w-xs font-mono text-[11px]">
-            {fileName}
-          </span>
+          <div className="flex items-center gap-2 truncate max-w-[220px] sm:max-w-xs">
+            <span className="truncate font-mono text-[11px]">
+              {fileName}
+            </span>
+            {pageRangeMode === 'RANGE' && currentSheetPages.length > 0 && (
+              <span className="px-1.5 py-0.5 text-[10px] font-mono bg-blue-500/20 text-blue-300 rounded border border-blue-500/30 shrink-0">
+                {currentSheetPages.length === 1
+                  ? `Page ${currentSheetPages[0]}`
+                  : `Pages ${currentSheetPages.join(', ')}`}
+              </span>
+            )}
+          </div>
           <span className="text-[11px] font-mono">
             {modalPaperSize} • {modalLayout === 'LANDSCAPE' ? 'Landscape' : 'Portrait'} •{' '}
             {isBw ? 'B&W' : 'Color'}
@@ -1150,7 +1189,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             {/* Fallback Native PDF Embed if PDF.js parser is unavailable */}
             {!pdfDoc && !isPdfLoading && isPdfFile && activePreviewUrl && (
               <iframe
-                src={`${activePreviewUrl}#page=${currentPage}&toolbar=0&navpanes=0&scrollbar=0`}
+                src={`${activePreviewUrl}#page=${currentSheetPages[0] || 1}&toolbar=0&navpanes=0&scrollbar=0`}
                 className="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs"
                 title="Document Preview"
               />
@@ -1183,31 +1222,14 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             </button>
             <span className="font-mono text-[11px] px-1 text-slate-300">
               <strong className="text-white">{currentPage}</strong> /{' '}
-              {Math.max(
-                1,
-                Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1))
-              )}
+              {totalSheetsToPreview}
             </span>
             <button
               type="button"
               onClick={() =>
-                setCurrentPage((p) =>
-                  Math.min(
-                    Math.max(
-                      1,
-                      Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1))
-                    ),
-                    p + 1
-                  )
-                )
+                setCurrentPage((p) => Math.min(totalSheetsToPreview, p + 1))
               }
-              disabled={
-                currentPage >=
-                Math.max(
-                  1,
-                  Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1))
-                )
-              }
+              disabled={currentPage >= totalSheetsToPreview}
               className="p-1 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
               title="Next sheet"
             >
