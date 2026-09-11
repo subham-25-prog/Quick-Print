@@ -144,17 +144,17 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
   const steps = [
     {
       step: 1,
-      title: 'Payment Verified',
-      shortTitle: 'Verified',
-      description: 'Security check passed',
+      title: 'Order Confirmed',
+      shortTitle: 'Confirmed',
+      description: 'Payment verified',
       icon: CheckCircle2,
       isDone: currentStep > 1,
       isActive: currentStep === 1,
     },
     {
       step: 2,
-      title: 'Document Spooled',
-      shortTitle: 'Spooled',
+      title: 'Preparing Document',
+      shortTitle: 'Preparing',
       description: `${paperSize} • ${colorMode}`,
       icon: FileText,
       isDone: currentStep > 2,
@@ -162,16 +162,16 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
     },
     {
       step: 3,
-      title: 'Dispatched to Agent',
-      shortTitle: 'Dispatched',
-      description: 'Connected to printer queue',
+      title: 'Sent to Printer',
+      shortTitle: 'Queued',
+      description: 'In print queue',
       icon: Cloud,
       isDone: currentStep > 3,
       isActive: currentStep === 3,
     },
     {
       step: 4,
-      title: 'Printing at Counter',
+      title: 'Printing Document',
       shortTitle: 'Printing',
       description: `${totalPages} ${totalPages === 1 ? 'page' : 'pages'} (${paperSize})`,
       icon: Printer,
@@ -182,7 +182,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
       step: 5,
       title: 'Ready for Pickup',
       shortTitle: 'Ready',
-      description: 'Available at tray',
+      description: 'Collect from counter tray',
       icon: Sparkles,
       isDone: currentStep >= 5,
       isActive: currentStep === 5,
@@ -218,9 +218,9 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
               : currentStep === 4
               ? `Printing Live at Counter (${printedPages}/${totalPages})`
               : currentStep === 3
-              ? 'Dispatched to Shop Printer'
+              ? 'Sent to Shop Printer'
               : currentStep === 2
-              ? 'Processing Document Pages'
+              ? 'Preparing Document Pages'
               : isReview
               ? 'Awaiting Counter Approval'
               : isFailed
@@ -261,9 +261,9 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
               : currentStep === 4
               ? `Step 4 of 5 • Printing Pg ${printedPages}/${totalPages}`
               : currentStep === 3
-              ? 'Step 3 of 5 • Queued'
+              ? 'Step 3 of 5 • In Queue'
               : currentStep === 2
-              ? 'Step 2 of 5 • Spooling'
+              ? 'Step 2 of 5 • Preparing'
               : isReview
               ? 'Counter Check'
               : isFailed
@@ -402,14 +402,14 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
                     : currentStep === 4
                     ? `Printing in Progress (Page ${printedPages} of ${totalPages})`
                     : currentStep === 3
-                    ? 'Received by Counter Print Agent'
+                    ? 'Ready in Shop Printer Queue'
                     : currentStep === 2
-                    ? 'Job Queued & Spooling'
+                    ? 'Preparing Document Pages'
                     : isReview
                     ? 'Awaiting Counter Approval'
                     : isFailed
                     ? 'Print Delay Detected'
-                    : 'Job Queued & Spooling'}
+                    : 'Preparing Document Pages'}
                 </span>
                 {orderNumber && (
                   <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
@@ -421,7 +421,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
                 {currentStep >= 5
                   ? `All ${totalPages} ${totalPages === 1 ? 'page' : 'pages'} printed • Collect from output tray`
                   : currentStep === 4
-                  ? `Hardware spooling • Page ${printedPages}/${totalPages} (${paperSize} • ${colorMode})`
+                  ? `Printing now • Page ${printedPages}/${totalPages} (${paperSize} • ${colorMode})`
                   : `${fileName ? fileName : 'Document.pdf'} • ${totalPages} ${totalPages === 1 ? 'page' : 'pages'} (${paperSize} • ${colorMode})`}
               </p>
             </div>
@@ -447,11 +447,11 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
             ) : currentStep === 3 ? (
               <span className="text-[11px] text-indigo-300 font-mono flex items-center justify-center sm:justify-end gap-1.5">
                 <RefreshCw className="w-3 h-3 animate-spin text-indigo-400" />
-                <span>Dispatched</span>
+                <span>In Queue</span>
               </span>
             ) : (
               <span className="text-[11px] text-slate-400 font-mono">
-                Spooling…
+                Preparing…
               </span>
             )}
           </div>
