@@ -86,107 +86,115 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
         pageCount: number;
         storagePath: string;
         signedUrl: string;
-      };
+      } | null = null;
 
-      // For files > 4 MB, use Direct-to-Storage upload via pre-signed URL to bypass Vercel's 4.5 MB body limit.
-      if (file.size > 4 * 1024 * 1024) {
-        // Step 1: Request signed upload destination from server
-        const prepRes = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'prepare',
-            fileName: file.name,
-            fileSizeBytes: file.size,
-            fileType: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'),
-          }),
-        });
+      // Files > 3 MB are sliced into 3 MB chunks to stay safely under Vercel's 4.5 MB request body limit.
+      // All chunks are sent to same-origin /api/upload (zero CORS, zero client-side Supabase keys).
+      const CHUNK_SIZE = 3 * 1024 * 1024; // 3 MB
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
-        const prepData = await prepRes.json();
-        if (!prepRes.ok || !prepData.signedUrl) {
-          throw new Error(prepData.error || 'Failed to prepare upload destination.');
-        }
+      if (totalChunks > 1) {
+        const uploadId = crypto.randomUUID();
+        const tokenBytes = new Uint8Array(32);
+        crypto.getRandomValues(tokenBytes);
+        const uploadToken = Array.from(tokenBytes, (b) => b.toString(16).padStart(2, '0')).join('');
 
-        // Step 2: Upload directly to Supabase Storage pre-signed URL
-        const uploadFormData = new FormData();
-        uploadFormData.append('cacheControl', '3600');
-        uploadFormData.append('', file);
+        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+          const start = chunkIndex * CHUNK_SIZE;
+          const end = Math.min(start + CHUNK_SIZE, file.size);
+          const chunkBlob = file.slice(start, end);
 
-        await new Promise<void>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
-          activeXhr.current = xhr;
+          const chunkFormData = new FormData();
+          chunkFormData.append('file', chunkBlob, file.name);
+          chunkFormData.append('chunkIndex', String(chunkIndex));
+          chunkFormData.append('totalChunks', String(totalChunks));
+          chunkFormData.append('uploadId', uploadId);
+          chunkFormData.append('uploadToken', uploadToken);
+          chunkFormData.append('fileName', file.name);
+          chunkFormData.append('fileSizeBytes', String(file.size));
 
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              const percent = Math.min(Math.round((event.loaded / event.total) * 88), 88);
-              setUploadProgress(percent);
-              if (percent >= 85) {
-                setUploadStage('processing');
+          if (chunkIndex === totalChunks - 1) {
+            setUploadStage('processing');
+          }
+
+          const chunkResult = await new Promise<{
+            success: boolean;
+            chunkReceived?: number;
+            fileInfo?: {
+              uploadId: string;
+              uploadToken: string;
+              fileName: string;
+              fileType: string;
+              fileSizeBytes: number;
+              pageCount: number;
+              storagePath: string;
+              signedUrl: string;
+            };
+          }>((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            activeXhr.current = xhr;
+
+            xhr.upload.onprogress = (event) => {
+              if (event.lengthComputable) {
+                const chunkBase = (chunkIndex / totalChunks) * 88;
+                const chunkFraction = (event.loaded / event.total) * (88 / totalChunks);
+                const percent = Math.min(Math.round(chunkBase + chunkFraction), 88);
+                setUploadProgress(percent);
+                if (percent >= 85) {
+                  setUploadStage('processing');
+                }
               }
-            }
-          };
+            };
 
-          xhr.onload = () => {
-            activeXhr.current = null;
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve();
-            } else {
-              try {
-                const res = JSON.parse(xhr.responseText);
-                reject(new Error(res.message || res.error || `Direct storage upload failed with status ${xhr.status}`));
-              } catch {
-                reject(new Error(`Storage upload failed with status ${xhr.status}: ${xhr.responseText || xhr.statusText}`));
+            xhr.onload = () => {
+              activeXhr.current = null;
+              if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                  const res = JSON.parse(xhr.responseText);
+                  resolve(res);
+                } catch {
+                  reject(new Error('Invalid response received from server.'));
+                }
+              } else {
+                try {
+                  const res = JSON.parse(xhr.responseText);
+                  reject(new Error(res.error || `Upload failed with status ${xhr.status}`));
+                } catch {
+                  reject(new Error(`Upload failed with status ${xhr.status}`));
+                }
               }
+            };
+
+            xhr.onerror = () => {
+              activeXhr.current = null;
+              reject(new Error('Network connection failed during upload.'));
+            };
+
+            xhr.ontimeout = () => {
+              activeXhr.current = null;
+              reject(new Error('Upload timed out. Please try again.'));
+            };
+
+            xhr.onabort = () => {
+              activeXhr.current = null;
+              reject(new Error('Upload cancelled.'));
+            };
+
+            xhr.timeout = 180000; // 3 minutes per 3 MB chunk
+            xhr.open('POST', '/api/upload');
+            xhr.send(chunkFormData);
+          });
+
+          if (chunkIndex === totalChunks - 1) {
+            if (!chunkResult.fileInfo) {
+              throw new Error('Upload finalized but file information was not returned.');
             }
-          };
-
-          xhr.onerror = () => {
-            activeXhr.current = null;
-            reject(new Error('Network connection failed during upload to storage.'));
-          };
-
-          xhr.ontimeout = () => {
-            activeXhr.current = null;
-            reject(new Error('Upload timed out. Please try again.'));
-          };
-
-          xhr.onabort = () => {
-            activeXhr.current = null;
-            reject(new Error('Upload cancelled.'));
-          };
-
-          xhr.timeout = 300000; // 5 minutes
-          xhr.open('PUT', prepData.signedUrl);
-          xhr.send(uploadFormData);
-        });
-
-        // Step 3: Finalize on server to verify file and extract page count
-        setUploadProgress(92);
-        setUploadStage('processing');
-
-        const finalRes = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'finalize',
-            uploadId: prepData.uploadId,
-            uploadToken: prepData.uploadToken,
-            storagePath: prepData.storagePath,
-            fileName: file.name,
-            fileSizeBytes: file.size,
-            fileType: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'),
-          }),
-        });
-
-        const finalResult = await finalRes.json();
-        if (!finalRes.ok || !finalResult.fileInfo) {
-          throw new Error(finalResult.error || 'Failed to finalize uploaded document.');
+            setUploadProgress(100);
+            resultFileInfo = chunkResult.fileInfo;
+          }
         }
-
-        setUploadProgress(100);
-        resultFileInfo = finalResult.fileInfo;
       } else {
-        // Standard path for <= 4 MB files: single-request multipart upload
+        // Standard path for <= 3 MB files: single-request multipart upload
         const formData = new FormData();
         formData.append('file', file);
 
@@ -251,12 +259,16 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
             reject(new Error('Upload cancelled.'));
           };
 
-          xhr.timeout = 300000; // 5 minutes for large files
+          xhr.timeout = 180000;
           xhr.open('POST', '/api/upload');
           xhr.send(formData);
         });
 
         resultFileInfo = result.fileInfo;
+      }
+
+      if (!resultFileInfo) {
+        throw new Error('Upload failed to produce file information.');
       }
 
       const uploadedData: UploadedFileState = {
