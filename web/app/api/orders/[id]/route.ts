@@ -33,8 +33,8 @@ export async function GET(
       }
     }
 
-    if (!order || !order.payment_id || order.payment_status !== 'PAID') {
-      throw new HttpError(404, 'Verified order not found.');
+    if (!order || !order.payment_id) {
+      throw new HttpError(404, 'Order not found.');
     }
 
     const resolvedOrderId = order.id;

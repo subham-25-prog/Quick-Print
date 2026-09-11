@@ -153,44 +153,58 @@ export async function POST(req: NextRequest) {
         currency: 'INR',
         status: 'PENDING',
         draft_order: draftOrderData,
+        order_id: orderId,
       };
 
       const { error: paymentError } = await db.from('payments').insert(paymentRecord);
       if (paymentError) throw new HttpError(409, `Payment creation failed: ${paymentError.message}`);
 
-      const amountMinor = Math.round(price.totalAmount * 100);
-      const { data: createdOrderId, error: rpcError } = await db.rpc('finalize_payment', {
-        p_shop_id: shopId,
-        p_payment_id: paymentId,
-        p_provider: 'cash',
-        p_merchant_id: 'cash',
-        p_reference: paymentReference,
-        p_transaction_id: transactionId,
-        p_amount_minor: amountMinor,
-        p_currency: 'INR',
-        p_environment: 'sandbox',
-        p_credential_fingerprint: 'cash',
-      });
+      const orderRecord = {
+        id: orderId,
+        shop_id: shopId,
+        order_number: `QP-${orderId.replace(/-/g, '').slice(0, 16).toUpperCase()}`,
+        payment_id: paymentId,
+        uploaded_file_id: uploadId,
+        file_name: file.file_name,
+        storage_path: file.storage_path,
+        file_type: 'application/pdf',
+        file_size_bytes: file.file_size_bytes,
+        page_count: file.page_count,
+        paper_size: options.paperSize,
+        color_mode: options.colorMode,
+        print_sides: options.printSides,
+        copies: options.copies,
+        add_ons: options.addOns,
+        per_page_rate: price.effectiveRatePerPage,
+        print_subtotal: price.printSubtotal,
+        addons_subtotal: price.addOnsSubtotal,
+        total_amount: price.totalAmount,
+        currency: 'INR',
+        pricing_snapshot: pricing,
+        payment_method: 'CASH',
+        payment_status: 'AWAITING_VERIFICATION',
+        order_status: 'PAYMENT_VERIFICATION_PENDING',
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_notes: customerNotes,
+        transaction_ref: transactionId,
+      };
 
-      if (rpcError) throw new HttpError(409, `Cash finalization failed: ${rpcError.message}`);
-      if (!createdOrderId) {
-        throw new HttpError(500, 'Cash order could not be finalized.');
-      }
-      const finalOrderId = createdOrderId;
-      const orderAccessToken = createOrderAccessToken(finalOrderId);
+      const { error: orderError } = await db.from('orders').insert(orderRecord);
+      if (orderError) throw new HttpError(409, `Cash order creation failed: ${orderError.message}`);
 
       return NextResponse.json(
         {
           success: true,
           paymentId,
-          accessToken: orderAccessToken,
-          orderId: finalOrderId,
-          orderAccessToken,
+          accessToken,
+          orderId,
+          orderAccessToken: accessToken,
           amount: price.totalAmount,
           reference: paymentReference,
-          status: 'SUCCESS',
+          status: 'PENDING',
           paymentMethod: 'CASH',
-          environment: 'sandbox',
+          environment: isSandbox ? 'sandbox' : 'live',
         },
         { status: 201 }
       );

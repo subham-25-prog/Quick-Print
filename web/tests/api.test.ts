@@ -33,14 +33,13 @@ test('browser paid flag, total and page count never create an order or control p
 test.each([{copies:-1},{copies:0.5},{paperSize:'../../x'},{paymentMethod:'CRYPTO'},{uploadToken:'wrong'}])('tampered checkout fails without writes: %j',async patch=>{
   const res=await POST(checkout(patch));expect(res.status).toBeGreaterThanOrEqual(400);expect(mocks.insert).not.toHaveBeenCalled();
 });
-test('cash payment creates verified payment, order and print job immediately',async()=>{
+test('cash payment creates pending order awaiting shopkeeper verification',async()=>{
   const res=await POST(checkout({paymentMethod:'CASH'}));
   expect(res.status).toBe(201);
   const data=await res.json();
   expect(data.paymentMethod).toBe('CASH');
-  expect(data.status).toBe('SUCCESS');
-  expect(mocks.insert).toHaveBeenCalledTimes(1);
-  expect(mocks.rpc).toHaveBeenCalledOnce();
+  expect(data.status).toBe('PENDING');
+  expect(mocks.insert).toHaveBeenCalledTimes(2);
 });
 test('anonymous dashboard and invalid agent are denied before database access',async()=>{
   expect((await GET(new NextRequest('https://shop.test/api/orders'))).status).toBe(401);

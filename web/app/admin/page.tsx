@@ -49,6 +49,7 @@ export default function AdminLiveOrdersPage() {
   const [isClearing, setIsClearing] = useState(false);
   const [agentOnline, setAgentOnline] = useState<boolean | null>(null);
   const [showAgentModal, setShowAgentModal] = useState(false);
+  const [selectedOrderForHistory, setSelectedOrderForHistory] = useState<Order | null>(null);
 
   // Set of IDs deleted locally so background polls never resurrect them
   const deletedOrderIdsRef = useRef<Set<string>>(new Set());
@@ -164,6 +165,73 @@ export default function AdminLiveOrdersPage() {
       deletedOrderIdsRef.current.delete(orderId);
       setOrders(previousOrders);
       showToast(err.message || 'Could not delete order.', 'error');
+    } finally {
+      setActionLoadingKey(null);
+    }
+  };
+
+  const handleAcceptCash = async (orderId: string) => {
+    setActionLoadingKey(`${orderId}_ACCEPT`);
+    try {
+      const res = await fetch('/api/admin/cash-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, action: 'ACCEPT' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to verify cash payment');
+
+      // Optimistic update
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, payment_status: 'PAID', order_status: 'PRINTING' as OrderStatus }
+            : o
+        )
+      );
+      if (selectedOrderForHistory && selectedOrderForHistory.id === orderId) {
+        setSelectedOrderForHistory((prev) =>
+          prev ? { ...prev, payment_status: 'PAID', order_status: 'PRINTING' as OrderStatus } : null
+        );
+      }
+      showToast('Cash verified! Spooling to printer...', 'success');
+      await fetchOrders();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to verify cash', 'error');
+    } finally {
+      setActionLoadingKey(null);
+    }
+  };
+
+  const handleRejectCash = async (orderId: string) => {
+    if (!window.confirm('Are you sure you want to reject this order?')) return;
+    setActionLoadingKey(`${orderId}_REJECT`);
+    try {
+      const res = await fetch('/api/admin/cash-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, action: 'REJECT' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to reject order');
+
+      // Optimistic update
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, payment_status: 'REJECTED', order_status: 'REJECTED' as OrderStatus }
+            : o
+        )
+      );
+      if (selectedOrderForHistory && selectedOrderForHistory.id === orderId) {
+        setSelectedOrderForHistory((prev) =>
+          prev ? { ...prev, payment_status: 'REJECTED', order_status: 'REJECTED' as OrderStatus } : null
+        );
+      }
+      showToast('Order marked as rejected.', 'success');
+      await fetchOrders();
+    } catch (err: any) {
+      showToast(err.message || 'Failed to reject order', 'error');
     } finally {
       setActionLoadingKey(null);
     }
@@ -774,10 +842,60 @@ export default function AdminLiveOrdersPage() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {/* Pending Cash / Verification Action Buttons */}
+                        {isPending && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAcceptCash(order.id);
+                              }}
+                              disabled={actionLoadingKey === `${order.id}_ACCEPT`}
+                              title="Verify cash payment and start printing"
+                              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-[11px] flex items-center gap-1.5 shadow-xs shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>{actionLoadingKey === `${order.id}_ACCEPT` ? 'Accepting...' : 'Accept & Print'}</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRejectCash(order.id);
+                              }}
+                              disabled={actionLoadingKey === `${order.id}_REJECT`}
+                              title="Reject cash order"
+                              className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 font-extrabold text-[11px] flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                            >
+                              <X className="w-3 h-3" />
+                              <span>Reject</span>
+                            </button>
+                          </>
+                        )}
+
+                        {/* Order History / Audit Details Button */}
                         <button
                           type="button"
-                          onClick={() => handleDeleteOrder(order.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedOrderForHistory(order as Order);
+                          }}
+                          title="View order history & specifications"
+                          className="px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] flex items-center gap-1 border border-indigo-200/80 transition-all cursor-pointer"
+                        >
+                          <Clock className="w-3 h-3" />
+                          <span>History</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteOrder(order.id);
+                          }}
                           disabled={actionLoadingKey === `${order.id}_DELETE`}
                           title="Delete order from history"
                           className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer disabled:opacity-50"
@@ -979,6 +1097,199 @@ export default function AdminLiveOrdersPage() {
               >
                 Got It
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Order History & Details Modal */}
+      {selectedOrderForHistory && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-extrabold text-slate-900">
+                      Order Details & History
+                    </h3>
+                    <span className="font-mono text-xs font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
+                      {selectedOrderForHistory.order_number}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">
+                    Placed on {formatDate(selectedOrderForHistory.created_at)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedOrderForHistory(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Customer Details */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                Customer Information
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-slate-800">
+                  {selectedOrderForHistory.customer_name?.trim() || 'Walk-in Customer'}
+                </span>
+                {selectedOrderForHistory.customer_phone ? (
+                  <a
+                    href={`tel:${selectedOrderForHistory.customer_phone}`}
+                    className="text-indigo-600 font-extrabold hover:underline flex items-center gap-1"
+                  >
+                    <Phone className="w-3 h-3" />
+                    <span>{selectedOrderForHistory.customer_phone}</span>
+                  </a>
+                ) : (
+                  <span className="text-slate-400 text-[11px]">No phone number</span>
+                )}
+              </div>
+              {selectedOrderForHistory.customer_notes && (
+                <div className="pt-1.5 border-t border-slate-200/60 text-[11px] text-slate-600 flex items-start gap-1.5">
+                  <MessageSquare className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
+                  <span className="italic font-medium">"{selectedOrderForHistory.customer_notes}"</span>
+                </div>
+              )}
+            </div>
+
+            {/* Print & Document Specs */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                Print & Document Specifications
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-bold">Document Name</span>
+                  <span className="font-bold text-slate-800 truncate block" title={selectedOrderForHistory.file_name}>
+                    {selectedOrderForHistory.file_name}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-bold">Pages & Copies</span>
+                  <span className="font-bold text-indigo-700">
+                    {selectedOrderForHistory.page_count} pages × {selectedOrderForHistory.copies} copies ={' '}
+                    {(selectedOrderForHistory.page_count || 1) * (selectedOrderForHistory.copies || 1)} total
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-bold">Paper & Color</span>
+                  <span className="font-bold text-slate-800">
+                    {selectedOrderForHistory.paper_size} • {selectedOrderForHistory.color_mode === 'COLOR' ? 'Color' : 'Black & White'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-bold">Sides (Duplex)</span>
+                  <span className="font-bold text-slate-800">
+                    {selectedOrderForHistory.print_sides === 'DOUBLE' ? '2-Sided (Duplex)' : '1-Sided (Simplex)'}
+                  </span>
+                </div>
+              </div>
+              {(selectedOrderForHistory.add_ons?.spiralBinding || selectedOrderForHistory.add_ons?.hardBinding) && (
+                <div className="pt-2 border-t border-slate-200/60 flex items-center gap-2">
+                  <span className="text-[10px] text-slate-400 font-bold">Add-ons:</span>
+                  {selectedOrderForHistory.add_ons?.spiralBinding && (
+                    <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 font-bold text-[10px]">
+                      Spiral Binding
+                    </span>
+                  )}
+                  {selectedOrderForHistory.add_ons?.hardBinding && (
+                    <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-bold text-[10px]">
+                      Hard Binding
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Financial & Payment History */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center justify-between">
+                <span>Payment & Verification</span>
+                <span className={`px-2 py-0.2 rounded-md font-extrabold text-[9px] ${
+                  selectedOrderForHistory.payment_status === 'PAID'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-amber-100 text-amber-800'
+                }`}>
+                  {selectedOrderForHistory.payment_status}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-slate-500 font-medium">Method</div>
+                  <div className="font-extrabold text-xs text-slate-800">
+                    {selectedOrderForHistory.payment_method === 'CASH' ? '💵 Cash at Counter' : '⚡ UPI Online'}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-xs text-slate-500 font-medium">Total Amount</div>
+                  <div className="text-base font-black text-slate-900">
+                    {formatCurrency(selectedOrderForHistory.total_amount)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Bar inside Modal */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  const id = selectedOrderForHistory.id;
+                  setSelectedOrderForHistory(null);
+                  handleDeleteOrder(id);
+                }}
+                className="px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                {['PAYMENT_VERIFICATION_PENDING', 'PENDING_PAYMENT'].includes(selectedOrderForHistory.order_status) && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleRejectCash(selectedOrderForHistory.id);
+                      }}
+                      disabled={actionLoadingKey === `${selectedOrderForHistory.id}_REJECT`}
+                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      Reject
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleAcceptCash(selectedOrderForHistory.id);
+                      }}
+                      disabled={actionLoadingKey === `${selectedOrderForHistory.id}_ACCEPT`}
+                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Accept Cash & Print</span>
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrderForHistory(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
