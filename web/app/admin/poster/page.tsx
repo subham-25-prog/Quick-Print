@@ -9,18 +9,15 @@ import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Printer,Download } from '@/components/ui/Icons';
 
 export default function ShopWallPosterPage() {
-  const [customUrl, setCustomUrl] = useState<string>('');
+  const [activeUrl, setActiveUrl] = useState<string>('');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [copied, setCopied] = useState(false);
   const [rawShopName, setRawShopName] = useState(shopConfig.name);
   const [shopAddress, setShopAddress] = useState(shopConfig.address);
   const shopName = useShopName(rawShopName);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setCustomUrl(shopConfig.appUrl || window.location.origin);
-    } else {
-      setCustomUrl(shopConfig.appUrl || 'http://localhost:3000');
+      setActiveUrl(window.location.origin);
     }
 
     fetch('/api/admin/pricing')
@@ -34,12 +31,11 @@ export default function ShopWallPosterPage() {
       .catch((err) => console.error('Error fetching poster settings:', err));
   }, []);
 
-  const activeUrl = customUrl.trim() || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
-
   useEffect(() => {
-    if (!activeUrl) return;
+    const urlToEncode = activeUrl || (typeof window !== 'undefined' ? window.location.origin : '');
+    if (!urlToEncode) return;
 
-    QRCode.toDataURL(activeUrl, {
+    QRCode.toDataURL(urlToEncode, {
       width: 600,
       margin: 2,
       errorCorrectionLevel: 'H',
@@ -65,12 +61,6 @@ export default function ShopWallPosterPage() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-  };
-
-  const handleCopyUrl = () => {
-    navigator.clipboard.writeText(activeUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -113,30 +103,6 @@ export default function ShopWallPosterPage() {
               </button>
             </div>
           </div>
-
-          {/* URL Input */}
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex-1 min-w-[240px]">
-              <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">
-                Target Customer Upload URL (Encoded in QR)
-              </label>
-              <input
-                type="url"
-                value={customUrl}
-                onChange={(e) => setCustomUrl(e.target.value)}
-                placeholder="https://your-shop.vercel.app"
-                className="w-full p-2 rounded-xl border border-slate-200 text-xs font-mono font-bold text-slate-900 bg-white"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={handleCopyUrl}
-              className="py-2 px-3.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-xs font-semibold text-slate-700 transition-all active:scale-95 cursor-pointer"
-            >
-              {copied ? '✓ Copied!' : 'Copy Link'}
-            </button>
-          </div>
-
         </div>
 
         {/* The Printable A4 Poster Canvas */}

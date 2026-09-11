@@ -651,6 +651,7 @@ export default function AdminLiveOrdersPage() {
                   order_number: String(rawOrder.order_number || (rawOrder as any).orderNumber || (rawOrder as any).order_id || rawOrder.id || 'QP-0000'),
                   customer_name: rawOrder.customer_name || (rawOrder as any).customerName || (rawOrder as any).name || undefined,
                   customer_phone: rawOrder.customer_phone || (rawOrder as any).customerPhone || (rawOrder as any).phone || undefined,
+                  customer_notes: rawOrder.customer_notes || (rawOrder as any).customerNotes || (rawOrder as any).notes || undefined,
                   file_name: String(rawOrder.file_name || (rawOrder as any).fileName || (rawOrder as any).filename || 'document.pdf'),
                   paper_size: String(rawOrder.paper_size || (rawOrder as any).paperSize || 'A4'),
                   color_mode: String(rawOrder.color_mode || (rawOrder as any).colorMode || 'BW'),
@@ -750,50 +751,63 @@ export default function AdminLiveOrdersPage() {
                       </div>
                     </div>
 
-                    {/* Column 2: Document & Specification Badges (Strict 1 Line) */}
-                    <div className="flex-1 flex items-center gap-1.5 text-[11px] min-w-0 overflow-hidden whitespace-nowrap px-2">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border uppercase shrink-0 shadow-2xs ${fileBadge.color}`}>
-                        {fileBadge.ext}
-                      </span>
-                      <span className="font-extrabold text-slate-800 text-xs truncate max-w-[160px]" title={order.file_name}>
-                        {order.file_name}
-                      </span>
+                    {/* Column 2: Document & Specification Badges & Customer Notes */}
+                    <div className="flex-1 flex flex-col justify-center min-w-0 px-2 gap-1 overflow-hidden">
+                      <div className="flex items-center gap-1.5 text-[11px] min-w-0 overflow-hidden whitespace-nowrap">
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-black border uppercase shrink-0 shadow-2xs ${fileBadge.color}`}>
+                          {fileBadge.ext}
+                        </span>
+                        <span className="font-extrabold text-slate-800 text-xs truncate max-w-[160px]" title={order.file_name}>
+                          {order.file_name}
+                        </span>
 
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-extrabold text-[10px] shrink-0">
-                        {order.paper_size}
-                      </span>
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-extrabold text-[10px] shrink-0">
+                          {order.paper_size}
+                        </span>
 
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-extrabold text-[10px] shrink-0 flex items-center gap-1">
-                        {order.color_mode === 'COLOR' ? (
-                          <>
-                            <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-pink-500 via-amber-400 to-cyan-400" />
-                            <span>Color</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="w-1.5 h-1.5 rounded-full bg-slate-800" />
-                            <span>B&W</span>
-                          </>
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-extrabold text-[10px] shrink-0 flex items-center gap-1">
+                          {order.color_mode === 'COLOR' ? (
+                            <>
+                              <span className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-pink-500 via-amber-400 to-cyan-400" />
+                              <span>Color</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+                              <span>B&W</span>
+                            </>
+                          )}
+                        </span>
+
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-extrabold text-[10px] shrink-0">
+                          {order.print_sides === 'DOUBLE' ? '🔄 2-Side' : '📄 1-Side'}
+                        </span>
+
+                        <span className="px-2.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 font-black text-[10px] shrink-0 shadow-2xs">
+                          {order.page_count}p × {order.copies} = {totalPages}p
+                        </span>
+
+                        {order.add_ons?.spiralBinding && (
+                          <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 font-extrabold text-[10px] shrink-0 border border-indigo-200">
+                            📚 Spiral
+                          </span>
                         )}
-                      </span>
+                        {order.add_ons?.hardBinding && (
+                          <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-extrabold text-[10px] shrink-0 border border-purple-200">
+                            📕 HardBound
+                          </span>
+                        )}
+                      </div>
 
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700 font-extrabold text-[10px] shrink-0">
-                        {order.print_sides === 'DOUBLE' ? '🔄 2-Side' : '📄 1-Side'}
-                      </span>
-
-                      <span className="px-2.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 font-black text-[10px] shrink-0 shadow-2xs">
-                        {order.page_count}p × {order.copies} = {totalPages}p
-                      </span>
-
-                      {order.add_ons?.spiralBinding && (
-                        <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 font-extrabold text-[10px] shrink-0 border border-indigo-200">
-                          📚 Spiral
-                        </span>
-                      )}
-                      {order.add_ons?.hardBinding && (
-                        <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-extrabold text-[10px] shrink-0 border border-purple-200">
-                          📕 HardBound
-                        </span>
+                      {order.customer_notes && (
+                        <div
+                          className="flex items-center gap-1.5 text-[11px] text-amber-950 bg-amber-50/90 border border-amber-300/80 px-2 py-0.5 rounded-md max-w-fit font-medium truncate shadow-2xs"
+                          title={`Customer instructions: ${order.customer_notes}`}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                          <span className="font-extrabold text-[10px] uppercase text-amber-800 shrink-0">Note:</span>
+                          <span className="truncate max-w-[400px] font-semibold">{order.customer_notes}</span>
+                        </div>
                       )}
                     </div>
 
@@ -1138,9 +1152,14 @@ export default function AdminLiveOrdersPage() {
                 )}
               </div>
               {selectedOrderForHistory.customer_notes && (
-                <div className="pt-1.5 border-t border-slate-200/60 text-[11px] text-slate-600 flex items-start gap-1.5">
-                  <MessageSquare className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
-                  <span className="italic font-medium">"{selectedOrderForHistory.customer_notes}"</span>
+                <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200 text-xs text-amber-950 space-y-1 mt-1">
+                  <div className="flex items-center gap-1.5 font-extrabold text-[11px] text-amber-800 uppercase tracking-wider">
+                    <MessageSquare className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>Special Customer Instructions / Notes</span>
+                  </div>
+                  <p className="font-semibold text-xs text-amber-950 whitespace-pre-wrap pl-5">
+                    {selectedOrderForHistory.customer_notes}
+                  </p>
                 </div>
               )}
             </div>
