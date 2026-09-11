@@ -1,22 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PricingConfig, CustomAddon, CustomPaperType } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
 import { publishShopNameUpdate } from '@/lib/shop-sync';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import {
-Save,
-CheckCircle2,
-AlertCircle,
-RefreshCw,
-Layers,Plus,
-Trash2,
-User,
-Phone,
-MessageSquare,Printer
+  Save,
+  CheckCircle2,
+  AlertCircle,
+  RefreshCw,
+  Layers,
+  Plus,
+  Trash2,
+  User,
+  Phone,
+  MessageSquare
 } from '@/components/ui/Icons';
 
 export default function AdminSettingsPage() {
@@ -24,14 +24,6 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-
-  // Printer Management State
-  const [printers, setPrinters] = useState<
-    Array<{ id?: string; name: string; status: string; is_selected: boolean; last_seen?: string }>
-  >([]);
-  const [loadingPrinters, setLoadingPrinters] = useState(false);
-  const [agentOnline, setAgentOnline] = useState(false);
-  const [manualPrinterName, setManualPrinterName] = useState('');
 
   // Custom Option Form State
   const [newAddonName, setNewAddonName] = useState('');
@@ -51,86 +43,15 @@ export default function AdminSettingsPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const loadPrinters = async () => {
-    setLoadingPrinters(true);
-    try {
-      const res = await fetch('/api/admin/printers');
-      if (res.ok) {
-        const data = await res.json();
-        setPrinters(data.printers || []);
-        setAgentOnline(Boolean(data.agentOnline));
-        if (data.activePrinter) {
-          setForm((prev) => ({ ...prev, selected_printer: data.activePrinter }));
-        }
-      }
-    } catch (err) {
-      console.error('Failed to load printers:', err);
-    } finally {
-      setLoadingPrinters(false);
-    }
-  };
-
   useEffect(() => {
-    Promise.all([
-      fetch('/api/admin/pricing')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.pricing) setForm(data.pricing);
-        }),
-      loadPrinters(),
-    ])
+    fetch('/api/admin/pricing')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.pricing) setForm(data.pricing);
+      })
       .catch((err) => console.error('Failed to initialize settings:', err))
       .finally(() => setLoading(false));
   }, []);
-
-  const handleSelectPrinter = async (printerName: string) => {
-    if (!printerName.trim()) return;
-    const target = printerName.trim();
-    setForm((prev) => ({ ...prev, selected_printer: target }));
-    setPrinters((prev) =>
-      prev.map((p) => ({ ...p, is_selected: p.name === target }))
-    );
-    try {
-      const res = await fetch('/api/admin/printers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ printerName: target }),
-      });
-      if (res.ok) {
-        showToast(`Active printer set to "${target}"`, 'success');
-        loadPrinters();
-      } else {
-        const data = await res.json();
-        showToast(data.error || 'Failed to switch printer', 'error');
-      }
-    } catch {
-      showToast('Network error setting active printer', 'error');
-    }
-  };
-
-  const handleDeletePrinter = async (e: React.MouseEvent, printerName: string) => {
-    e.stopPropagation();
-    if (!window.confirm(`Remove "${printerName}" from the list?`)) {
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/admin/printers', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ printerName }),
-      });
-      if (res.ok) {
-        showToast(`Removed "${printerName}"`, 'success');
-        await loadPrinters();
-      } else {
-        const data = await res.json();
-        showToast(data.error || 'Failed to remove printer', 'error');
-      }
-    } catch {
-      showToast('Network error removing printer', 'error');
-    }
-  };
 
   const handleChange = (field: keyof PricingConfig, value: any) => {
     setForm((prev) => ({
@@ -462,197 +383,11 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Section 2: Connected Printers & Output Hardware */}
-        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <Printer className="w-4 h-4 text-indigo-600" />
-              <h2 className="text-sm font-bold text-slate-900">
-                2. Connected Printers & Output Device
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              {agentOnline ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Agent Online
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                  Agent Standby / Offline
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={loadPrinters}
-                disabled={loadingPrinters}
-                className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                title="Refresh connected printer list"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingPrinters ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[11px] text-slate-500 leading-relaxed font-medium flex-1">
-              When multiple printers are connected to your computer, choose which printer QuickPrint uses to print customer documents automatically.
-            </p>
-            <Link
-              href="/admin/printing"
-              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline shrink-0"
-            >
-              Open Printing Settings Tab →
-            </Link>
-          </div>
-
-          {/* Printer List / Cards */}
-          <div className="space-y-2">
-            {printers.length > 0 ? (
-              printers.map((printer) => {
-                const isSelected = form.selected_printer === printer.name || (!form.selected_printer && printer.is_selected);
-                const isOnline = printer.status === 'ONLINE';
-
-                return (
-                  <div
-                    key={printer.name}
-                    onClick={() => handleSelectPrinter(printer.name)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
-                      isSelected
-                        ? 'border-indigo-600 bg-indigo-50/60 text-slate-900 ring-2 ring-indigo-600/30 shadow-xs'
-                        : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50/60 text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        <Printer className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-900 truncate">
-                            {printer.name}
-                          </span>
-                          <span
-                            className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold ${
-                              isOnline
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
-                            }`}
-                          >
-                            {isOnline ? 'Online' : printer.status}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-medium truncate">
-                          {isSelected ? 'Currently assigned for auto-spooling' : 'Click to set as active printer'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 flex items-center gap-1.5">
-                      {isSelected ? (
-                        <span className="px-2.5 py-1 rounded-xl text-[10px] font-extrabold bg-indigo-600 text-white flex items-center gap-1 shadow-2xs">
-                          <CheckCircle2 className="w-3 h-3 text-white" />
-                          <span>Active Printer</span>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectPrinter(printer.name);
-                          }}
-                          className="px-2.5 py-1 rounded-xl text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer"
-                        >
-                          Select
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeletePrinter(e, printer.name)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="Remove printer from list"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="p-4 rounded-2xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
-                <Printer className="w-6 h-6 text-slate-400 mx-auto" />
-                <div className="text-xs font-bold text-slate-700">No printers detected yet</div>
-                <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                  Launch the Print Agent on your computer to auto-detect your connected printers, or enter a printer name manually below.
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Dropdown & Manual Input */}
-          <div className="pt-2 border-t border-slate-100 space-y-2">
-            <div className="text-[11px] font-bold text-slate-600">Quick Selection & Manual Override:</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1">
-                  Choose from detected printers:
-                </label>
-                <select
-                  value={form.selected_printer || ''}
-                  onChange={(e) => handleSelectPrinter(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
-                >
-                  <option value="">-- Choose Printer --</option>
-                  {printers.map((p) => (
-                    <option key={p.name} value={p.name}>
-                      {p.name} {p.status === 'ONLINE' ? '(Ready)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1">
-                  Or enter custom printer name:
-                </label>
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="e.g. Canon LBP2900"
-                    value={manualPrinterName}
-                    onChange={(e) => setManualPrinterName(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (manualPrinterName.trim()) {
-                        handleSelectPrinter(manualPrinterName.trim());
-                        setManualPrinterName('');
-                      }
-                    }}
-                    className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors shrink-0 cursor-pointer"
-                  >
-                    Set
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Section 3: Paper Sizes & Per-Page Rates (Customer Step 1) */}
+        {/* Section 2: Paper Sizes & Per-Page Rates (Customer Step 1) */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900">
-              3. Paper Sizes & Per-Page Rates
+              2. Paper Sizes & Per-Page Rates
             </h2>
             <span className="text-[10px] font-bold text-slate-400">
               Customer Step 1
@@ -875,11 +610,11 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Section 4: Print Options (Customer Step 2) */}
+        {/* Section 3: Print Options (Customer Step 2) */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900">
-              4. Color & Duplex Options
+              3. Color & Duplex Options
             </h2>
             <span className="text-[10px] font-bold text-slate-400">
               Customer Step 2
@@ -929,11 +664,11 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Section 5: Finishing & Add-ons (Customer Step 3) */}
+        {/* Section 4: Finishing & Add-ons (Customer Step 3) */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900">
-              5. Finishing & Add-on Services
+              4. Finishing & Add-on Services
             </h2>
             <span className="text-[10px] font-bold text-slate-400">
               Customer Step 3
@@ -1121,11 +856,11 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Section 6: Payment & Checkout Options (Customer Step 4) */}
+        {/* Section 5: Payment & Checkout Options (Customer Step 4) */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900">
-              6. Payment & Checkout Settings
+              5. Payment & Checkout Settings
             </h2>
             <span className="text-[10px] font-bold text-slate-400">
               Customer Step 4

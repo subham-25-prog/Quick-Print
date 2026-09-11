@@ -12,7 +12,7 @@ AlertCircle,
 RefreshCw,
 Save,
 Play,
-Zap,Trash2
+Trash2
 } from '@/components/ui/Icons';
 
 export default function AdminPrintingSettingsPage() {
@@ -125,16 +125,6 @@ export default function AdminPrintingSettingsPage() {
     } catch {
       showToast('Network error removing printer', 'error');
     }
-  };
-
-  const toggleFormField = (fieldKey: keyof NonNullable<PricingConfig['form_fields']>) => {
-    setForm((prev) => ({
-      ...prev,
-      form_fields: {
-        ...(prev.form_fields || defaultPricingConfig.form_fields),
-        [fieldKey]: !(prev.form_fields?.[fieldKey] !== false),
-      },
-    }));
   };
 
   const handleSave = async () => {
@@ -435,63 +425,6 @@ export default function AdminPrintingSettingsPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* Section 2: Spooling & Customer Print Options */}
-        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-                <Zap className="w-4 h-4" />
-              </div>
-              <h2 className="text-sm font-bold text-slate-900">
-                Printing Behavior & Options
-              </h2>
-            </div>
-            <span className="text-[10px] font-bold text-slate-400">Queue Controls</span>
-          </div>
-
-          <div className="space-y-2">
-            <label
-              onClick={() => toggleFormField('allowColorPrinting')}
-              className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                form.form_fields?.allowColorPrinting !== false
-                  ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <div>
-                <div className="text-xs font-bold text-slate-900">Color Printing Enabled</div>
-                <div className="text-[10px] text-slate-400 font-medium">Allow customers to choose color output (turn off if color ink is empty)</div>
-              </div>
-              <input
-                type="checkbox"
-                checked={form.form_fields?.allowColorPrinting !== false}
-                onChange={() => {}}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
-              />
-            </label>
-
-            <label
-              onClick={() => toggleFormField('allowDoubleSided')}
-              className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                form.form_fields?.allowDoubleSided !== false
-                  ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <div>
-                <div className="text-xs font-bold text-slate-900">Double-Sided (Duplex) Enabled</div>
-                <div className="text-[10px] text-slate-400 font-medium">Allow customers to choose 2-sided duplex prints (turn off if printer is simplex only)</div>
-              </div>
-              <input
-                type="checkbox"
-                checked={form.form_fields?.allowDoubleSided !== false}
-                onChange={() => {}}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
-              />
-            </label>
           </div>
         </section>
 
