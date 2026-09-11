@@ -14,7 +14,7 @@ const nextConfig = {
       {
         source: '/:path*',
         headers: [
-          { key: 'Content-Security-Policy', value: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self'; font-src 'self' data:; upgrade-insecure-requests" },
+          { key: 'Content-Security-Policy', value: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; worker-src 'self' blob:; frame-src 'self' blob:; connect-src 'self'; font-src 'self' data:; upgrade-insecure-requests" },
           { key: 'Referrer-Policy', value: 'no-referrer' },
           { key: 'Strict-Transport-Security', value: 'max-age=31536000' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },

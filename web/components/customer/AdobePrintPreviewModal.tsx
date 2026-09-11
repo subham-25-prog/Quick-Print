@@ -187,13 +187,16 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   }, [fileType, uploadedFile?.fileType, fileName]);
 
   const isPdfFile = useMemo(() => {
+    if (isImgFile) return false;
+    const name = (fileName || uploadedFile?.fileName || '').toLowerCase();
+    const type = (fileType || uploadedFile?.fileType || '').toLowerCase();
     return (
-      !isImgFile &&
-      (fileType === 'application/pdf' ||
-        uploadedFile?.fileType === 'application/pdf' ||
-        fileName.toLowerCase().endsWith('.pdf'))
+      type === 'application/pdf' ||
+      type.includes('pdf') ||
+      name.endsWith('.pdf') ||
+      (!isImgFile && (!!uploadedFile || !!activePreviewUrl))
     );
-  }, [isImgFile, fileType, uploadedFile?.fileType, fileName]);
+  }, [isImgFile, fileType, uploadedFile, fileName, activePreviewUrl]);
 
   // --- Load actual uploaded PDF document ---
   useEffect(() => {
@@ -205,23 +208,40 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     async function loadUploadedPdf() {
       try {
         setIsPdfLoading(true);
-        const mod = await import('pdfjs-dist/legacy/build/pdf.js');
-        const pdfjs = mod.default || mod;
-        if (pdfjs.GlobalWorkerOptions) {
-          pdfjs.GlobalWorkerOptions.workerSrc = '';
-        }
+        // Load PDF.js and its worker entry so it runs cleanly in main thread
+        const [pdfjsMod] = await Promise.all([
+          import('pdfjs-dist/legacy/build/pdf.js'),
+          // @ts-expect-error worker entry does not have type declarations
+          import('pdfjs-dist/legacy/build/pdf.worker.entry.js'),
+        ]);
+        const pdfjs = pdfjsMod.default || pdfjsMod;
 
         let arrayBuffer: ArrayBuffer | undefined;
         if (uploadedFile?.file) {
-          arrayBuffer = await uploadedFile.file.arrayBuffer();
+          if (typeof uploadedFile.file.arrayBuffer === 'function') {
+            arrayBuffer = await uploadedFile.file.arrayBuffer();
+          } else {
+            arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as ArrayBuffer);
+              reader.onerror = reject;
+              reader.readAsArrayBuffer(uploadedFile.file);
+            });
+          }
         } else if (activePreviewUrl) {
           const res = await fetch(activePreviewUrl);
           arrayBuffer = await res.arrayBuffer();
         }
 
-        if (!active || !arrayBuffer) return;
+        if (!active || !arrayBuffer) {
+          if (active) setIsPdfLoading(false);
+          return;
+        }
 
-        const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
+        const loadingTask = pdfjs.getDocument({
+          data: new Uint8Array(arrayBuffer),
+          stopAtErrors: false,
+        });
         const doc = await loadingTask.promise;
 
         if (active) {
@@ -527,11 +547,12 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         const page = await doc.getPage(pageNum);
         const unscaledViewport = page.getViewport({ scale: 1 });
         const scale = Math.min(w / unscaledViewport.width, h / unscaledViewport.height);
-        const viewport = page.getViewport({ scale });
+        const pixelRatio = 1.5;
+        const viewport = page.getViewport({ scale: scale * pixelRatio });
 
         const offCanvas = document.createElement('canvas');
-        offCanvas.width = Math.round(viewport.width);
-        offCanvas.height = Math.round(viewport.height);
+        offCanvas.width = Math.max(1, Math.round(viewport.width));
+        offCanvas.height = Math.max(1, Math.round(viewport.height));
         const offCtx = offCanvas.getContext('2d');
         if (!offCtx) return;
 
@@ -540,9 +561,11 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           viewport,
         }).promise;
 
-        const drawX = x + (w - offCanvas.width) / 2;
-        const drawY = y + (h - offCanvas.height) / 2;
-        ctx.drawImage(offCanvas, drawX, drawY);
+        const drawW = viewport.width / pixelRatio;
+        const drawH = viewport.height / pixelRatio;
+        const drawX = x + (w - drawW) / 2;
+        const drawY = y + (h - drawH) / 2;
+        ctx.drawImage(offCanvas, drawX, drawY, drawW, drawH);
       } catch (err) {
         console.error(`Error rendering PDF page ${pageNum}:`, err);
         drawFallbackResumeMockup(ctx, x, y, w, h, pageNum);
@@ -1128,6 +1151,15 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               ref={canvasRef}
               className="w-full h-full object-contain block select-none pointer-events-none"
             />
+
+            {/* Fallback Native PDF Embed if PDF.js parser is unavailable */}
+            {!pdfDoc && !isPdfLoading && isPdfFile && activePreviewUrl && (
+              <iframe
+                src={`${activePreviewUrl}#page=${currentPage}&toolbar=0&navpanes=0&scrollbar=0`}
+                className="absolute inset-0 w-full h-full border-none pointer-events-none rounded-xs"
+                title="Document Preview"
+              />
+            )}
 
             {/* Document Loading Overlay */}
             {isPdfLoading && (
