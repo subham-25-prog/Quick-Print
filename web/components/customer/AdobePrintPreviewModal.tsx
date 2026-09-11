@@ -105,10 +105,15 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   const [rotationAngle, setRotationAngle] = useState<number>(0);
   const [localObjectUrl, setLocalObjectUrl] = useState<string | null>(null);
 
+  // PDF Document rendering state
+  const [pdfDoc, setPdfDoc] = useState<any>(null);
+  const [isPdfLoading, setIsPdfLoading] = useState<boolean>(false);
+  const [pdfPageCount, setPdfPageCount] = useState<number>(pageCount || 1);
+
   // Canvas ref
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const totalDocPages = pageCount > 0 ? pageCount : 1;
+  const totalDocPages = pdfPageCount > 0 ? pdfPageCount : pageCount > 0 ? pageCount : 1;
 
   // Sync state with incoming props when modal opens
   useEffect(() => {
@@ -166,6 +171,76 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       }
     }
   }, [uploadedFile]);
+
+  const activePreviewUrl =
+    localObjectUrl || previewUrl || fileSignedUrl || uploadedFile?.previewUrl || uploadedFile?.signedUrl;
+  const isBw = modalColorMode === 'BW';
+
+  const isImgFile = useMemo(() => {
+    return (
+      fileType?.startsWith('image/') ||
+      uploadedFile?.fileType?.startsWith('image/') ||
+      /\.(jpg|jpeg|png|webp)$/i.test(fileName)
+    );
+  }, [fileType, uploadedFile?.fileType, fileName]);
+
+  const isPdfFile = useMemo(() => {
+    return (
+      !isImgFile &&
+      (fileType === 'application/pdf' ||
+        uploadedFile?.fileType === 'application/pdf' ||
+        fileName.toLowerCase().endsWith('.pdf'))
+    );
+  }, [isImgFile, fileType, uploadedFile?.fileType, fileName]);
+
+  // --- Load actual uploaded PDF document ---
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!isPdfFile) return;
+
+    let active = true;
+
+    async function loadUploadedPdf() {
+      try {
+        setIsPdfLoading(true);
+        const mod = await import('pdfjs-dist/legacy/build/pdf.js');
+        const pdfjs = mod.default || mod;
+        if (pdfjs.GlobalWorkerOptions) {
+          pdfjs.GlobalWorkerOptions.workerSrc = '';
+        }
+
+        let arrayBuffer: ArrayBuffer | undefined;
+        if (uploadedFile?.file) {
+          arrayBuffer = await uploadedFile.file.arrayBuffer();
+        } else if (activePreviewUrl) {
+          const res = await fetch(activePreviewUrl);
+          arrayBuffer = await res.arrayBuffer();
+        }
+
+        if (!active || !arrayBuffer) return;
+
+        const loadingTask = pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) });
+        const doc = await loadingTask.promise;
+
+        if (active) {
+          setPdfDoc(doc);
+          setPdfPageCount(doc.numPages);
+          setIsPdfLoading(false);
+        }
+      } catch (err) {
+        console.error('Failed to load actual uploaded PDF for preview:', err);
+        if (active) {
+          setIsPdfLoading(false);
+        }
+      }
+    }
+
+    loadUploadedPdf();
+
+    return () => {
+      active = false;
+    };
+  }, [isOpen, isPdfFile, uploadedFile?.file, activePreviewUrl]);
 
   // Calculate selected page count based on range mode
   const selectedPageCount = useMemo(() => {
@@ -229,11 +304,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     return Math.min(3.0, Math.max(0.2, (customScalePercent || 100) / 100));
   }, [scaleMode, customScalePercent]);
 
-  // --- High-Fidelity Canvas Drawing Engine ---
-  const activePreviewUrl =
-    localObjectUrl || previewUrl || fileSignedUrl || uploadedFile?.previewUrl || uploadedFile?.signedUrl;
-  const isBw = modalColorMode === 'BW';
-
+  // Fallback realistic vector mockup when document is still parsing
   const drawFallbackResumeMockup = useCallback(
     (
       ctx: CanvasRenderingContext2D,
@@ -243,11 +314,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       height: number,
       pageNum: number
     ) => {
-      // Clean page background
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(x, y, width, height);
 
-      // Page boundary subtle shadow & border
       ctx.strokeStyle = '#e2e8f0';
       ctx.lineWidth = 1;
       ctx.strokeRect(x, y, width, height);
@@ -255,10 +324,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       const isFirstPage = pageNum === 1;
 
       if (isFirstPage) {
-        // Document Header
         const headerY = y + height * 0.08;
-
-        // Profile Photo Circle (as seen in user screenshot)
         const photoRadius = Math.min(width * 0.08, 48);
         const photoX = x + width * 0.16;
         const photoY = headerY + photoRadius * 0.8;
@@ -268,7 +334,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         ctx.arc(photoX, photoY, photoRadius, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-        // Inner circle portrait gradient/color
         const grad = ctx.createLinearGradient(
           photoX - photoRadius,
           photoY - photoRadius,
@@ -284,7 +349,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         }
         ctx.fillStyle = grad;
         ctx.fillRect(photoX - photoRadius, photoY - photoRadius, photoRadius * 2, photoRadius * 2);
-        // Stylized head & shoulders silhouette
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.arc(photoX, photoY - photoRadius * 0.2, photoRadius * 0.35, 0, Math.PI * 2);
@@ -294,14 +358,12 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         ctx.fill();
         ctx.restore();
 
-        // Circle stroke
         ctx.strokeStyle = '#cbd5e1';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(photoX, photoY, photoRadius, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Name & Title
         const titleX = x + width * 0.3;
         ctx.fillStyle = '#111827';
         ctx.font = `bold ${Math.max(14, Math.round(width * 0.038))}px sans-serif`;
@@ -310,9 +372,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
         ctx.fillStyle = isBw ? '#4b5563' : '#2563eb';
         ctx.font = `bold ${Math.max(9, Math.round(width * 0.02))}px sans-serif`;
-        ctx.fillText('Official Print Document • Confidential', titleX, headerY + photoRadius * 0.95);
+        ctx.fillText('Official Print Document • Processing', titleX, headerY + photoRadius * 0.95);
 
-        // Divider
         const dividerY = headerY + photoRadius * 1.8;
         ctx.strokeStyle = '#e5e7eb';
         ctx.lineWidth = 1.5;
@@ -321,7 +382,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         ctx.lineTo(x + width * 0.92, dividerY);
         ctx.stroke();
 
-        // 2-Column Body Layout
         const col1X = x + width * 0.08;
         const col1Width = width * 0.32;
         const col2X = x + width * 0.44;
@@ -329,7 +389,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         let curY1 = dividerY + height * 0.04;
         let curY2 = dividerY + height * 0.04;
 
-        // Left Column: CONTACT & SKILLS
         ctx.fillStyle = '#1f2937';
         ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
         ctx.fillText('DETAILS & CONTACT', col1X, curY1);
@@ -353,7 +412,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           curY1 += height * 0.018;
         }
 
-        // Right Column: PROFILE, EXPERIENCE, EDUCATION
         ctx.fillStyle = '#1f2937';
         ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
         ctx.fillText('PROFILE SUMMARY', col2X, curY2);
@@ -368,7 +426,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         curY2 += height * 0.03;
         ctx.fillStyle = '#1f2937';
         ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
-        ctx.fillText('WORK EXPERIENCE', col2X, curY2);
+        ctx.fillText('DOCUMENT CONTENT', col2X, curY2);
         curY2 += height * 0.022;
 
         for (let i = 0; i < 6; i++) {
@@ -376,20 +434,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           ctx.fillRect(col2X, curY2, col2Width * (0.7 + (i % 3) * 0.14), Math.max(3, height * 0.007));
           curY2 += height * 0.018;
         }
-
-        curY2 += height * 0.03;
-        ctx.fillStyle = '#1f2937';
-        ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
-        ctx.fillText('EDUCATION & CREDENTIALS', col2X, curY2);
-        curY2 += height * 0.022;
-
-        for (let i = 0; i < 4; i++) {
-          ctx.fillStyle = '#9ca3af';
-          ctx.fillRect(col2X, curY2, col2Width * (0.8 - (i % 2) * 0.15), Math.max(3, height * 0.007));
-          curY2 += height * 0.018;
-        }
       } else {
-        // Multi-page subsequent page layout
         let cy = y + height * 0.08;
         ctx.fillStyle = '#111827';
         ctx.font = `bold ${Math.max(11, Math.round(width * 0.028))}px sans-serif`;
@@ -417,7 +462,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         }
       }
 
-      // Page footer note
       ctx.fillStyle = '#9ca3af';
       ctx.font = `${Math.max(8, Math.round(width * 0.016))}px monospace`;
       ctx.fillText(
@@ -429,8 +473,85 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     [fileName, totalDocPages, modalPaperSize, isBw]
   );
 
-  // Main canvas render hook
+  // Helper to render uploaded image onto canvas slot
+  const renderImageSlot = useCallback(
+    (
+      ctx: CanvasRenderingContext2D,
+      url: string,
+      x: number,
+      y: number,
+      w: number,
+      h: number
+    ): Promise<void> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = url;
+        img.onload = () => {
+          const imgAspect = img.width / img.height;
+          const slotAspect = w / h;
+          let drawW = w;
+          let drawH = h;
+          if (imgAspect > slotAspect) {
+            drawH = w / imgAspect;
+          } else {
+            drawW = h * imgAspect;
+          }
+          const drawX = x + (w - drawW) / 2;
+          const drawY = y + (h - drawH) / 2;
+          ctx.drawImage(img, drawX, drawY, drawW, drawH);
+          resolve();
+        };
+        img.onerror = () => {
+          resolve();
+        };
+      });
+    },
+    []
+  );
+
+  // Helper to render real PDF page from uploaded document
+  const renderPdfSlot = useCallback(
+    async (
+      ctx: CanvasRenderingContext2D,
+      doc: any,
+      pageNum: number,
+      x: number,
+      y: number,
+      w: number,
+      h: number
+    ) => {
+      try {
+        const page = await doc.getPage(pageNum);
+        const unscaledViewport = page.getViewport({ scale: 1 });
+        const scale = Math.min(w / unscaledViewport.width, h / unscaledViewport.height);
+        const viewport = page.getViewport({ scale });
+
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = Math.round(viewport.width);
+        offCanvas.height = Math.round(viewport.height);
+        const offCtx = offCanvas.getContext('2d');
+        if (!offCtx) return;
+
+        await page.render({
+          canvasContext: offCtx,
+          viewport,
+        }).promise;
+
+        const drawX = x + (w - offCanvas.width) / 2;
+        const drawY = y + (h - offCanvas.height) / 2;
+        ctx.drawImage(offCanvas, drawX, drawY);
+      } catch (err) {
+        console.error(`Error rendering PDF page ${pageNum}:`, err);
+        drawFallbackResumeMockup(ctx, x, y, w, h, pageNum);
+      }
+    },
+    [drawFallbackResumeMockup]
+  );
+
+  // --- Main Canvas Render Effect ---
   useEffect(() => {
+    let cancelled = false;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -443,112 +564,104 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     canvas.width = baseW;
     canvas.height = baseH;
 
-    // Reset transform & clear
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, baseW, baseH);
 
     // Apply Grayscale Filter if B&W
     ctx.filter = isBw ? 'grayscale(100%)' : 'none';
 
-    // Background sheet
+    // White paper base
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, baseW, baseH);
 
     const nUp = pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1;
 
-    // Render Slots based on pagesPerSheet
-    const renderSlot = (slotIndex: number, pageToDraw: number) => {
-      let slotX = 0;
-      let slotY = 0;
-      let slotW = baseW;
-      let slotH = baseH;
+    async function drawCanvas() {
+      if (!ctx) return;
 
-      if (nUp === 2) {
-        if (isLandscape) {
+      for (let i = 0; i < nUp; i++) {
+        if (cancelled) return;
+        const pageToDraw = (currentPage - 1) * nUp + i + 1;
+        if (pageToDraw > totalDocPages && nUp > 1) continue;
+
+        let slotX = 0;
+        let slotY = 0;
+        let slotW = baseW;
+        let slotH = baseH;
+
+        if (nUp === 2) {
+          if (isLandscape) {
+            slotW = baseW / 2;
+            slotH = baseH;
+            slotX = i * slotW;
+            slotY = 0;
+          } else {
+            slotW = baseW;
+            slotH = baseH / 2;
+            slotX = 0;
+            slotY = i * slotH;
+          }
+        } else if (nUp === 4) {
           slotW = baseW / 2;
-          slotH = baseH;
-          slotX = slotIndex * slotW;
-          slotY = 0;
-        } else {
-          slotW = baseW;
           slotH = baseH / 2;
-          slotX = 0;
-          slotY = slotIndex * slotH;
+          slotX = (i % 2) * slotW;
+          slotY = Math.floor(i / 2) * slotH;
         }
-      } else if (nUp === 4) {
-        slotW = baseW / 2;
-        slotH = baseH / 2;
-        slotX = (slotIndex % 2) * slotW;
-        slotY = Math.floor(slotIndex / 2) * slotH;
+
+        const padding = nUp > 1 ? 16 : 0;
+        const targetW = slotW - padding * 2;
+        const targetH = slotH - padding * 2;
+        const targetX = slotX + padding;
+        const targetY = slotY + padding;
+
+        const scaledW = targetW * effectiveScale;
+        const scaledH = targetH * effectiveScale;
+        const offsetX = targetX + (targetW - scaledW) / 2;
+        const offsetY = targetY + (targetH - scaledH) / 2;
+
+        // Render actual uploaded document
+        if (isImgFile && activePreviewUrl) {
+          await renderImageSlot(ctx, activePreviewUrl, offsetX, offsetY, scaledW, scaledH);
+        } else if (pdfDoc && pageToDraw <= pdfDoc.numPages) {
+          await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
+        } else {
+          drawFallbackResumeMockup(ctx, offsetX, offsetY, scaledW, scaledH, Math.min(pageToDraw, totalDocPages));
+        }
+
+        // Slot boundary outline for multi-up layout
+        if (nUp > 1) {
+          ctx.strokeStyle = '#cbd5e1';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.strokeRect(slotX + 4, slotY + 4, slotW - 8, slotH - 8);
+          ctx.setLineDash([]);
+        }
       }
 
-      // Slot padding & border
-      const padding = nUp > 1 ? 14 : 0;
-      const targetW = slotW - padding * 2;
-      const targetH = slotH - padding * 2;
-      const targetX = slotX + padding;
-      const targetY = slotY + padding;
+      if (cancelled) return;
 
-      // Apply Scale transformation
-      const scaledW = targetW * effectiveScale;
-      const scaledH = targetH * effectiveScale;
-      const offsetX = targetX + (targetW - scaledW) / 2;
-      const offsetY = targetY + (targetH - scaledH) / 2;
-
-      // If user uploaded an image file directly, render image
-      const isImgFile =
-        fileType?.startsWith('image/') ||
-        uploadedFile?.fileType?.startsWith('image/') ||
-        /\.(jpg|jpeg|png|webp)$/i.test(fileName);
-
-      if (isImgFile && activePreviewUrl) {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.src = activePreviewUrl;
-        img.onload = () => {
-          ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
-        };
-        img.onerror = () => {
-          drawFallbackResumeMockup(ctx, offsetX, offsetY, scaledW, scaledH, pageToDraw);
-        };
-      } else {
-        // Render crisp vector document layout
-        drawFallbackResumeMockup(ctx, offsetX, offsetY, scaledW, scaledH, pageToDraw);
+      // Watermark Stamp (if selected)
+      if (watermark && watermark !== 'NONE') {
+        ctx.save();
+        ctx.translate(baseW / 2, baseH / 2);
+        ctx.rotate(-Math.PI / 4);
+        ctx.font = `900 ${Math.round(baseW * 0.08)}px sans-serif`;
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.18)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = 'rgba(239, 68, 68, 0.28)';
+        ctx.lineWidth = 6;
+        ctx.strokeText(watermark, 0, 0);
+        ctx.fillText(watermark, 0, 0);
+        ctx.restore();
       }
+    }
 
-      // Draw faint boundary for multi-page slots
-      if (nUp > 1) {
-        ctx.strokeStyle = '#cbd5e1';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4, 4]);
-        ctx.strokeRect(slotX + 4, slotY + 4, slotW - 8, slotH - 8);
-        ctx.setLineDash([]);
-      }
+    drawCanvas();
+
+    return () => {
+      cancelled = true;
     };
-
-    // Draw all slots for current sheet
-    for (let i = 0; i < nUp; i++) {
-      const pageIndex = (currentPage - 1) * nUp + i + 1;
-      if (pageIndex <= totalDocPages || nUp === 1) {
-        renderSlot(i, Math.min(pageIndex, totalDocPages));
-      }
-    }
-
-    // Watermark Stamp (if enabled)
-    if (watermark && watermark !== 'NONE') {
-      ctx.save();
-      ctx.translate(baseW / 2, baseH / 2);
-      ctx.rotate(-Math.PI / 4);
-      ctx.font = `900 ${Math.round(baseW * 0.08)}px sans-serif`;
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.18)';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.strokeStyle = 'rgba(239, 68, 68, 0.28)';
-      ctx.lineWidth = 6;
-      ctx.strokeText(watermark, 0, 0);
-      ctx.fillText(watermark, 0, 0);
-      ctx.restore();
-    }
   }, [
     currentPage,
     isLandscape,
@@ -563,8 +676,11 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     fileName,
     totalDocPages,
     activePreviewUrl,
-    uploadedFile,
+    isImgFile,
+    pdfDoc,
     drawFallbackResumeMockup,
+    renderImageSlot,
+    renderPdfSlot,
   ]);
 
   // Handle Apply and Close / Print
@@ -962,6 +1078,16 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               ref={canvasRef}
               className="w-full h-full object-contain block select-none pointer-events-none"
             />
+
+            {/* Document Loading Indicator */}
+            {isPdfLoading && (
+              <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-xs flex items-center justify-center z-20 pointer-events-none">
+                <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900/90 border border-slate-700 text-white text-xs shadow-xl">
+                  <div className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  <span className="font-medium">Loading uploaded document...</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -979,21 +1105,31 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               <ChevronLeft className="w-4 h-4" />
             </button>
             <span className="font-mono text-[11px] px-1 text-slate-300">
-              <strong className="text-white">{currentPage}</strong> / {Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1))}
+              <strong className="text-white">{currentPage}</strong> /{' '}
+              {Math.max(
+                1,
+                Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1))
+              )}
             </span>
             <button
               type="button"
               onClick={() =>
                 setCurrentPage((p) =>
                   Math.min(
-                    Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1)),
+                    Math.max(
+                      1,
+                      Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1))
+                    ),
                     p + 1
                   )
                 )
               }
               disabled={
                 currentPage >=
-                Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1))
+                Math.max(
+                  1,
+                  Math.ceil(totalDocPages / (pagesPerSheet === '2' ? 2 : pagesPerSheet === '4' ? 4 : 1))
+                )
               }
               className="p-1 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
               title="Next sheet"
