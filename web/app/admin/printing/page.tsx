@@ -276,7 +276,7 @@ export default function AdminPrintingSettingsPage() {
           </div>
 
           <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-            If you have multiple printers connected (e.g. Black & White Laser, Color Inkjet, POS Slip), choose which printer QuickPrint should use to print customer documents automatically.
+            If you have multiple printers connected (e.g. Black & White Laser, Color Inkjet, POS Slip), choose which printer Cyber Cafe should use to print customer documents automatically.
           </p>
 
           {/* List of Connected Printers */}

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       settings?.pricing?.shop_name ||
       shop?.name ||
       process.env.NEXT_PUBLIC_SHOP_NAME ||
-      'QuickPrint';
+      'Cyber Cafe';
 
     const { data: agent } = await db
       .from('print_agents')

@@ -208,7 +208,7 @@ export default function ShopWallPosterPage() {
           <div className="pt-3 border-t border-slate-200/80 space-y-2">
             <DeveloperBadge variant="poster" />
             <div className="text-[9px] text-slate-400 font-medium">
-              ⚡ Powered by {shopName || 'QuickPrint'} Self-Service System • Prints ready in 2–5 minutes
+              ⚡ Powered by {shopName || 'Cyber Cafe'} Self-Service System • Prints ready in 2–5 minutes
             </div>
           </div>
         </div>

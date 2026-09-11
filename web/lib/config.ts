@@ -1,7 +1,7 @@
 import {PricingConfig} from '@/types';
 import shopTemplate from '../public/config/pricing_config.json';
 export const shopConfig={
-  name:process.env.NEXT_PUBLIC_SHOP_NAME||'QuickPrint',
+  name:process.env.NEXT_PUBLIC_SHOP_NAME||'Cyber Cafe',
   tagline:process.env.NEXT_PUBLIC_SHOP_TAGLINE||'Self-Service Document Printing',
   address:process.env.NEXT_PUBLIC_SHOP_ADDRESS||'',
   phone:process.env.NEXT_PUBLIC_SHOP_PHONE||'',

@@ -1066,7 +1066,7 @@ export default function AdminLiveOrdersPage() {
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-extrabold text-slate-900">Starting Print Agent…</h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Your browser was instructed to open the QuickPrint Agent.
+                  Your browser was instructed to open the Cyber Cafe Print Agent.
                 </p>
               </div>
               <button
@@ -1084,7 +1084,7 @@ export default function AdminLiveOrdersPage() {
                   <span>1. Allow Browser Prompt</span>
                 </p>
                 <p className="text-slate-500 text-[11px]">
-                  If your browser shows a popup asking to open <strong>QuickPrint</strong> or <strong>command line</strong>, click <strong>Open</strong> or <strong>Allow</strong>.
+                  If your browser shows a popup asking to open <strong>Cyber Cafe Print Agent</strong> or <strong>command line</strong>, click <strong>Open</strong> or <strong>Allow</strong>.
                 </p>
               </div>
 
