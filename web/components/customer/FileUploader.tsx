@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText,AlertCircle,RefreshCw,X } from '@/components/ui/Icons';
+import { FileText, AlertCircle, RefreshCw, X } from '@/components/ui/Icons';
 
 export interface UploadedFileState {
   uploadId: string;
@@ -22,16 +22,35 @@ interface FileUploaderProps {
   uploadedFile: UploadedFileState | null;
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uploadedFile }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState<'uploading' | 'processing'>('uploading');
+  const [currentFileName, setCurrentFileName] = useState('');
+  const [currentFileSize, setCurrentFileSize] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const activeUpload = useRef<AbortController | null>(null);
-  useEffect(() => () => activeUpload.current?.abort(), []);
+  const activeXhr = useRef<XMLHttpRequest | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (activeXhr.current) {
+        activeXhr.current.abort();
+        activeXhr.current = null;
+      }
+    };
+  }, []);
 
   const processFile = async (file: File) => {
-    if (activeUpload.current) return;
+    if (uploading || activeXhr.current) return;
     setError(null);
 
     const MAX_SIZE = 4 * 1024 * 1024;
@@ -41,7 +60,10 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     }
 
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    const isImage = file.type === 'image/jpeg' || file.type === 'image/png' || /\.(jpg|jpeg|png)$/i.test(file.name);
+    const isImage =
+      file.type === 'image/jpeg' ||
+      file.type === 'image/png' ||
+      /\.(jpg|jpeg|png)$/i.test(file.name);
 
     if (!isPdf && !isImage) {
       setError('Please upload a PDF document or an image (JPG, PNG).');
@@ -49,25 +71,80 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     }
 
     setUploading(true);
-    const controller = new AbortController();
-    activeUpload.current = controller;
-    const timeout = window.setTimeout(() => controller.abort(), 60000);
+    setUploadProgress(5);
+    setUploadStage('uploading');
+    setCurrentFileName(file.name);
+    setCurrentFileSize(file.size);
 
     try {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-        signal: controller.signal,
+      const result = await new Promise<{
+        success: boolean;
+        fileInfo: {
+          uploadId: string;
+          uploadToken: string;
+          fileName: string;
+          fileType: string;
+          fileSizeBytes: number;
+          pageCount: number;
+          storagePath: string;
+          signedUrl: string;
+        };
+      }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        activeXhr.current = xhr;
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.min(Math.round((event.loaded / event.total) * 92), 92);
+            setUploadProgress(percent);
+            if (percent >= 90) {
+              setUploadStage('processing');
+            }
+          }
+        };
+
+        xhr.onload = () => {
+          activeXhr.current = null;
+          setUploadProgress(100);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              const res = JSON.parse(xhr.responseText);
+              resolve(res);
+            } catch {
+              reject(new Error('Invalid response received from server.'));
+            }
+          } else {
+            try {
+              const res = JSON.parse(xhr.responseText);
+              reject(new Error(res.error || `Upload failed with status ${xhr.status}`));
+            } catch {
+              reject(new Error('Failed to upload document. Please try again.'));
+            }
+          }
+        };
+
+        xhr.onerror = () => {
+          activeXhr.current = null;
+          reject(new Error('Network connection failed during upload.'));
+        };
+
+        xhr.ontimeout = () => {
+          activeXhr.current = null;
+          reject(new Error('Upload timed out. Please try again.'));
+        };
+
+        xhr.onabort = () => {
+          activeXhr.current = null;
+          reject(new Error('Upload cancelled.'));
+        };
+
+        xhr.timeout = 60000;
+        xhr.open('POST', '/api/upload');
+        xhr.send(formData);
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to upload document');
-      }
 
       const uploadedData: UploadedFileState = {
         uploadId: result.fileInfo.uploadId,
@@ -85,14 +162,25 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
 
       onFileUploaded(uploadedData);
     } catch (err) {
-      console.error('File upload error:', err);
-      setError(controller.signal.aborted ? 'Upload timed out. Please try again.' : err instanceof Error ? err.message : 'Error uploading file');
+      if ((err as Error)?.message !== 'Upload cancelled.') {
+        console.error('File upload error:', err);
+        setError(err instanceof Error ? err.message : 'Error uploading file');
+      }
       onFileUploaded(null);
     } finally {
-      window.clearTimeout(timeout);
-      activeUpload.current = null;
+      activeXhr.current = null;
       if (fileInputRef.current) fileInputRef.current.value = '';
       setUploading(false);
+      setUploadProgress(0);
+      setCurrentFileName('');
+    }
+  };
+
+  const cancelUpload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (activeXhr.current) {
+      activeXhr.current.abort();
+      activeXhr.current = null;
     }
   };
 
@@ -157,16 +245,54 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => !uploading && fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-150 ${
+          className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all duration-150 ${
             isDragging
               ? 'border-indigo-500 bg-indigo-50/60'
               : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-400'
           }`}
         >
           {uploading ? (
-            <div className="py-4 flex flex-col items-center justify-center">
-              <RefreshCw className="w-8 h-8 text-indigo-600 animate-spin mb-2" />
-              <p className="text-xs font-semibold text-slate-700">Uploading & detecting pages...</p>
+            <div className="py-2 px-1 flex flex-col items-center justify-center w-full max-w-sm mx-auto">
+              <div className="flex items-center justify-between w-full mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <RefreshCw className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
+                  <span className="text-xs font-semibold text-slate-800 truncate">
+                    {currentFileName || 'Uploading file...'}
+                  </span>
+                  {currentFileSize > 0 && (
+                    <span className="text-[10px] text-slate-400 shrink-0">
+                      ({formatFileSize(currentFileSize)})
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={cancelUpload}
+                  className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors shrink-0 ml-2"
+                  title="Cancel upload"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* Real-time Progress Bar */}
+              <div className="w-full bg-slate-200/80 rounded-full h-2 overflow-hidden mb-2">
+                <div
+                  className="bg-indigo-600 h-full rounded-full transition-all duration-150 ease-out"
+                  style={{ width: `${Math.max(uploadProgress, 6)}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between w-full text-[11px] text-slate-500">
+                <span>
+                  {uploadStage === 'processing'
+                    ? 'Detecting pages & finalizing...'
+                    : 'Uploading document...'}
+                </span>
+                <span className="font-semibold text-indigo-600">
+                  {uploadProgress}%
+                </span>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center">
@@ -178,7 +304,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
                 Tap or Drop Document Here
               </h4>
               <p className="text-[11px] text-slate-400">
-                Auto-detects page count instantly
+                Auto-detects page count instantly · Max 4 MB
               </p>
             </div>
           )}
@@ -193,8 +319,15 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
               <div className="text-xs sm:text-sm font-semibold text-slate-800 truncate">
                 {uploadedFile.fileName}
               </div>
-              <div className="text-[11px] text-emerald-700 font-medium mt-0.5">
-                Detected: {uploadedFile.pageCount} {uploadedFile.pageCount === 1 ? 'page' : 'pages'}
+              <div className="text-[11px] text-emerald-700 font-medium mt-0.5 flex items-center gap-2">
+                <span>
+                  Detected: {uploadedFile.pageCount} {uploadedFile.pageCount === 1 ? 'page' : 'pages'}
+                </span>
+                {uploadedFile.fileSizeBytes > 0 && (
+                  <span className="text-slate-400">
+                    · {formatFileSize(uploadedFile.fileSizeBytes)}
+                  </span>
+                )}
               </div>
             </div>
           </div>

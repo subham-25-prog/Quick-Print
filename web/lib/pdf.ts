@@ -5,14 +5,18 @@ import { PDFDocument } from 'pdf-lib';
  */
 export async function getPdfPageCount(data: ArrayBuffer | Uint8Array): Promise<number> {
   try {
-    const pdfDoc = await PDFDocument.load(data, { throwOnInvalidObject: true });
+    const pdfDoc = await PDFDocument.load(data, {
+      throwOnInvalidObject: true,
+      parseSpeed: Infinity,
+      updateMetadata: false,
+    });
     const count = pdfDoc.getPageCount();
     if (!Number.isSafeInteger(count) || count < 1 || count > 1000) {
       throw new Error('Invalid PDF page count');
     }
     return count;
   } catch (error) {
-    throw new Error('The PDF is malformed, encrypted, empty, or exceeds 1,000 pages. Export an unlocked PDF and try again.', {cause:error});
+    throw new Error('The PDF is malformed, encrypted, empty, or exceeds 1,000 pages. Export an unlocked PDF and try again.', { cause: error });
   }
 }
 

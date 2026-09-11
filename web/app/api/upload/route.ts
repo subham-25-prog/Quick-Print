@@ -4,14 +4,29 @@ import { PDFDocument } from 'pdf-lib';
 import { database } from '@/lib/db';
 import { getCurrentShopId } from '@/lib/shop';
 import { getPdfPageCount, isValidFileType } from '@/lib/pdf';
-import { apiError, HttpError, requireSameOrigin, readBytes } from '@/lib/http';
+import { apiError, HttpError, requireSameOrigin } from '@/lib/http';
 import { createOrderAccessToken } from '@/lib/order-access';
 import { rateLimit, hash } from '@/lib/security';
+
+// In-memory cache for bucket verification so we don't repeat the remote GET bucket call on every upload
+let lastBucketVerifiedAt = 0;
+const BUCKET_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
+async function ensurePrivateBucket(db: ReturnType<typeof database>) {
+  const now = Date.now();
+  if (now - lastBucketVerifiedAt < BUCKET_CACHE_TTL_MS) {
+    return;
+  }
+  const { data: bucket, error: bucketError } = await db.storage.getBucket('shop-documents');
+  if (bucketError || !bucket || bucket.public) {
+    throw new HttpError(503, 'Private document storage is unavailable.');
+  }
+  lastBucketVerifiedAt = now;
+}
 
 export async function POST(req: NextRequest) {
   try {
     requireSameOrigin(req);
-    await rateLimit(req, 'upload', 10);
 
     const contentLength = Number(req.headers.get('content-length'));
     if (contentLength > 4300000) {
@@ -23,16 +38,18 @@ export async function POST(req: NextRequest) {
       throw new HttpError(415, 'A multipart upload is required.');
     }
 
-    let form: FormData;
-    try {
-      const rawBytes = await readBytes(req, 4300000);
-      form = await new Response(new Uint8Array(rawBytes), {
-        headers: { 'Content-Type': contentType },
-      }).formData();
-    } catch (err) {
-      if (err instanceof HttpError) throw err;
-      throw new HttpError(400, 'Invalid upload.');
-    }
+    // Overlap rate limit database RPC with multipart body parsing to eliminate sequential delay
+    const [, form] = await Promise.all([
+      rateLimit(req, 'upload', 10),
+      (async () => {
+        try {
+          return await req.formData();
+        } catch (err) {
+          if (err instanceof HttpError) throw err;
+          throw new HttpError(400, 'Invalid upload.');
+        }
+      })(),
+    ]);
 
     const file = form.get('file');
     if (
@@ -81,10 +98,12 @@ export async function POST(req: NextRequest) {
       throw new HttpError(400, 'File contents do not match the extension.');
     }
 
+    let pageCount: number;
+
     // Convert JPG/PNG to a standardized A4 PDF
     if (!isPdf) {
       try {
-        const doc = await PDFDocument.create();
+        const doc = await PDFDocument.create({ updateMetadata: false });
         const page = doc.addPage([595.28, 841.89]);
         const img = isPng
           ? await doc.embedPng(rawBuffer)
@@ -101,17 +120,17 @@ export async function POST(req: NextRequest) {
           ...size,
         });
 
-        workingBuffer = Buffer.from(await doc.save());
+        workingBuffer = Buffer.from(await doc.save({ useObjectStreams: false }));
+        pageCount = 1; // Images converted to 1-page PDF; skip redundant PDF reload
       } catch {
         throw new HttpError(422, 'This image could not be processed. Try a smaller image.');
       }
-    }
-
-    let pageCount: number;
-    try {
-      pageCount = await getPdfPageCount(workingBuffer);
-    } catch (e) {
-      throw new HttpError(422, (e as Error).message);
+    } else {
+      try {
+        pageCount = await getPdfPageCount(workingBuffer);
+      } catch (e) {
+        throw new HttpError(422, (e as Error).message);
+      }
     }
 
     if (workingBuffer.length > 4194304) {
@@ -129,10 +148,7 @@ export async function POST(req: NextRequest) {
       throw new HttpError(503, 'Upload access security is not configured.');
     }
 
-    const { data: bucket, error: bucketError } = await db.storage.getBucket('shop-documents');
-    if (bucketError || !bucket || bucket.public) {
-      throw new HttpError(503, 'Private document storage is unavailable.');
-    }
+    await ensurePrivateBucket(db);
 
     const { error: uploadError } = await db.storage
       .from('shop-documents')
