@@ -91,6 +91,7 @@ export default function AdminLiveOrdersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to clear history');
       showToast(`History cleared successfully (${data.clearedCount ?? targetCount} orders removed).`, 'success');
+      await fetchOrders();
     } catch (err: any) {
       // Revert state if failed
       setOrders(previousOrders);
@@ -119,6 +120,7 @@ export default function AdminLiveOrdersPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to delete order');
+      await fetchOrders();
     } catch (err: any) {
       // Revert state if failed
       setOrders(previousOrders);
@@ -343,29 +345,6 @@ export default function AdminLiveOrdersPage() {
                 <Layers className="w-3.5 h-3.5 text-slate-400" />
                 <span>{orders.length} Total</span>
               </button>
-
-              {/* High-Visibility Header Clear History Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (orders.length === 0) {
-                    showToast('No orders in history to clear.', 'error');
-                    return;
-                  }
-                  setClearScope(completedOrdersCount > 0 ? 'COMPLETED' : 'ALL');
-                  setShowClearModal(true);
-                }}
-                disabled={isRefreshing || isClearing}
-                title="Clear order history"
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-xs ${
-                  orders.length === 0
-                    ? 'bg-rose-50 text-rose-600 border-rose-200 hover:bg-rose-100'
-                    : 'bg-rose-600 hover:bg-rose-700 text-white border-rose-600 shadow-rose-600/20'
-                }`}
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Clear History</span>
-              </button>
             </div>
           </div>
 
@@ -482,7 +461,7 @@ export default function AdminLiveOrdersPage() {
                 <span>{isRefreshing ? 'Syncing...' : 'Sync'}</span>
               </button>
 
-              {/* Clear All History Button */}
+              {/* Single Consolidated Clear History Button */}
               <button
                 type="button"
                 onClick={() => {
@@ -495,10 +474,10 @@ export default function AdminLiveOrdersPage() {
                 }}
                 disabled={isRefreshing || isClearing}
                 title="Clear order history"
-                className="px-3.5 py-2 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border-rose-200 shadow-2xs hover:shadow-xs cursor-pointer"
+                className="px-3.5 py-2 rounded-2xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border-rose-200 shadow-2xs hover:shadow-xs cursor-pointer disabled:opacity-60"
               >
                 <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                <span>Clear All History</span>
+                <span>Clear History</span>
               </button>
             </div>
           </div>

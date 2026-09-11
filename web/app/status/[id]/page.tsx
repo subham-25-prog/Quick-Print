@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
@@ -8,14 +8,11 @@ import { formatCurrency } from '@/lib/utils';
 import {
   Printer,
   FileText,
-  CheckCircle2,
   AlertCircle,
-  Activity,
   Copy,
   Check,
   ArrowLeft,
   RefreshCw,
-  Clock,
   Sparkles,
 } from '@/components/ui/Icons';
 import { LivePrintVisualizer } from '@/components/customer/LivePrintVisualizer';
@@ -107,82 +104,6 @@ export default function OrderStatusPage() {
 
   const jobState = data?.job?.status || 'PENDING';
 
-  // Compute active step index (0 to 3)
-  const currentStep = useMemo(() => {
-    switch (jobState) {
-      case 'PRINTED':
-        return 3;
-      case 'SUBMITTED':
-      case 'PRINTING':
-      case 'CLAIMED':
-        return 2;
-      case 'PENDING':
-      default:
-        return 1;
-    }
-  }, [jobState]);
-
-  const statusConfig = useMemo(() => {
-    switch (jobState) {
-      case 'PRINTED':
-        return {
-          title: 'Printing Completed!',
-          subtitle: 'Your document has been printed successfully. Please collect it from the counter tray.',
-          badgeBg: 'bg-emerald-500 text-white',
-          cardBorder: 'border-emerald-200 bg-gradient-to-b from-emerald-50/50 to-white',
-          pulseColor: 'bg-emerald-400',
-          icon: <CheckCircle2 className="w-8 h-8 text-emerald-600" />,
-        };
-      case 'SUBMITTED':
-        return {
-          title: 'Document Sent to Printer',
-          subtitle: 'The Windows print system accepted your document. Output is being processed right now.',
-          badgeBg: 'bg-blue-600 text-white',
-          cardBorder: 'border-blue-200 bg-gradient-to-b from-blue-50/40 to-white',
-          pulseColor: 'bg-blue-400',
-          icon: <Printer className="w-8 h-8 text-blue-600" />,
-        };
-      case 'PRINTING':
-      case 'CLAIMED':
-        return {
-          title: 'Printing in Progress…',
-          subtitle: 'The shop printer agent is downloading and dispatching your pages to the printer.',
-          badgeBg: 'bg-indigo-600 text-white',
-          cardBorder: 'border-indigo-200 bg-gradient-to-b from-indigo-50/40 to-white',
-          pulseColor: 'bg-indigo-400',
-          icon: <RefreshCw className="w-8 h-8 animate-spin text-indigo-600" />,
-        };
-      case 'REVIEW':
-        return {
-          title: 'Print Verification Needed',
-          subtitle: 'Your payment is confirmed. Please ask the shopkeeper at the counter to release your print job.',
-          badgeBg: 'bg-amber-500 text-white',
-          cardBorder: 'border-amber-200 bg-gradient-to-b from-amber-50/40 to-white',
-          pulseColor: 'bg-amber-400',
-          icon: <AlertCircle className="w-8 h-8 text-amber-600" />,
-        };
-      case 'FAILED':
-        return {
-          title: 'Printer Recovery Required',
-          subtitle: 'The printer encountered a paper/hardware issue. The shopkeeper can restart it instantly.',
-          badgeBg: 'bg-rose-500 text-white',
-          cardBorder: 'border-rose-200 bg-gradient-to-b from-rose-50/40 to-white',
-          pulseColor: 'bg-rose-400',
-          icon: <AlertCircle className="w-8 h-8 text-rose-600" />,
-        };
-      case 'PENDING':
-      default:
-        return {
-          title: 'Queued for Printing',
-          subtitle: 'Payment verified! Your document is securely queued and waiting for the printer.',
-          badgeBg: 'bg-indigo-600 text-white',
-          cardBorder: 'border-indigo-100 bg-white',
-          pulseColor: 'bg-indigo-400',
-          icon: <Clock className="w-8 h-8 text-indigo-600" />,
-        };
-    }
-  }, [jobState]);
-
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-16">
       <Header shopName={shopName} />
@@ -252,79 +173,6 @@ export default function OrderStatusPage() {
               paperSize={data.order.paper_size}
               colorMode={data.order.color_mode}
             />
-
-            {/* 1. Hero Live Status Card */}
-            <section className={`rounded-3xl p-6 sm:p-7 border shadow-xs space-y-5 transition-all ${statusConfig.cardBorder}`}>
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Payment Verified</span>
-                  </div>
-                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight pt-1">
-                    {statusConfig.title}
-                  </h1>
-                </div>
-                <div className="w-14 h-14 rounded-2xl bg-white shadow-xs border border-slate-200 flex items-center justify-center shrink-0">
-                  {statusConfig.icon}
-                </div>
-              </div>
-
-              <p className="text-sm text-slate-600 leading-relaxed">
-                {statusConfig.subtitle}
-              </p>
-
-              {/* Live 4-Step Stepper */}
-              <div className="pt-2 border-t border-slate-100">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">
-                  Live Printing Progress
-                </p>
-                <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                  {/* Step 1: Paid */}
-                  <div className="space-y-1.5">
-                    <div className="h-2 rounded-full bg-emerald-500 w-full" />
-                    <span className="block font-bold text-slate-800 text-[11px]">1. Paid</span>
-                  </div>
-                  {/* Step 2: Queued */}
-                  <div className="space-y-1.5">
-                    <div
-                      className={`h-2 rounded-full w-full transition-all ${
-                        currentStep >= 1 ? 'bg-emerald-500' : 'bg-slate-200'
-                      }`}
-                    />
-                    <span className={`block font-bold text-[11px] ${currentStep >= 1 ? 'text-slate-800' : 'text-slate-400'}`}>
-                      2. Queued
-                    </span>
-                  </div>
-                  {/* Step 3: Printing */}
-                  <div className="space-y-1.5">
-                    <div
-                      className={`h-2 rounded-full w-full transition-all ${
-                        currentStep >= 2
-                          ? currentStep === 2
-                            ? 'bg-indigo-500 animate-pulse'
-                            : 'bg-emerald-500'
-                          : 'bg-slate-200'
-                      }`}
-                    />
-                    <span className={`block font-bold text-[11px] ${currentStep >= 2 ? 'text-slate-800' : 'text-slate-400'}`}>
-                      3. Printing
-                    </span>
-                  </div>
-                  {/* Step 4: Ready */}
-                  <div className="space-y-1.5">
-                    <div
-                      className={`h-2 rounded-full w-full transition-all ${
-                        currentStep >= 3 ? 'bg-emerald-500' : 'bg-slate-200'
-                      }`}
-                    />
-                    <span className={`block font-bold text-[11px] ${currentStep >= 3 ? 'text-emerald-700 font-extrabold' : 'text-slate-400'}`}>
-                      4. Ready
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </section>
 
             {/* 2. Order Reference & Receipt Card */}
             <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">

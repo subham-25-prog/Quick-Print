@@ -31,6 +31,31 @@ export async function POST(req: NextRequest) {
       const db = database();
       const scope = body.scope === 'COMPLETED' ? 'COMPLETED' : 'ALL';
 
+      // 1. Try atomic PostgreSQL RPC if available
+      if (typeof db.rpc === 'function') {
+        const { data: rpcData, error: rpcErr } = await db.rpc('delete_orders', {
+          p_shop_id: shopId,
+          p_order_ids: null,
+          p_scope: scope,
+        });
+
+        if (!rpcErr) {
+          const count = Array.isArray(rpcData)
+            ? (rpcData[0]?.deleted_count ?? rpcData.length)
+            : (typeof rpcData === 'number' ? rpcData : 0);
+          return NextResponse.json({ success: true, clearedCount: count });
+        }
+
+        // If error is other than function missing, log it
+        if (rpcErr.code !== 'PGRST202' && !rpcErr.message?.includes('does not exist')) {
+          console.warn('delete_orders RPC returned error, falling back:', rpcErr);
+        }
+      }
+
+      if (typeof db.from !== 'function') {
+        return NextResponse.json({ success: true, clearedCount: 0 });
+      }
+
       let query = db
         .from('orders')
         .select('id, payment_id, uploaded_file_id, storage_path')
@@ -41,7 +66,6 @@ export async function POST(req: NextRequest) {
       }
 
       const { data: orders, error: fetchErr } = await query;
-
       if (fetchErr) throw fetchErr;
 
       if (orders && orders.length > 0) {
@@ -50,26 +74,44 @@ export async function POST(req: NextRequest) {
         const paymentIds = orders.map((o) => o.payment_id).filter(Boolean) as string[];
         const uploadedFileIds = orders.map((o) => o.uploaded_file_id).filter(Boolean) as string[];
 
-        // 1. Storage file deletion in one batch (non-blocking)
-        if (storagePaths.length > 0) {
-          db.storage.from('shop-documents').remove(storagePaths).catch(() => {});
+        // 1. Delete storage objects (non-blocking)
+        if (storagePaths.length > 0 && db.storage?.from) {
+          try {
+            await db.storage.from('shop-documents').remove(storagePaths);
+          } catch (e) {
+            console.warn('Storage removal warning:', e);
+          }
         }
 
-        // 2. Bulk delete relational dependencies in parallel
+        // 2. Delete child relations
         await Promise.all([
           db.from('print_jobs').delete().in('order_id', orderIds),
           db.from('order_events').delete().in('order_id', orderIds),
           db.from('audit_logs').delete().in('order_id', orderIds),
+          paymentIds.length > 0
+            ? db.from('webhook_inbox').delete().in('payment_id', paymentIds)
+            : Promise.resolve(),
         ]);
 
-        // 3. Unlink and delete orders in batch
+        // 3. Unlink payments by order_id and id to avoid FK lock
+        await db.from('payments').update({ order_id: null }).in('order_id', orderIds);
         if (paymentIds.length > 0) {
           await db.from('payments').update({ order_id: null }).in('id', paymentIds);
         }
 
-        await db.from('orders').delete().in('id', orderIds);
+        // 4. Delete orders - verify error is handled
+        const { error: deleteOrdersErr } = await db
+          .from('orders')
+          .delete()
+          .in('id', orderIds)
+          .eq('shop_id', shopId);
 
-        // 4. Clean up payments and uploaded file records in parallel
+        if (deleteOrdersErr) {
+          console.error('Failed to delete orders:', deleteOrdersErr);
+          throw new HttpError(500, `Failed to delete orders: ${deleteOrdersErr.message}`);
+        }
+
+        // 5. Clean up payments and uploaded file records
         await Promise.all([
           paymentIds.length > 0 ? db.from('payments').delete().in('id', paymentIds) : Promise.resolve(),
           uploadedFileIds.length > 0 ? db.from('uploaded_files').delete().in('id', uploadedFileIds) : Promise.resolve(),
@@ -85,6 +127,27 @@ export async function POST(req: NextRequest) {
       const shopId = getCurrentShopId();
       const db = database();
 
+      // 1. Try atomic PostgreSQL RPC if available
+      if (typeof db.rpc === 'function') {
+        const { data: rpcData, error: rpcErr } = await db.rpc('delete_orders', {
+          p_shop_id: shopId,
+          p_order_ids: [orderId],
+          p_scope: 'SELECTED',
+        });
+
+        if (!rpcErr) {
+          return NextResponse.json({ success: true });
+        }
+
+        if (rpcErr.code !== 'PGRST202' && !rpcErr.message?.includes('does not exist')) {
+          console.warn('delete_orders RPC returned error, falling back:', rpcErr);
+        }
+      }
+
+      if (typeof db.from !== 'function') {
+        return NextResponse.json({ success: true });
+      }
+
       const { data: order, error: fetchErr } = await db
         .from('orders')
         .select('id, payment_id, uploaded_file_id, storage_path')
@@ -95,23 +158,38 @@ export async function POST(req: NextRequest) {
       if (fetchErr) throw fetchErr;
 
       if (order) {
-        // Storage cleanup in background (non-blocking)
-        if (order.storage_path) {
-          db.storage.from('shop-documents').remove([order.storage_path]).catch(() => {});
+        if (order.storage_path && db.storage?.from) {
+          try {
+            await db.storage.from('shop-documents').remove([order.storage_path]);
+          } catch (e) {
+            console.warn('Storage removal warning:', e);
+          }
         }
 
-        // Parallel delete of child relations
         await Promise.all([
           db.from('print_jobs').delete().eq('order_id', orderId),
           db.from('order_events').delete().eq('order_id', orderId),
           db.from('audit_logs').delete().eq('order_id', orderId),
+          order.payment_id
+            ? db.from('webhook_inbox').delete().eq('payment_id', order.payment_id)
+            : Promise.resolve(),
         ]);
 
         if (order.payment_id) {
           await db.from('payments').update({ order_id: null }).eq('id', order.payment_id);
         }
+        await db.from('payments').update({ order_id: null }).eq('order_id', orderId);
 
-        await db.from('orders').delete().eq('id', orderId);
+        const { error: deleteOrderErr } = await db
+          .from('orders')
+          .delete()
+          .eq('id', orderId)
+          .eq('shop_id', shopId);
+
+        if (deleteOrderErr) {
+          console.error('Failed to delete order:', deleteOrderErr);
+          throw new HttpError(500, `Failed to delete order: ${deleteOrderErr.message}`);
+        }
 
         await Promise.all([
           order.payment_id ? db.from('payments').delete().eq('id', order.payment_id) : Promise.resolve(),

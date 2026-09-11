@@ -20,3 +20,40 @@ test('safe retry succeeds only after the database accepts it', async () => {
   mocks.rpc.mockResolvedValue({ error: null });
   expect((await POST(request('RETRY_PRINT'))).status).toBe(200);
 });
+
+test('CLEAR_HISTORY calls delete_orders RPC and reports cleared count', async () => {
+  mocks.rpc.mockResolvedValue({ data: [{ deleted_count: 4 }], error: null });
+  const req = new NextRequest('https://quickprint.test/api/admin/actions', {
+    method: 'POST',
+    headers: { origin: 'https://quickprint.test', 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'CLEAR_HISTORY', scope: 'COMPLETED' }),
+  });
+  const res = await POST(req);
+  expect(res.status).toBe(200);
+  const json = await res.json();
+  expect(json.success).toBe(true);
+  expect(json.clearedCount).toBe(4);
+  expect(mocks.rpc).toHaveBeenCalledWith('delete_orders', {
+    p_shop_id: '00000000-0000-4000-8000-000000000001',
+    p_order_ids: null,
+    p_scope: 'COMPLETED',
+  });
+});
+
+test('DELETE_ORDER calls delete_orders RPC for specific order', async () => {
+  mocks.rpc.mockResolvedValue({ data: [{ deleted_count: 1 }], error: null });
+  const req = new NextRequest('https://quickprint.test/api/admin/actions', {
+    method: 'POST',
+    headers: { origin: 'https://quickprint.test', 'content-type': 'application/json' },
+    body: JSON.stringify({ action: 'DELETE_ORDER', orderId: id }),
+  });
+  const res = await POST(req);
+  expect(res.status).toBe(200);
+  const json = await res.json();
+  expect(json.success).toBe(true);
+  expect(mocks.rpc).toHaveBeenCalledWith('delete_orders', {
+    p_shop_id: '00000000-0000-4000-8000-000000000001',
+    p_order_ids: [id],
+    p_scope: 'SELECTED',
+  });
+});
