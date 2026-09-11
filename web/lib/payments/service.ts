@@ -87,7 +87,7 @@ export async function openPayment(
     success: true,
     paymentId: payment.id,
     accessToken: token,
-    paymentUrl: url,
+    paymentUrl: url?.startsWith('http') ? url : undefined,
     upiUri: upiUri || (url?.startsWith('upi://') ? url : undefined),
     qrDataUrl,
     amount: payment.amount,

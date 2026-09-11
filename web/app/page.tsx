@@ -281,7 +281,10 @@ export default function CustomerHomePage() {
       }
       const statusUrl = `/payment/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
       setIsPaymentModalOpen(false);
-      if (data.paymentUrl) { window.location.assign(data.paymentUrl); return; }
+      if (data.paymentUrl && data.paymentUrl.startsWith('http')) {
+        window.location.assign(data.paymentUrl);
+        return;
+      }
       router.push(statusUrl);
       if (data.upiUri && typeof window !== 'undefined') {
         const isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || '') || window.innerWidth < 640;

@@ -1,7 +1,6 @@
 import { DirectUpiProvider } from './direct-upi';
 import { PaymentProvider } from './provider';
-import { database, getActivePricing } from '../db';
-import { getCurrentShopId } from '../shop';
+import { getActivePricing } from '../db';
 import { HttpError } from '../http';
 import { defaultPricingConfig } from '../config';
 
@@ -32,7 +31,6 @@ export function configuredProvider(customUpiId?: string, customShopName?: string
 }
 
 export async function paymentProvider(): Promise<PaymentProvider> {
-  const shopId = getCurrentShopId();
   let upiId: string | undefined;
   let shopName: string | undefined;
 
@@ -42,36 +40,6 @@ export async function paymentProvider(): Promise<PaymentProvider> {
     shopName = pricing.shop_upi_name || pricing.shop_name;
   } catch {}
 
-  const provider = configuredProvider(upiId, shopName);
-  const db = database();
-
-  const { data, error } = await db
-    .from('payment_configs')
-    .select('*')
-    .eq('shop_id', shopId)
-    .maybeSingle();
-
-  if (!error) {
-    const needsSync =
-      !data ||
-      data.provider !== provider.name ||
-      data.merchant_id !== provider.merchantId ||
-      data.environment !== provider.environment ||
-      data.credential_fingerprint !== provider.fingerprint ||
-      !data.enabled;
-
-    if (needsSync) {
-      await db.from('payment_configs').upsert({
-        shop_id: shopId,
-        provider: provider.name,
-        merchant_id: provider.merchantId,
-        credential_fingerprint: provider.fingerprint,
-        environment: provider.environment,
-        enabled: true,
-        updated_at: new Date().toISOString(),
-      });
-    }
-  }
-
-  return provider;
+  return configuredProvider(upiId, shopName);
 }
+
