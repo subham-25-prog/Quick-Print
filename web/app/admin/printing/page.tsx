@@ -460,26 +460,6 @@ export default function AdminPrintingSettingsPage() {
 
           <div className="space-y-2">
             <label
-              onClick={() => toggleFormField('autoApproveUpiOrders')}
-              className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                form.form_fields?.autoApproveUpiOrders !== false
-                  ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <div>
-                <div className="text-xs font-bold text-slate-900">Auto-Start Printing for UPI Orders</div>
-                <div className="text-[10px] text-slate-400 font-medium">Automatically spool paid orders to printer without waiting for counter tap</div>
-              </div>
-              <input
-                type="checkbox"
-                checked={form.form_fields?.autoApproveUpiOrders !== false}
-                onChange={() => {}}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
-              />
-            </label>
-
-            <label
               onClick={() => toggleFormField('allowColorPrinting')}
               className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
                 form.form_fields?.allowColorPrinting !== false
