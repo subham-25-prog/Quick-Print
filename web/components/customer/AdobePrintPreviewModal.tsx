@@ -800,9 +800,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         <button
           type="button"
           onClick={handlePrintApply}
-          className="px-3 py-1.5 rounded-lg bg-[#1a73e8] hover:bg-[#1b66c9] active:scale-95 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
+          className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
         >
-          Print
+          Confirm &amp; Pay
         </button>
       </header>
 
@@ -818,7 +818,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         {/* Header: Title, Dynamic Sheet Count, Help Button */}
         <div className="flex items-start justify-between px-5 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-[#3c4043]/40 shrink-0">
           <div>
-            <h1 className="text-lg sm:text-xl font-semibold text-white tracking-tight">Print</h1>
+            <h1 className="text-lg sm:text-xl font-semibold text-white tracking-tight">Print &amp; Advanced Settings</h1>
             <p className="text-xs text-[#9aa0a6] font-normal mt-0.5">
               Total: {totalSheets} sheet{totalSheets === 1 ? '' : 's'} of paper
             </p>
@@ -1105,9 +1105,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <button
               type="button"
               onClick={handlePrintApply}
-              className="px-5 sm:px-6 py-2 rounded-lg bg-[#1a73e8] hover:bg-[#1b66c9] active:bg-[#185abc] text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+              className="px-5 sm:px-6 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-bold shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
             >
-              Print ({totalSheets} {totalSheets === 1 ? 'sheet' : 'sheets'})
+              <span>Confirm &amp; Pay</span>
+              <span>→</span>
             </button>
           </div>
         </div>
@@ -1282,9 +1283,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           <button
             type="button"
             onClick={handlePrintApply}
-            className="py-2 px-4 rounded-xl bg-[#1a73e8] hover:bg-[#1b66c9] active:scale-95 text-white text-xs font-bold shadow-md transition-all shrink-0 cursor-pointer"
+            className="py-2 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs font-bold shadow-md transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
           >
-            Print ({totalSheets})
+            <span>Confirm &amp; Pay</span>
+            <span>→</span>
           </button>
         </div>
       </main>

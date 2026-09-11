@@ -541,11 +541,17 @@ export default function CustomerHomePage() {
 
           <button
             type="button"
-            onClick={handleOpenPayment}
-            disabled={!pricingReady||!checkoutEnabled||!uploadedFile||submitting}
-            className="py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer"
+            onClick={() => {
+              if (!uploadedFile) {
+                alert('Please upload a document to preview.');
+                return;
+              }
+              setIsAdobeModalOpen(true);
+            }}
+            disabled={!pricingReady||!uploadedFile||submitting}
+            className="py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span>Pay &amp; Print</span>
+            <span>Preview</span>
             <span>→</span>
           </button>
         </div>
@@ -583,6 +589,10 @@ export default function CustomerHomePage() {
         onColorModeChange={setColorMode}
         onPrintSidesChange={setPrintSides}
         onCopiesChange={setCopies}
+        onProceedToOrder={() => {
+          setIsAdobeModalOpen(false);
+          handleOpenPayment();
+        }}
       />}
     </div>
   );
