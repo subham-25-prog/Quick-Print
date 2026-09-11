@@ -90,16 +90,6 @@ export default function AdminSettingsPage() {
     }));
   };
 
-  const handleFormFieldChange = (fieldKey: keyof NonNullable<PricingConfig['form_fields']>, value: any) => {
-    setForm((prev) => ({
-      ...prev,
-      form_fields: {
-        ...(prev.form_fields || defaultPricingConfig.form_fields),
-        [fieldKey]: value,
-      },
-    }));
-  };
-
   // Add Custom Option
   const handleAddCustomOption = () => {
     if (!newAddonName.trim() || newAddonPrice === '' || isNaN(Number(newAddonPrice))) return;
@@ -860,101 +850,53 @@ export default function AdminSettingsPage() {
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900">
-              5. Payment & Checkout Settings
+              5. Payment & Checkout Options
             </h2>
             <span className="text-[10px] font-bold text-slate-400">
               Customer Step 4
             </span>
           </div>
 
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2.5 text-xs">
+          <div className="space-y-2">
+            <label
+              onClick={() => toggleFormField('allowUpiPayment')}
+              className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                form.form_fields?.allowUpiPayment !== false
+                  ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+              }`}
+            >
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1">Shopkeeper UPI VPA (ID)</label>
-                <input
-                  type="text"
-                  placeholder="shop@okaxis"
-                  value={form.shop_upi_id || ''}
-                  onChange={(e) => handleChange('shop_upi_id', e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono font-bold text-indigo-700 bg-slate-50/60 focus:bg-white"
-                />
+                <div className="text-xs font-bold text-slate-900">1-Tap UPI Payment (GPay / PhonePe / Paytm)</div>
+                <div className="text-[10px] text-slate-400 font-medium">Show UPI payment link on customer checkout</div>
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1">Payee Name</label>
-                <input
-                  type="text"
-                  placeholder="Royal Xerox"
-                  value={form.shop_upi_name || ''}
-                  onChange={(e) => handleChange('shop_upi_name', e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50/60 focus:bg-white"
-                />
-              </div>
-            </div>
+              <input
+                type="checkbox"
+                checked={form.form_fields?.allowUpiPayment !== false}
+                onChange={() => {}}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+              />
+            </label>
 
-            <div className="grid grid-cols-2 gap-2.5 text-xs">
+            <label
+              onClick={() => toggleFormField('allowCashPayment')}
+              className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                form.form_fields?.allowCashPayment !== false
+                  ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+              }`}
+            >
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1">Min Order Amount (₹)</label>
-                <input
-                  type="number"
-                  placeholder="5"
-                  value={form.form_fields?.minOrderAmount || 0}
-                  onChange={(e) => handleFormFieldChange('minOrderAmount', parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50/60 focus:bg-white"
-                />
+                <div className="text-xs font-bold text-slate-900">Pay Cash at Counter Option</div>
+                <div className="text-[10px] text-slate-400 font-medium">Show counter cash option for walk-in customers</div>
               </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 mb-1">Express / Urgent Fee (₹)</label>
-                <input
-                  type="number"
-                  placeholder="10"
-                  value={form.form_fields?.urgentFee || 0}
-                  onChange={(e) => handleFormFieldChange('urgentFee', parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold text-slate-900 bg-slate-50/60 focus:bg-white"
-                />
-              </div>
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 space-y-2">
-              <label
-                onClick={() => toggleFormField('allowUpiPayment')}
-                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                  form.form_fields?.allowUpiPayment !== false
-                    ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                <div>
-                  <div className="text-xs font-bold text-slate-900">1-Tap UPI Payment (GPay / PhonePe / Paytm)</div>
-                  <div className="text-[10px] text-slate-400 font-medium">Show UPI payment link on customer checkout</div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.allowUpiPayment !== false}
-                  onChange={() => {}}
-                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0"
-                />
-              </label>
-
-              <label
-                onClick={() => toggleFormField('allowCashPayment')}
-                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                  form.form_fields?.allowCashPayment !== false
-                    ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                <div>
-                  <div className="text-xs font-bold text-slate-900">Pay Cash at Counter Option</div>
-                  <div className="text-[10px] text-slate-400 font-medium">Show counter cash option for walk-in customers</div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.allowCashPayment !== false}
-                  onChange={() => {}}
-                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0"
-                />
-              </label>
-            </div>
+              <input
+                type="checkbox"
+                checked={form.form_fields?.allowCashPayment !== false}
+                onChange={() => {}}
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+              />
+            </label>
           </div>
         </section>
 
