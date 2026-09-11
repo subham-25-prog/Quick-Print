@@ -108,6 +108,10 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
         }
 
         // Step 2: Upload directly to Supabase Storage pre-signed URL
+        const uploadFormData = new FormData();
+        uploadFormData.append('cacheControl', '3600');
+        uploadFormData.append('', file);
+
         await new Promise<void>((resolve, reject) => {
           const xhr = new XMLHttpRequest();
           activeXhr.current = xhr;
@@ -131,7 +135,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
                 const res = JSON.parse(xhr.responseText);
                 reject(new Error(res.message || res.error || `Direct storage upload failed with status ${xhr.status}`));
               } catch {
-                reject(new Error(`Storage upload failed with status ${xhr.status}`));
+                reject(new Error(`Storage upload failed with status ${xhr.status}: ${xhr.responseText || xhr.statusText}`));
               }
             }
           };
@@ -153,9 +157,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
 
           xhr.timeout = 300000; // 5 minutes
           xhr.open('PUT', prepData.signedUrl);
-          xhr.setRequestHeader('Content-Type', file.type || (isPdf ? 'application/pdf' : 'image/jpeg'));
-          xhr.setRequestHeader('Cache-Control', 'max-age=3600');
-          xhr.send(file);
+          xhr.send(uploadFormData);
         });
 
         // Step 3: Finalize on server to verify file and extract page count

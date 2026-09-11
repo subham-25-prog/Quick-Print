@@ -96,21 +96,19 @@ export async function POST(req: NextRequest) {
 
     const rawBuffer = Buffer.from(await file.arrayBuffer());
     let workingBuffer = rawBuffer;
-    const extension = file.name.split('.').pop()?.toLowerCase();
 
-    const isPdf = rawBuffer.subarray(0, 5).toString() === '%PDF-';
-    const isPng = rawBuffer
-      .subarray(0, 8)
-      .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-    const isJpg = rawBuffer[0] === 255 && rawBuffer[1] === 216 && rawBuffer[2] === 255;
+    const isPdf = rawBuffer.subarray(0, 1024).includes('%PDF-');
+    const isPng =
+      rawBuffer.length >= 8 &&
+      rawBuffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    const isJpg =
+      rawBuffer.length >= 3 &&
+      rawBuffer[0] === 255 &&
+      rawBuffer[1] === 216 &&
+      rawBuffer[2] === 255;
 
-    const mimeMatches =
-      (isPdf && file.type === 'application/pdf') ||
-      (isPng && file.type === 'image/png') ||
-      (isJpg && ['image/jpeg', 'image/jpg'].includes(file.type));
-
-    if (file.type && !mimeMatches) {
-      throw new HttpError(400, 'File MIME type does not match its contents.');
+    if (!isPdf && !isPng && !isJpg) {
+      throw new HttpError(400, 'Invalid file format. Please upload a valid PDF, JPG, or PNG document.');
     }
 
     if (
@@ -119,15 +117,6 @@ export async function POST(req: NextRequest) {
         rawBuffer.readUInt32BE(16) * rawBuffer.readUInt32BE(20) > 40000000)
     ) {
       throw new HttpError(422, 'Image dimensions are too large.');
-    }
-
-    const extensionMatches =
-      (isPdf && extension === 'pdf') ||
-      (isPng && extension === 'png') ||
-      (isJpg && ['jpg', 'jpeg'].includes(extension || ''));
-
-    if (!extensionMatches) {
-      throw new HttpError(400, 'File contents do not match the extension.');
     }
 
     let pageCount: number;
@@ -189,7 +178,10 @@ export async function POST(req: NextRequest) {
         upsert: false,
       });
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Storage upload error:', uploadError);
+      throw new HttpError(500, uploadError.message || 'Storage upload failed.');
+    }
 
     const fileHash = createHash('sha256').update(workingBuffer).digest('hex');
     const { error: insertError } = await db.from('uploaded_files').insert({
@@ -205,7 +197,18 @@ export async function POST(req: NextRequest) {
 
     if (insertError) {
       await db.storage.from('shop-documents').remove([storagePath]);
-      throw insertError;
+      console.error('Database insert error:', insertError);
+      if (
+        insertError.message?.includes('file_size_bytes') ||
+        insertError.message?.includes('check constraint') ||
+        insertError.message?.includes('uploaded_files_file_size_bytes_check')
+      ) {
+        throw new HttpError(
+          400,
+          'Database check constraint needs relaxation. Run the SQL script in Supabase: ALTER TABLE public.uploaded_files DROP CONSTRAINT IF EXISTS uploaded_files_file_size_bytes_check;'
+        );
+      }
+      throw new HttpError(500, insertError.message || 'Could not save document record.');
     }
 
     return NextResponse.json({

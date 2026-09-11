@@ -12,16 +12,18 @@ export function apiError(error: unknown) {
     return NextResponse.json({ error: error.message }, { status: error.status });
   }
 
+  const message = error instanceof Error ? error.message : (typeof error === 'object' && error && 'message' in error ? String((error as any).message) : String(error));
+
   console.error(
     JSON.stringify({
       event: 'request_failed',
       type: error instanceof Error ? error.name : 'DatabaseError',
-      message: error instanceof Error ? error.message : String(error),
+      message,
     })
   );
 
   return NextResponse.json(
-    { error: 'The service is temporarily unavailable. Please retry shortly.' },
+    { error: message || 'The service is temporarily unavailable. Please retry shortly.' },
     { status: 503 }
   );
 }
