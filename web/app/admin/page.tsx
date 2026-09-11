@@ -180,6 +180,14 @@ export default function AdminLiveOrdersPage() {
           prev ? { ...prev, payment_status: 'PAID', order_status: 'PRINTING' as OrderStatus } : null
         );
       }
+      // Broadcast instant verification to customer tab
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const ch = new BroadcastChannel('quickprint_order_events');
+          ch.postMessage({ type: 'ORDER_VERIFIED', orderId });
+          ch.close();
+        } catch {}
+      }
       showToast('Cash verified! Spooling to printer...', 'success');
       await fetchOrders();
     } catch (err: any) {

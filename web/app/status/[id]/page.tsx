@@ -44,7 +44,7 @@ export default function OrderStatusPage() {
   useEffect(() => {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
-    const controller = new AbortController();
+    let consecutiveErrors = 0;
     let currentId = id;
     let currentToken = token;
 
@@ -57,7 +57,6 @@ export default function OrderStatusPage() {
         const res = await fetch('/api/orders/' + currentId, {
           headers: { 'x-order-access-token': currentToken },
           cache: 'no-store',
-          signal: controller.signal,
         });
 
         const result = await res.json();
@@ -66,6 +65,7 @@ export default function OrderStatusPage() {
         }
 
         if (!stopped) {
+          consecutiveErrors = 0;
           setData(result);
           setError('');
 
@@ -83,22 +83,51 @@ export default function OrderStatusPage() {
         }
       } catch (e) {
         if (!stopped && (e as Error)?.name !== 'AbortError') {
-          setError(e instanceof Error ? e.message : 'Connection interrupted.');
+          consecutiveErrors++;
+          // Only show error banner after multiple persistent failures to avoid layout twitch
+          if (consecutiveErrors >= 3) {
+            setError(e instanceof Error ? e.message : 'Connection interrupted.');
+          }
         }
       } finally {
         if (!stopped) {
           setLoading(false);
-          // Poll every 1.5 seconds for instant live updates
-          timer = setTimeout(poll, 1500);
+          // Rapid 1-second polling while in progress, 4s once completed
+          const isDone =
+            data?.order?.order_status === 'PRINTED' ||
+            data?.order?.order_status === 'SUBMITTED' ||
+            data?.job?.status === 'PRINTED' ||
+            data?.job?.status === 'SUBMITTED';
+          const nextInterval = isDone ? 4000 : 1000;
+          timer = setTimeout(poll, nextInterval);
         }
       }
     }
 
     void poll();
+
+    // Cross-tab immediate synchronization via BroadcastChannel
+    let broadcastCh: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        broadcastCh = new BroadcastChannel('quickprint_order_events');
+        broadcastCh.onmessage = (ev) => {
+          if (!ev.data) return;
+          if (!ev.data.orderId || ev.data.orderId === currentId) {
+            // Trigger instantaneous check without waiting for timer
+            clearTimeout(timer);
+            void poll();
+          }
+        };
+      }
+    } catch {}
+
     return () => {
       stopped = true;
       clearTimeout(timer);
-      controller.abort();
+      if (broadcastCh) {
+        try { broadcastCh.close(); } catch {}
+      }
     };
   }, [id, token]);
 
@@ -114,9 +143,26 @@ export default function OrderStatusPage() {
     data?.order?.order_status === 'PAYMENT_VERIFICATION_PENDING' ||
     (data?.order?.payment_status === 'PENDING' && data?.order?.payment_method === 'CASH');
 
+  const isPrinted =
+    data?.order?.order_status === 'PRINTED' ||
+    data?.order?.order_status === 'SUBMITTED' ||
+    data?.job?.status === 'PRINTED' ||
+    data?.job?.status === 'SUBMITTED';
+
+  const isHardwarePrinting =
+    !isPrinted &&
+    (data?.order?.order_status === 'PRINTING' || data?.job?.status === 'PRINTING');
+
   const jobState = isAwaitingVerification
     ? 'AWAITING_VERIFICATION'
-    : data?.job?.status || (data?.order?.payment_status === 'PAID' ? 'PRINTING' : 'PENDING');
+    : data?.job?.status ||
+      (isPrinted
+        ? 'PRINTED'
+        : isHardwarePrinting
+        ? 'PRINTING'
+        : data?.order?.order_status === 'CLAIMED'
+        ? 'CLAIMED'
+        : 'PENDING');
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-16">
@@ -131,31 +177,36 @@ export default function OrderStatusPage() {
                 className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
                   isAwaitingVerification
                     ? 'bg-amber-400'
-                    : data?.agentOnline
+                    : isPrinted
                     ? 'bg-emerald-400'
-                    : 'bg-amber-400'
+                    : 'bg-indigo-400'
                 }`}
               />
               <span
                 className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
                   isAwaitingVerification
                     ? 'bg-amber-500'
-                    : data?.agentOnline
+                    : isPrinted
                     ? 'bg-emerald-500'
-                    : 'bg-amber-500'
+                    : 'bg-indigo-500'
                 }`}
               />
             </span>
             <span className="font-semibold text-slate-700">
               {isAwaitingVerification
                 ? 'Awaiting Cash Verification at Counter'
+                : isPrinted
+                ? 'Document Printed & Ready at Counter'
+                : isHardwarePrinting
+                ? 'Printing on Counter Hardware...'
                 : data?.agentOnline
                 ? 'Shop Printer Connected & Live'
-                : 'Shop Agent Offline (Order Queued)'}
+                : 'Shop Agent Active (Order Queued)'}
             </span>
           </div>
-          <span className="text-[11px] text-slate-400">
-            Live auto-updating
+          <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Live Sync
           </span>
         </div>
 
@@ -227,6 +278,8 @@ export default function OrderStatusPage() {
             ) : (
               <LivePrintVisualizer
                 jobStatus={jobState}
+                orderStatus={data.order.order_status}
+                paymentStatus={data.order.payment_status}
                 pageCount={data.order.page_count}
                 copies={data.order.copies}
                 fileName={data.order.file_name}
