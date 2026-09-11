@@ -4,6 +4,7 @@ import { useState,useEffect } from 'react';
 import QRCode from 'qrcode';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { shopConfig } from '@/lib/config';
+import { useInitialPricing } from '@/lib/initial-pricing';
 import { useShopName, cleanShopName } from '@/lib/shop-sync';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Printer,Download } from '@/components/ui/Icons';
@@ -11,7 +12,7 @@ import { Printer,Download } from '@/components/ui/Icons';
 export default function ShopWallPosterPage() {
   const [activeUrl, setActiveUrl] = useState<string>('');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [rawShopName, setRawShopName] = useState(shopConfig.name);
+  const [rawShopName, setRawShopName] = useState(useInitialPricing().shop_name);
   const [shopAddress, setShopAddress] = useState(shopConfig.address);
   const shopName = useShopName(rawShopName);
 

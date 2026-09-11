@@ -1,6 +1,10 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { shopConfig } from '@/lib/config';
+import { getInitialPricing } from '@/lib/initial-pricing-server';
+import { InitialPricingProvider } from '@/lib/initial-pricing';
+
+export const dynamic = 'force-dynamic';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -9,16 +13,20 @@ export const viewport: Viewport = {
   themeColor: '#0f172a',
 };
 
-export const metadata: Metadata = {
-  title: `${shopConfig.name} – Self-Service Document Printing`,
-  description: `${shopConfig.tagline}. Upload a document, pay securely, and track your verified print job.`,
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const pricing = await getInitialPricing();
+  return {
+    title: `${pricing.shop_name} – Self-Service Document Printing`,
+    description: `${shopConfig.tagline}. Upload a document, pay securely, and track your verified print job.`,
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pricing = await getInitialPricing();
   return (
     <html lang="en" className="dark">
       <body className="bg-slate-950 text-slate-100 antialiased min-h-screen flex flex-col font-sans">
@@ -28,7 +36,7 @@ export default function RootLayout({
           <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] bg-purple-600/10 blur-[130px] rounded-full" />
         </div>
         <div className="relative z-10 flex-1 flex flex-col">
-          {children}
+          <InitialPricingProvider value={pricing}>{children}</InitialPricingProvider>
         </div>
       </body>
     </html>

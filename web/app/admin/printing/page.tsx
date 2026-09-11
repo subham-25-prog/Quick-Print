@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PricingConfig } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
+import { useInitialPricing } from '@/lib/initial-pricing';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import {
 Printer,
@@ -16,7 +17,7 @@ Trash2
 } from '@/components/ui/Icons';
 
 export default function AdminPrintingSettingsPage() {
-  const [form, setForm] = useState<PricingConfig>(defaultPricingConfig);
+  const [form, setForm] = useState<PricingConfig>(useInitialPricing());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);

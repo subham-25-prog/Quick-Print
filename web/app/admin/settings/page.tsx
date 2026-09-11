@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PricingConfig, CustomAddon, CustomPaperType } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
+import { useInitialPricing } from '@/lib/initial-pricing';
 import { publishShopNameUpdate } from '@/lib/shop-sync';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import {
@@ -20,7 +21,7 @@ import {
 } from '@/components/ui/Icons';
 
 export default function AdminSettingsPage() {
-  const [form, setForm] = useState<PricingConfig>(defaultPricingConfig);
+  const [form, setForm] = useState<PricingConfig>(useInitialPricing());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);

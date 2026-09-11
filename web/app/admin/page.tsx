@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Order, OrderStatus, PricingConfig } from '@/types';
-import { defaultPricingConfig } from '@/lib/config';
+import { useInitialPricing } from '@/lib/initial-pricing';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
 Printer,
@@ -22,7 +22,7 @@ Play
 
 export default function AdminLiveOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
-  const [pricing, setPricing] = useState<PricingConfig>(defaultPricingConfig);
+  const [pricing, setPricing] = useState<PricingConfig>(useInitialPricing());
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState<'ALL' | 'CURRENT' | 'PENDING' | 'PRINTING' | 'COMPLETED'>('ALL');

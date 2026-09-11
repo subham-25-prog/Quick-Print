@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { shopConfig } from '@/lib/config';
+import { useInitialPricing } from '@/lib/initial-pricing';
 
 export const SHOP_NAME_EVENT = 'quickprint_shop_name_updated';
 export const SHOP_PRICING_STORAGE_KEY = 'quickprint_live_pricing';
@@ -85,15 +86,17 @@ export function publishShopNameUpdate(newShopName: string, fullPricing?: any): v
  * in-window events, localStorage changes, and BroadcastChannel updates.
  */
 export function useShopName(explicitShopName?: string): string {
-  const [shopName, setShopName] = useState<string>(() => cleanShopName(explicitShopName));
+  const initialPricing = useInitialPricing();
+  const [shopName, setShopName] = useState<string>(() => cleanShopName(initialPricing.shop_name));
 
   useEffect(() => {
     // The parent already supplies pricing; update if explicit name changed
     if (explicitShopName !== undefined) {
-      setShopName(cleanShopName(explicitShopName));
       return;
     }
-    setShopName(getStoredShopName());
+    // The server snapshot is newer than browser storage. Never replace it with
+    // a cached name on mount; continue accepting live updates below.
+    setShopName(cleanShopName(initialPricing.shop_name));
 
     // 1. In-tab custom event listener
     const handleCustomEvent = (e: Event) => {
@@ -141,9 +144,8 @@ export function useShopName(explicitShopName?: string): string {
           setShopName(serverName);
           try {
             const cached = localStorage.getItem(SHOP_PRICING_STORAGE_KEY);
-            if (!cached) {
-              localStorage.setItem(SHOP_PRICING_STORAGE_KEY, JSON.stringify({ ...data.pricing, shop_name: serverName }));
-            }
+            const parsed = cached ? JSON.parse(cached) : {};
+            localStorage.setItem(SHOP_PRICING_STORAGE_KEY, JSON.stringify({ ...parsed, ...data.pricing, shop_name: serverName }));
           } catch {}
         }
       })
@@ -158,7 +160,7 @@ export function useShopName(explicitShopName?: string): string {
         channel.close();
       }
     };
-  }, [explicitShopName]);
+  }, [explicitShopName, initialPricing.shop_name]);
 
-  return shopName;
+  return explicitShopName !== undefined ? cleanShopName(explicitShopName) : shopName;
 }

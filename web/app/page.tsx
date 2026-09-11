@@ -11,6 +11,7 @@ import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
 import { calculateOrderPrice } from '@/lib/pricing';
 import { formatCurrency } from '@/lib/utils';
 import { defaultPricingConfig } from '@/lib/config';
+import { useInitialPricing } from '@/lib/initial-pricing';
 import {
   PaperSize,
   ColorMode,
@@ -36,7 +37,7 @@ export default function CustomerHomePage() {
 
 
   // Shop pricing state
-  const [pricing, setPricing] = useState<PricingConfig>(defaultPricingConfig);
+  const [pricing, setPricing] = useState<PricingConfig>(useInitialPricing());
 
   // Customer selections
   const [uploadedFile, setUploadedFile] = useState<UploadedFileState | null>(null);
@@ -122,19 +123,7 @@ export default function CustomerHomePage() {
       }
     };
 
-    // Load cached pricing first for instant initial render
-    try {
-      const cached = localStorage.getItem('quickprint_live_pricing');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed && typeof parsed === 'object') {
-          if (!parsed.shop_name || /quickprint/i.test(parsed.shop_name)) {
-            parsed.shop_name = defaultPricingConfig.shop_name;
-          }
-          applyPricingConfig(parsed);
-        }
-      }
-    } catch {}
+    // Server pricing is newer than browser storage, which may contain an old name.
 
     let disposed = false;
     let pricingRequest: AbortController | null = null;
