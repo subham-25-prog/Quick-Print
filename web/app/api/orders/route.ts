@@ -203,6 +203,8 @@ export async function POST(req: NextRequest) {
     }
 
     const paymentId = randomUUID();
+    const shortCode = (parseInt(paymentId.replace(/-/g, '').slice(0, 6), 16) % 9000 + 1000).toString();
+    const orderNumber = `QP-${shortCode}`;
     const paymentRecord = {
       id: paymentId,
       shop_id: shopId,
@@ -214,11 +216,12 @@ export async function POST(req: NextRequest) {
       merchant_id: provider.merchantId,
       environment: provider.environment,
       credential_fingerprint: provider.fingerprint,
-      payment_reference: `QP_${paymentId.replace(/-/g, '')}`,
+      payment_reference: orderNumber,
       amount: price.totalAmount,
       currency: 'INR',
       status: 'PENDING',
       draft_order: {
+        order_number: orderNumber,
         paper_size: options.paperSize,
         color_mode: options.colorMode,
         print_sides: options.printSides,

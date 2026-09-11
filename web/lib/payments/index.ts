@@ -1,80 +1,46 @@
-import { PhonePeProvider } from './phonepe';
-import { database } from '../db';
-import { getCurrentShopId } from '../shop';
+import { DirectUpiProvider } from './direct-upi';
+import { PaymentProvider } from './provider';
+import { getActivePricing } from '../db';
 import { HttpError } from '../http';
 
-export function configuredProvider(): PhonePeProvider {
-  if (process.env.PAYMENT_PROVIDER !== 'phonepe') {
+/**
+ * Returns configured Direct UPI Provider.
+ * Allows overriding payee UPI ID and Payee Name via shopkeeper pricing settings or environment variables.
+ * Defaults to test UPI account: wbs.erf@icici (West Bengal State Emergency Relief Fund).
+ */
+export function configuredProvider(customUpiId?: string, customPayeeName?: string): PaymentProvider {
+  if (process.env.PAYMENT_PROVIDER === 'mock') {
     throw new HttpError(
       503,
-      'Online payment is unavailable. Please contact the shopkeeper.'
+      'Mock payment provider is unavailable in production environments.'
     );
   }
 
-  const requiredFields = [
-    'PHONEPE_MERCHANT_ID',
-    'PHONEPE_CLIENT_ID',
-    'PHONEPE_CLIENT_SECRET',
-    'PHONEPE_WEBHOOK_USERNAME',
-    'PHONEPE_WEBHOOK_PASSWORD',
-  ] as const;
+  // Priority: 1. Admin/Shop pricing setting -> 2. Environment variable -> 3. Test UPI ID
+  const upiId =
+    customUpiId?.trim() ||
+    process.env.SHOP_UPI_ID?.trim() ||
+    'wbs.erf@icici';
 
-  for (const field of requiredFields) {
-    if (!process.env[field]) {
-      throw new HttpError(503, 'Online payment setup is incomplete.');
-    }
-  }
+  const payeeName =
+    customPayeeName?.trim() ||
+    process.env.SHOP_UPI_NAME?.trim() ||
+    'West Bengal State Emergency Relief Fund';
 
-  const mode = process.env.PAYMENT_ENVIRONMENT?.trim();
-  if (mode !== 'live' && mode !== 'sandbox') {
-    throw new HttpError(503, 'Payment environment is not configured.');
-  }
+  const env = process.env.PAYMENT_ENVIRONMENT === 'live' ? 'live' : 'sandbox';
 
-  const clientVersion = process.env.PHONEPE_CLIENT_VERSION?.trim() || '1';
-
-  return new PhonePeProvider(
-    process.env.PHONEPE_MERCHANT_ID!.trim(),
-    mode,
-    process.env.PHONEPE_CLIENT_ID!.trim(),
-    clientVersion,
-    process.env.PHONEPE_CLIENT_SECRET!.trim(),
-    process.env.PHONEPE_WEBHOOK_USERNAME!.trim(),
-    process.env.PHONEPE_WEBHOOK_PASSWORD!.trim()
-  );
+  return new DirectUpiProvider(upiId, payeeName, 1, env);
 }
 
-export async function paymentProvider(): Promise<PhonePeProvider> {
-  const provider = configuredProvider();
-  const db = database();
-  const shopId = getCurrentShopId();
+export async function paymentProvider(): Promise<PaymentProvider> {
+  let upiId: string | undefined;
+  let shopName: string | undefined;
 
-  const { data, error } = await db
-    .from('payment_configs')
-    .select('*')
-    .eq('shop_id', shopId)
-    .maybeSingle();
+  try {
+    const pricing = await getActivePricing();
+    upiId = pricing.shop_upi_id;
+    shopName = pricing.shop_upi_name || pricing.shop_name;
+  } catch {}
 
-  if (error) throw error;
-
-  const needsSync =
-    !data ||
-    data.provider !== provider.name ||
-    data.merchant_id !== provider.merchantId ||
-    data.environment !== provider.environment ||
-    data.credential_fingerprint !== provider.fingerprint ||
-    !data.enabled;
-
-  if (needsSync) {
-    await db.from('payment_configs').upsert({
-      shop_id: shopId,
-      provider: provider.name,
-      merchant_id: provider.merchantId,
-      credential_fingerprint: provider.fingerprint,
-      environment: provider.environment,
-      enabled: true,
-      updated_at: new Date().toISOString(),
-    });
-  }
-
-  return provider;
+  return configuredProvider(upiId, shopName);
 }

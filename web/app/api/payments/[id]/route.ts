@@ -80,14 +80,24 @@ export async function GET(
       }
     }
 
+    const payeeVpa = process.env.SHOP_UPI_ID?.trim() || 'wbs.erf@icici';
+    const payeeName = process.env.SHOP_UPI_NAME?.trim() || 'West Bengal State Emergency Relief Fund';
+    const orderNumber = currentPayment.payment_reference || `QP-${id.slice(0, 4).toUpperCase()}`;
+    const fallbackUpiUri = `upi://pay?pa=${encodeURIComponent(payeeVpa)}&pn=${encodeURIComponent(payeeName)}&am=1&cu=INR&tn=${encodeURIComponent(`QuickPrint Test ${orderNumber}`)}&tr=${encodeURIComponent(orderNumber)}`;
+    const effectiveUpiUri = currentPayment.payment_url || fallbackUpiUri;
+
     return NextResponse.json(
       {
         status: currentPayment.status,
-        reference: currentPayment.payment_reference,
+        reference: orderNumber,
+        orderNumber,
         amount: currentPayment.amount,
-        environment: currentPayment.environment,
+        environment: currentPayment.environment || 'sandbox',
         paymentMethod: currentPayment.provider === 'cash' ? 'CASH' : 'UPI',
-        paymentUrl: currentPayment.status === 'PENDING' ? currentPayment.payment_url : undefined,
+        paymentUrl: currentPayment.status === 'PENDING' ? effectiveUpiUri : undefined,
+        upiUri: currentPayment.status === 'PENDING' ? effectiveUpiUri : undefined,
+        payeeVpa,
+        payeeName,
         reviewRequired: currentPayment.review_required,
         verificationPending,
         orderId: currentPayment.status === 'SUCCESS' ? currentPayment.order_id : undefined,
