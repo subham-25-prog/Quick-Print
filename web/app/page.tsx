@@ -279,15 +279,12 @@ export default function CustomerHomePage() {
         router.push(statusUrl);
         return;
       }
-
       const statusUrl = `/payment/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
       setIsPaymentModalOpen(false);
+      if (data.paymentUrl) { window.location.assign(data.paymentUrl); return; }
       router.push(statusUrl);
-    } catch (e) {
-      setCheckoutError(e instanceof Error ? e.message : 'Unable to start payment. Please retry.');
-    } finally {
-      setSubmitting(false);
-    }
+    }catch(e){setCheckoutError(e instanceof Error?e.message:'Unable to start payment. Please retry.');}
+    finally{setSubmitting(false);}
   };
 
   // Determine if finishing section has active options

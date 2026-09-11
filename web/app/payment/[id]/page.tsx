@@ -1,22 +1,17 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import QRCode from 'qrcode';
 import { Header } from '@/components/Header';
-import { ArrowLeft, RefreshCw, ShieldAlert, Smartphone, QrCode } from '@/components/ui/Icons';
+import { formatCurrency } from '@/lib/utils';
+import { ArrowLeft, RefreshCw, AlertCircle, ShieldAlert } from '@/components/ui/Icons';
 
-type PaymentDetails = {
+type Status = {
   status: string;
   reference: string;
-  orderNumber?: string;
   amount: number;
   environment: string;
   paymentMethod?: string;
   paymentUrl?: string;
-  upiUri?: string;
-  payeeVpa?: string;
-  payeeName?: string;
   orderId?: string;
   orderAccessToken?: string;
   reviewRequired?: boolean;
@@ -29,9 +24,9 @@ export default function PaymentPage() {
   const router = useRouter();
   const token = query.get('access_token') || '';
 
-  const [state, setState] = useState<PaymentDetails | null>(null);
+  const [state, setState] = useState<Status | null>(null);
   const [error, setError] = useState('');
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
     let stopped = false;
@@ -44,13 +39,12 @@ export default function PaymentPage() {
           cache: 'no-store',
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Unable to check payment status.');
+        if (!res.ok) throw new Error(data.error || 'Unable to check payment.');
         if (stopped) return;
 
         setState(data);
         setError('');
 
-        // Only redirect if trusted server-side confirmation returns SUCCESS
         if (data.status === 'SUCCESS' && data.orderId) {
           stopped = true;
           const targetToken = data.orderAccessToken || token;
@@ -61,6 +55,7 @@ export default function PaymentPage() {
 
         if (['FAILED', 'EXPIRED', 'CANCELLED'].includes(data.status)) {
           stopped = true;
+          // When payment fails, automatically redirect back to client interface
           router.replace('/?payment_error=' + encodeURIComponent(data.status.toLowerCase()));
           return;
         }
@@ -68,7 +63,7 @@ export default function PaymentPage() {
         if (!stopped) setError(e instanceof Error ? e.message : 'Connection interrupted.');
       }
 
-      if (!stopped) timer = setTimeout(poll, 2500);
+      if (!stopped) timer = setTimeout(poll, 1500);
     }
 
     void poll();
@@ -78,164 +73,116 @@ export default function PaymentPage() {
     };
   }, [id, token, router]);
 
-  // Generate Dynamic QR Code from exact UPI URI
-  const effectiveUpiUri =
-    state?.upiUri ||
-    state?.paymentUrl ||
-    (state?.orderNumber
-      ? `upi://pay?pa=${encodeURIComponent(state.payeeVpa || 'wbs.erf@icici')}&pn=${encodeURIComponent(state.payeeName || 'West Bengal State Emergency Relief Fund')}&am=1&cu=INR&tn=${encodeURIComponent(`QuickPrint Test ${state.orderNumber}`)}&tr=${encodeURIComponent(state.orderNumber)}`
-      : '');
-
-  useEffect(() => {
-    if (!effectiveUpiUri) return;
-
-    QRCode.toDataURL(effectiveUpiUri, {
-      width: 280,
-      margin: 2,
-      color: {
-        dark: '#0f172a',
-        light: '#ffffff',
-      },
-      errorCorrectionLevel: 'M',
-    })
-      .then((url) => setQrCodeUrl(url))
-      .catch((err) => {
-        console.error('Failed to generate QR code:', err);
+  async function retry() {
+    setRetrying(true);
+    setError('');
+    try {
+      const res = await fetch(`/api/payments/${id}/retry`, {
+        method: 'POST',
+        headers: { 'x-order-access-token': token },
       });
-  }, [effectiveUpiUri]);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Retry unavailable.');
+      const url = `/payment/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
+      router.replace(url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Retry unavailable.');
+    } finally {
+      setRetrying(false);
+    }
+  }
 
+  const failed = state && ['FAILED', 'EXPIRED', 'CANCELLED'].includes(state.status);
   const isCash = state?.paymentMethod === 'CASH' || state?.reference?.includes('CASH');
-  const orderIdDisplay = state?.orderNumber || state?.reference || `QP-${id.slice(0, 4).toUpperCase()}`;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <Header />
-
       <main className="max-w-lg mx-auto w-full p-4 sm:p-6 flex-1 flex flex-col justify-center">
         <section className="bg-white rounded-3xl p-6 sm:p-8 space-y-6 border border-slate-200 shadow-sm text-center">
-          {isCash ? (
-            /* Cash at Counter flow */
-            <>
-              <div className="mx-auto w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600">
-                <RefreshCw className="w-8 h-8 animate-spin" />
-              </div>
-              <div className="space-y-2">
-                <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                  Waiting for Cash Verification
-                </h1>
-                <p className="text-sm text-slate-500">
-                  Please pay at the shop counter. The operator will verify and start printing.
-                </p>
-              </div>
-              <div className="bg-slate-50 rounded-2xl p-4 space-y-1.5 border border-slate-100">
-                <p className="text-3xl font-extrabold text-slate-900">
-                  ₹{state?.amount || 0}
-                </p>
-                <p className="text-xs font-mono text-slate-400">
-                  Order: {orderIdDisplay}
-                </p>
-              </div>
-            </>
-          ) : (
-            /* Direct UPI Initiation Test Flow */
-            <>
-              {/* Header Badge */}
-              <div className="flex items-center justify-center gap-2">
-                <span className="px-3.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-extrabold uppercase tracking-wider">
-                  TEST PAYMENT
-                </span>
-                <span className="px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-[10px] font-bold">
-                  TEST MODE
-                </span>
-              </div>
+          {/* Status Animation */}
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600">
+            {failed ? (
+              <ShieldAlert className="w-8 h-8 text-rose-600" />
+            ) : (
+              <RefreshCw className="w-8 h-8 animate-spin text-indigo-600" />
+            )}
+          </div>
 
-              {/* Order & Amount Display */}
-              <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100 space-y-1">
-                <div className="text-xs font-bold text-slate-500 tracking-wide uppercase">
-                  Order: <span className="font-mono font-black text-slate-900 text-sm">{orderIdDisplay}</span>
-                </div>
-                <div className="text-3xl font-black text-slate-900 tracking-tight">
-                  Amount: ₹1
-                </div>
-                <div className="text-[11px] text-slate-400 font-medium">
-                  Payee: {state?.payeeName || 'West Bengal State Emergency Relief Fund'} ({state?.payeeVpa || 'wbs.erf@icici'})
-                </div>
-              </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+              {failed
+                ? 'Payment Not Completed'
+                : isCash
+                ? 'Waiting for Cash Verification'
+                : 'Verifying Your Payment'}
+            </h1>
+            <p className="text-sm text-slate-500">
+              {failed
+                ? 'Returning you to the shop interface…'
+                : isCash
+                ? 'Please pay at the shop counter. The operator will verify and start printing.'
+                : 'Please complete the payment in your app. Do not close this window.'}
+            </p>
+          </div>
 
-              {/* Pay with UPI App Button (Mobile Intent) */}
-              <div className="space-y-2">
-                {effectiveUpiUri ? (
-                  <a
-                    href={effectiveUpiUri}
-                    className="w-full py-4 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white text-center font-extrabold text-sm sm:text-base shadow-md shadow-indigo-600/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer"
-                  >
-                    <Smartphone className="w-5 h-5 shrink-0" />
-                    <span>Pay with UPI App</span>
-                  </a>
-                ) : (
-                  <div className="w-full py-4 rounded-2xl bg-slate-100 text-slate-400 font-bold text-sm flex items-center justify-center gap-2">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Preparing UPI Intent...</span>
-                  </div>
-                )}
-                <p className="text-[11px] text-slate-400 font-medium">
-                  Tapping launches Google Pay, PhonePe, Paytm, or BHIM on your device
-                </p>
-              </div>
+          {state?.environment === 'sandbox' && (
+            <p className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold">
+              Sandbox Test Mode — No real money or physical print
+            </p>
+          )}
 
-              {/* Divider */}
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-slate-200"></div>
-                <span className="flex-shrink mx-4 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  OR
-                </span>
-                <div className="flex-grow border-t border-slate-200"></div>
-              </div>
+          {state && (
+            <div className="bg-slate-50 rounded-2xl p-4 space-y-1.5 border border-slate-100">
+              <p className="text-3xl font-extrabold text-slate-900">
+                {formatCurrency(Number(state.amount))}
+              </p>
+              <p className="text-xs font-mono text-slate-400 break-all">
+                Ref: {state.reference}
+              </p>
+            </div>
+          )}
 
-              {/* Dynamic QR Code Section */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-center gap-1.5 text-xs font-extrabold text-slate-700">
-                  <QrCode className="w-4 h-4 text-indigo-600" />
-                  <span>Scan with UPI App</span>
-                </div>
+          {state?.verificationPending && (
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium text-left flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>Confirmation is slightly delayed. We are checking automatically; please do not pay again.</span>
+            </div>
+          )}
 
-                <div className="p-3 bg-white border-2 border-dashed border-slate-200 rounded-2xl inline-block shadow-2xs">
-                  {qrCodeUrl ? (
-                    <img
-                      src={qrCodeUrl}
-                      alt="UPI Payment QR Code"
-                      className="w-52 h-52 sm:w-56 sm:h-56 mx-auto rounded-xl"
-                    />
-                  ) : (
-                    <div className="w-52 h-52 sm:w-56 sm:h-56 flex flex-col items-center justify-center gap-2 bg-slate-50 rounded-xl text-slate-400 text-xs">
-                      <RefreshCw className="w-6 h-6 animate-spin text-indigo-600" />
-                      <span>Generating QR...</span>
-                    </div>
-                  )}
-                </div>
+          {state?.reviewRequired && (
+            <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium text-left flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span>This payment needs manual shopkeeper review. Please share your reference at the counter.</span>
+            </div>
+          )}
 
-                <p className="text-[11px] text-slate-500 font-medium">
-                  Scan using GPay, PhonePe, Paytm, or any banking app
-                </p>
-              </div>
+          {state?.paymentUrl && state.status === 'PENDING' && (
+            <a
+              className="block w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-center font-bold text-sm shadow-md transition-all active:scale-[0.99]"
+              href={state.paymentUrl}
+            >
+              Open Secure Payment App
+            </a>
+          )}
 
-              {/* Clear Warning */}
-              <div className="p-3.5 rounded-2xl bg-amber-50/80 border border-amber-200 text-amber-900 text-xs font-semibold text-center flex items-center justify-center gap-2">
-                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
-                <span>Test payment sends real money. Do not use amounts above ₹1.</span>
-              </div>
-
-              {/* Status Note */}
-              <div className="p-3 rounded-xl bg-slate-100/70 border border-slate-200/80 text-[11px] text-slate-600 font-medium text-left space-y-1">
-                <div className="font-bold flex items-center justify-between text-slate-800">
-                  <span>Status: PAYMENT_PENDING</span>
-                  <span className="text-[10px] text-slate-400 font-mono">Ready for bank API</span>
-                </div>
-                <p className="text-[10px] text-slate-500 leading-relaxed">
-                  Automatic printing remains disabled until a trusted bank/PSP confirmation API is connected. Order ID will be verified upon server confirmation.
-                </p>
-              </div>
-            </>
+          {failed && !state.reviewRequired && (
+            <div className="space-y-3">
+              <button
+                onClick={() => router.replace('/?payment_error=failed')}
+                className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Return to Shop Interface
+              </button>
+              <button
+                onClick={retry}
+                disabled={retrying}
+                className="w-full py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs transition-all disabled:opacity-50"
+              >
+                {retrying ? 'Starting…' : 'Try Payment Again'}
+              </button>
+            </div>
           )}
 
           {error && (
@@ -244,17 +191,16 @@ export default function PaymentPage() {
             </p>
           )}
 
-          {/* Cancel & Return Option */}
-          <div className="pt-2">
+          {!failed && (
             <button
               type="button"
               onClick={() => router.replace('/?payment_error=cancelled')}
-              className="text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center gap-1.5 mx-auto cursor-pointer"
+              className="text-xs text-slate-400 hover:text-slate-600 transition-colors flex items-center justify-center gap-1.5 mx-auto"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Cancel & Return to Shop</span>
+              Cancel & Return to Shop
             </button>
-          </div>
+          )}
         </section>
       </main>
     </div>
