@@ -199,10 +199,17 @@ export async function POST(req: NextRequest) {
       if (previous.request_hash !== requestHash) {
         throw new HttpError(409, 'Checkout already exists with different options.');
       }
-      return NextResponse.json(await openPayment(previous, provider, requestOrigin));
+      const opened = await openPayment(previous, provider, requestOrigin);
+      return NextResponse.json({
+        ...opened,
+        orderNumber: previous.payment_reference,
+        orderId: previous.payment_reference,
+        shopUpiId: provider.merchantId,
+      });
     }
 
     const paymentId = randomUUID();
+    const orderReference = `QP-${paymentId.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
     const paymentRecord = {
       id: paymentId,
       shop_id: shopId,
@@ -214,11 +221,14 @@ export async function POST(req: NextRequest) {
       merchant_id: provider.merchantId,
       environment: provider.environment,
       credential_fingerprint: provider.fingerprint,
-      payment_reference: `QP_${paymentId.replace(/-/g, '')}`,
+      payment_reference: orderReference,
       amount: price.totalAmount,
       currency: 'INR',
       status: 'PENDING',
       draft_order: {
+        file_name: file.file_name,
+        storage_path: file.storage_path,
+        page_count: file.page_count,
         paper_size: options.paperSize,
         color_mode: options.colorMode,
         print_sides: options.printSides,
@@ -258,7 +268,13 @@ export async function POST(req: NextRequest) {
           activePayment.owner_hash === owner &&
           activePayment.request_hash === requestHash
         ) {
-          return NextResponse.json(await openPayment(activePayment, provider, requestOrigin));
+          const opened = await openPayment(activePayment, provider, requestOrigin);
+          return NextResponse.json({
+            ...opened,
+            orderNumber: activePayment.payment_reference,
+            orderId: activePayment.payment_reference,
+            shopUpiId: provider.merchantId,
+          });
         }
 
         throw new HttpError(
@@ -270,7 +286,15 @@ export async function POST(req: NextRequest) {
     }
 
     const opened = await openPayment(createdPayment, provider, requestOrigin);
-    return NextResponse.json(opened, { status: 201 });
+    return NextResponse.json(
+      {
+        ...opened,
+        orderNumber: orderReference,
+        orderId: orderReference,
+        shopUpiId: provider.merchantId,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     return apiError(error);
   }

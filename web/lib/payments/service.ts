@@ -24,6 +24,8 @@ export async function openPayment(
   }
 
   let url = payment.payment_url;
+  let upiUri: string | undefined;
+  let qrDataUrl: string | undefined;
 
   if (payment.status === 'PENDING' && !url && !payment.creation_started_at) {
     const db = database();
@@ -45,6 +47,8 @@ export async function openPayment(
         const origin = appOrigin(preferredOrigin);
         const returnUrl = `${origin}/payment/${payment.id}?access_token=${encodeURIComponent(token)}`;
         const session = await provider.createPayment(payment, returnUrl);
+        upiUri = session.upiUri;
+        qrDataUrl = session.qrDataUrl;
 
         const { error: saveError } = await db
           .from('payments')
@@ -70,11 +74,22 @@ export async function openPayment(
     }
   }
 
+  // If already created or cached, ensure upiUri/qrDataUrl are generated if supported
+  if (!qrDataUrl && provider.createDynamicQr) {
+    try {
+      const qr = await provider.createDynamicQr(payment);
+      qrDataUrl = qr.qrDataUrl;
+      if (!upiUri) upiUri = qr.qrString;
+    } catch {}
+  }
+
   return {
     success: true,
     paymentId: payment.id,
     accessToken: token,
     paymentUrl: url,
+    upiUri: upiUri || (url?.startsWith('upi://') ? url : undefined),
+    qrDataUrl,
     amount: payment.amount,
     reference: payment.payment_reference,
     status: payment.status,

@@ -1037,8 +1037,8 @@ export default function AdminSettingsPage() {
               }`}
             >
               <div>
-                <div className="text-xs font-bold text-slate-900">1-Tap UPI Payment (GPay / PhonePe / Paytm)</div>
-                <div className="text-[10px] text-slate-400 font-medium">Show UPI payment link on customer checkout</div>
+                <div className="text-xs font-bold text-slate-900">Direct UPI Payment (Pay with App & Dynamic QR)</div>
+                <div className="text-[10px] text-slate-400 font-medium">Allow customers to pay via UPI Intent and Dynamic QR</div>
               </div>
               <input
                 type="checkbox"
@@ -1047,6 +1047,51 @@ export default function AdminSettingsPage() {
                 className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
               />
             </label>
+
+            {form.form_fields?.allowUpiPayment !== false && (
+              <div className="p-3.5 rounded-2xl bg-indigo-50/40 border border-indigo-200 space-y-3">
+                <div className="text-xs font-bold text-indigo-900 flex items-center justify-between">
+                  <span>Shopkeeper Direct UPI Settings</span>
+                  <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
+                    Zero Gateway Fees
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Shopkeeper UPI ID (VPA) <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. yourname@okhdfcbank"
+                      value={form.shop_upi_id || ''}
+                      onChange={(e) => handleChange('shop_upi_id', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 bg-white focus:outline-hidden focus:border-indigo-600"
+                    />
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      Customer money arrives directly to this UPI address.
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Payee Display Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Cyber Cafe"
+                      value={form.shop_upi_name || ''}
+                      onChange={(e) => handleChange('shop_upi_name', e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 bg-white focus:outline-hidden focus:border-indigo-600"
+                    />
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      Shown to customer in UPI apps when paying.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <label
               onClick={() => toggleFormField('allowCashPayment')}

@@ -283,6 +283,16 @@ export default function CustomerHomePage() {
       setIsPaymentModalOpen(false);
       if (data.paymentUrl) { window.location.assign(data.paymentUrl); return; }
       router.push(statusUrl);
+      if (data.upiUri && typeof window !== 'undefined') {
+        const isMobile = /android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent || '') || window.innerWidth < 640;
+        if (isMobile) {
+          try {
+            window.location.href = data.upiUri;
+          } catch {
+            // fallback handled by payment page
+          }
+        }
+      }
     }catch(e){setCheckoutError(e instanceof Error?e.message:'Unable to start payment. Please retry.');}
     finally{setSubmitting(false);}
   };

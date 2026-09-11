@@ -80,6 +80,18 @@ export async function GET(
       }
     }
 
+    let qrDataUrl: string | undefined;
+    const upiUri = currentPayment.payment_url?.startsWith('upi://')
+      ? currentPayment.payment_url
+      : undefined;
+
+    if (upiUri && currentPayment.status === 'PENDING') {
+      try {
+        const { generateDynamicQrDataUrl } = await import('@/lib/payments/direct-upi');
+        qrDataUrl = await generateDynamicQrDataUrl(upiUri);
+      } catch {}
+    }
+
     return NextResponse.json(
       {
         status: currentPayment.status,
@@ -88,6 +100,8 @@ export async function GET(
         environment: currentPayment.environment,
         paymentMethod: currentPayment.provider === 'cash' ? 'CASH' : 'UPI',
         paymentUrl: currentPayment.status === 'PENDING' ? currentPayment.payment_url : undefined,
+        upiUri: currentPayment.status === 'PENDING' ? upiUri : undefined,
+        qrDataUrl: currentPayment.status === 'PENDING' ? qrDataUrl : undefined,
         reviewRequired: currentPayment.review_required,
         verificationPending,
         orderId: currentPayment.status === 'SUCCESS' ? currentPayment.order_id : undefined,

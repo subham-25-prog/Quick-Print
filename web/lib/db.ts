@@ -74,6 +74,8 @@ export async function updatePricing(patch: Partial<PricingConfig>): Promise<Pric
     'shop_slug',
     'shop_phone',
     'shop_address',
+    'shop_upi_id',
+    'shop_upi_name',
     'enabled_papers',
     'enabled_addons',
     'custom_papers',
@@ -166,7 +168,7 @@ export async function getAllOrders(status = 'ALL'): Promise<Order[]> {
         .from('payments')
         .select('*')
         .eq('shop_id', shopId)
-        .eq('provider', 'cash')
+        .in('provider', ['cash', 'direct_upi', 'upi'])
         .eq('status', 'PENDING')
         .is('order_id', null)
         .order('created_at', { ascending: false });
@@ -175,10 +177,16 @@ export async function getAllOrders(status = 'ALL'): Promise<Order[]> {
         for (const p of pendingPayments) {
           if (existingPaymentIds.has(p.id)) continue;
           const draft = p.draft_order || {};
+          const isUpi = p.provider !== 'cash';
+          const orderPrefix = isUpi ? 'QP-UPI' : 'QP-CASH';
+          const orderNum = p.payment_reference?.startsWith('QP-')
+            ? p.payment_reference
+            : `${orderPrefix}-${p.id.replace(/-/g, '').slice(0, 8).toUpperCase()}`;
+
           pendingCashOrders.push({
             id: p.id,
             shop_id: p.shop_id,
-            order_number: `QP-CASH-${p.id.replace(/-/g, '').slice(0, 8).toUpperCase()}`,
+            order_number: orderNum,
             payment_id: p.id,
             uploaded_file_id: p.uploaded_file_id,
             file_name: draft.file_name || 'document.pdf',
@@ -197,7 +205,7 @@ export async function getAllOrders(status = 'ALL'): Promise<Order[]> {
             total_amount: p.amount,
             currency: p.currency || 'INR',
             pricing_snapshot: draft.pricing_snapshot || {},
-            payment_method: 'CASH',
+            payment_method: isUpi ? 'UPI' : 'CASH',
             payment_status: 'AWAITING_VERIFICATION',
             order_status: 'PAYMENT_VERIFICATION_PENDING',
             customer_name: draft.customer_name,

@@ -42,3 +42,61 @@ test('whitespace and tab padded provider metadata is correctly trimmed and accep
   expect(r.state).toBe('SUCCESS');
 });
 test('production configuration never selects mock provider',async()=>{vi.stubEnv('PAYMENT_PROVIDER','mock');const{paymentProvider}=await import('@/lib/payments');await expect(paymentProvider()).rejects.toThrow('unavailable');vi.unstubAllEnvs();});
+
+test('DirectUpiProvider formats standard NPCI UPI URI and generates dynamic QR code', async () => {
+  const { DirectUpiProvider } = await import('@/lib/payments/direct-upi');
+  const provider = new DirectUpiProvider('shop@upi', 'Test Shop');
+  const uri = provider.generateUpiUri({
+    upiId: 'shop@upi',
+    payeeName: 'Test Shop',
+    amount: 25.5,
+    orderReference: 'QP-99999',
+    note: 'Print Order QP-99999',
+  });
+  expect(uri).toContain('upi://pay?');
+  expect(uri).toContain('pa=shop%40upi');
+  expect(uri).toContain('pn=Test+Shop');
+  expect(uri).toContain('am=25.50');
+  expect(uri).toContain('cu=INR');
+  expect(uri).toContain('tr=QP-99999');
+
+  const qrDataUrl = await provider.generateDynamicQrDataUrl(uri);
+  expect(qrDataUrl).toMatch(/^data:image\/png;base64,/);
+
+  const payment = await provider.createPayment(
+    {
+      id: 'pay-1',
+      provider: 'direct_upi',
+      shop_id: 'shop-1',
+      payment_reference: 'QP-99999',
+      amount: 25.5,
+      currency: 'INR',
+      merchant_id: 'shop@upi',
+      environment: 'live',
+      credential_fingerprint: provider.fingerprint,
+      provider_link_id: 'QP-99999',
+    },
+    'https://example.com/return'
+  );
+  expect(payment.upiUri).toBe(uri);
+  expect(payment.qrDataUrl).toMatch(/^data:image\/png;base64,/);
+  expect(payment.providerOrderId).toBe('QP-99999');
+});
+
+test('DirectUpiProvider rejects verification without backend proof', async () => {
+  const { DirectUpiProvider } = await import('@/lib/payments/direct-upi');
+  const provider = new DirectUpiProvider();
+  const p: PaymentContext = {
+    id: 'pay-1',
+    provider: 'direct_upi',
+    shop_id: 'shop-1',
+    payment_reference: 'QP-99999',
+    amount: 25.5,
+    currency: 'INR',
+    merchant_id: 'shop@upi',
+    environment: 'production',
+    credential_fingerprint: provider.fingerprint,
+    provider_link_id: 'QP-99999',
+  };
+  await expect(provider.verifyPayment(p)).rejects.toThrow('Payment verification mismatch');
+});

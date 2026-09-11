@@ -201,14 +201,17 @@ export function validatePricing(value: PricingConfig): PricingConfig {
   // Strip sensitive/unwanted fields before returning
   const {
     admin_pin: _pin,
-    shop_upi_id: _upi,
-    shop_upi_name: _name,
     shop_merchant_qr_image: _qr,
     ...clean
   } = value as PricingConfig & { admin_pin?: unknown };
 
+  const sanitizedUpiId = typeof (value as any).shop_upi_id === 'string' ? (value as any).shop_upi_id.trim().slice(0, 100) : undefined;
+  const sanitizedUpiName = typeof (value as any).shop_upi_name === 'string' ? (value as any).shop_upi_name.trim().slice(0, 100) : undefined;
+
   return {
     ...clean,
+    ...(sanitizedUpiId ? { shop_upi_id: sanitizedUpiId } : {}),
+    ...(sanitizedUpiName ? { shop_upi_name: sanitizedUpiName } : {}),
     form_fields: {
       ...clean.form_fields,
       allowCashPayment: Boolean(clean.form_fields?.allowCashPayment),
