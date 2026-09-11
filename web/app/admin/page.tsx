@@ -100,7 +100,7 @@ export default function AdminLiveOrdersPage() {
     const previousOrders = [...orders];
     const targetOrders = clearScope === 'ALL'
       ? orders
-      : orders.filter((o) => ['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status));
+      : orders.filter((o) => ['PRINTED', 'SUBMITTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status));
     const targetCount = targetOrders.length;
     const targetIds = targetOrders.map((o) => o.id);
 
@@ -283,7 +283,7 @@ export default function AdminLiveOrdersPage() {
 
   // Counts for tabs
   const currentOrdersCount = useMemo(
-    () => orders.filter((o) => !['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status)).length,
+    () => orders.filter((o) => !['PRINTED', 'SUBMITTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status)).length,
     [orders]
   );
   const pendingOrdersCount = useMemo(
@@ -295,7 +295,7 @@ export default function AdminLiveOrdersPage() {
     [orders]
   );
   const completedOrdersCount = useMemo(
-    () => orders.filter((o) => ['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status)).length,
+    () => orders.filter((o) => ['PRINTED', 'SUBMITTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status)).length,
     [orders]
   );
 
@@ -306,13 +306,13 @@ export default function AdminLiveOrdersPage() {
         // 1. Status Filter
         let matchesFilter = true;
         if (filter === 'CURRENT') {
-          matchesFilter = !['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(order.order_status);
+          matchesFilter = !['PRINTED', 'SUBMITTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(order.order_status);
         } else if (filter === 'PENDING') {
           matchesFilter = order.order_status === 'PAYMENT_VERIFICATION_PENDING' || order.order_status === 'PENDING_PAYMENT';
         } else if (filter === 'PRINTING') {
           matchesFilter = order.order_status === 'APPROVED' || order.order_status === 'PRINTING';
         } else if (filter === 'COMPLETED') {
-          matchesFilter = ['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(order.order_status);
+          matchesFilter = ['PRINTED', 'SUBMITTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(order.order_status);
         }
 
         if (!matchesFilter) return false;
@@ -678,7 +678,7 @@ export default function AdminLiveOrdersPage() {
 
                 const isPending = order.order_status === 'PAYMENT_VERIFICATION_PENDING' || order.order_status === 'PENDING_PAYMENT';
                 const isPrinting = order.order_status === 'APPROVED' || order.order_status === 'PRINTING';
-                const isPrinted = order.order_status === 'PRINTED';
+                const isPrinted = order.order_status === 'PRINTED' || order.order_status === 'SUBMITTED';
                 const isRejected = order.order_status === 'REJECTED';
 
                 const isApproving = actionLoadingKey === `${order.id}_APPROVE_PRINT`;

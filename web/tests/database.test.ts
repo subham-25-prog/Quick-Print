@@ -123,3 +123,16 @@ test('late success on a retried payment creates one job; second payment is held 
   expect((await db.query('SELECT * FROM print_jobs WHERE order_id=$1',[first.rows[0].id])).rows).toHaveLength(1);
   expect((await db.query<{review_required:boolean}>('SELECT review_required FROM payments WHERE id=$1',[attempts[1]])).rows[0].review_required).toBe(true);
 });
+test('delete_orders RPC clears completed orders including SUBMITTED and cleans up cascade relations',async()=>{
+  const delRes=await db.query<{deleted_count:number}>("SELECT * FROM delete_orders($1, NULL, 'COMPLETED')",[shop]);
+  expect(delRes.rows[0].deleted_count).toBeGreaterThanOrEqual(1);
+  expect((await db.query('SELECT * FROM orders WHERE id=$1',[order])).rows).toHaveLength(0);
+  expect((await db.query('SELECT * FROM payments WHERE id=$1',[payment])).rows).toHaveLength(0);
+});
+test('delete_orders RPC cleans up unlinked cash payments',async()=>{
+  const f=(await db.query<{id:string}>(`INSERT INTO uploaded_files(shop_id,owner_hash,storage_path,file_name,file_size_bytes,page_count,sha256) VALUES('${shop}','owner_cash','${shop}/orders/cash_standalone.pdf','cash_standalone.pdf',100,1,'hash_cash') RETURNING id`)).rows[0];
+  const cashP=(await db.query<{id:string}>(`INSERT INTO payments(shop_id,uploaded_file_id,owner_hash,provider,payment_reference,amount,currency,merchant_id,environment,credential_fingerprint,draft_order,status) VALUES($1,$2,'owner_cash','cash','ref-cash-test',10,'INR','cash','sandbox','cash','{}'::jsonb,'PENDING') RETURNING id`,[shop,f.id])).rows[0];
+  const delRes=await db.query<{deleted_count:number}>("SELECT * FROM delete_orders($1, $2, 'SELECTED')",[shop,[cashP.id]]);
+  expect(delRes.rows[0].deleted_count).toBe(1);
+  expect((await db.query('SELECT * FROM payments WHERE id=$1',[cashP.id])).rows).toHaveLength(0);
+});

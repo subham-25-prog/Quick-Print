@@ -60,6 +60,7 @@ export const AdminOrderCard: React.FC<AdminOrderCardProps> = ({ order, onAction 
           </span>
         );
       case 'PRINTED':
+      case 'SUBMITTED':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
             <CheckCircle2 className="w-3 h-3" />

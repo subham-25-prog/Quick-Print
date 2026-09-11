@@ -15,10 +15,10 @@ export const AdminStatsOverview: React.FC<AdminStatsOverviewProps> = ({ orders }
 
   const approved = orders.filter((o) => o.order_status === 'APPROVED').length;
   const printing = orders.filter((o) => o.order_status === 'PRINTING').length;
-  const completed = orders.filter((o) => o.order_status === 'PRINTED').length;
+  const completed = orders.filter((o) => o.order_status === 'PRINTED' || o.order_status === 'SUBMITTED').length;
 
   const totalRevenue = orders
-    .filter((o) => o.order_status === 'PRINTED' || o.payment_status === 'VERIFIED')
+    .filter((o) => o.order_status === 'PRINTED' || o.order_status === 'SUBMITTED' || o.payment_status === 'VERIFIED' || o.payment_status === 'PAID')
     .reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
   return (

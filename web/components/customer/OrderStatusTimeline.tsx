@@ -41,29 +41,29 @@ export const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
           : paymentMethod === 'UPI'
           ? 'Shopkeeper verifying in UPI app'
           : 'Waiting for cash payment at counter',
-      isCompleted: ['PAID', 'VERIFIED'].includes(paymentStatus) || ['CONFIRMED', 'APPROVED', 'PRINTING', 'PRINTED'].includes(orderStatus),
+      isCompleted: ['PAID', 'VERIFIED'].includes(paymentStatus) || ['CONFIRMED', 'APPROVED', 'PRINTING', 'SUBMITTED', 'PRINTED'].includes(orderStatus),
       isCurrent: orderStatus === 'PAYMENT_VERIFICATION_PENDING' || orderStatus === 'PENDING_PAYMENT',
     },
     {
       id: 'approved',
       label: 'Approved for Printing',
       description: 'Job queued in shop printer system',
-      isCompleted: ['CONFIRMED', 'APPROVED', 'PRINTING', 'PRINTED'].includes(orderStatus),
+      isCompleted: ['CONFIRMED', 'APPROVED', 'PRINTING', 'SUBMITTED', 'PRINTED'].includes(orderStatus),
       isCurrent: orderStatus === 'CONFIRMED' || orderStatus === 'APPROVED',
     },
     {
       id: 'printing',
       label: 'Printing Document',
       description: 'Sending to shop printer',
-      isCompleted: orderStatus === 'PRINTED',
+      isCompleted: ['SUBMITTED', 'PRINTED'].includes(orderStatus),
       isCurrent: orderStatus === 'PRINTING',
     },
     {
       id: 'ready',
       label: 'Printed & Ready',
       description: 'Collect your print from the counter',
-      isCompleted: orderStatus === 'PRINTED',
-      isCurrent: orderStatus === 'PRINTED',
+      isCompleted: ['SUBMITTED', 'PRINTED'].includes(orderStatus),
+      isCurrent: ['SUBMITTED', 'PRINTED'].includes(orderStatus),
     },
   ];
 
