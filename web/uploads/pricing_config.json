@@ -1,7 +1,5 @@
 {
   "shop_name": "Cyber Cafe",
-  "shop_upi_id": "shubhamoy27@okaxis",
-  "shop_upi_name": "shubhamoy karmakar",
   "shop_phone": "9144457475",
   "shop_address": "jisce",
   "currency": "INR",
@@ -47,8 +45,7 @@
     "allowUpiPayment": true,
     "allowColorPrinting": true,
     "allowDoubleSided": true,
-    "enableNotes": true,
-    "autoApproveUpiOrders": false,
+    "allowCustomerNotes": true,
     "minOrderAmount": 0,
     "urgentFee": 0
   }

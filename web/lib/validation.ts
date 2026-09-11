@@ -198,12 +198,9 @@ export function validatePricing(value: PricingConfig): PricingConfig {
     }
   }
 
-  // Strip sensitive/unwanted fields before returning
+  // Strip sensitive fields before returning
   const {
     admin_pin: _pin,
-    shop_upi_id: _upi,
-    shop_upi_name: _name,
-    shop_merchant_qr_image: _qr,
     ...clean
   } = value as PricingConfig & { admin_pin?: unknown };
 
@@ -212,7 +209,6 @@ export function validatePricing(value: PricingConfig): PricingConfig {
     form_fields: {
       ...clean.form_fields,
       allowCashPayment: Boolean(clean.form_fields?.allowCashPayment),
-      autoApproveUpiOrders: false,
     },
   };
 }

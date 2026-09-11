@@ -45,8 +45,7 @@
     "allowUpiPayment": true,
     "allowColorPrinting": true,
     "allowDoubleSided": true,
-    "enableNotes": true,
-    "autoApproveUpiOrders": false,
+    "allowCustomerNotes": true,
     "minOrderAmount": 1,
     "urgentFee": 0
   }

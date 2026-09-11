@@ -76,9 +76,7 @@ export interface FormFieldsConfig {
   allowUpiPayment?: boolean;
   allowColorPrinting?: boolean;
   allowDoubleSided?: boolean;
-  enableNotes?: boolean;
   allowCustomerNotes?: boolean;
-  autoApproveUpiOrders?: boolean;
   minOrderAmount?: number;
   urgentFee?: number;
 }
@@ -132,15 +130,11 @@ export interface PricingConfig {
   // Form customizer
   form_fields?: FormFieldsConfig;
 
-  // Store & UPI Customization
+  // Store Customization
   shop_name?: string;
-  shop_upi_id?: string;
-  shop_upi_name?: string;
   shop_slug?: string;
   shop_phone?: string;
   shop_address?: string;
-  shop_merchant_qr_image?: string;
-  shop_qr_mode?: 'DYNAMIC' | 'CUSTOM_IMAGE';
   selected_printer?: string;
   currency: string;
   updated_at?: string;
