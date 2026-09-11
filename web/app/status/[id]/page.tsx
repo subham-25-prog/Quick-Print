@@ -6,7 +6,6 @@ import { Header } from '@/components/Header';
 import { Order } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import {
-  Printer,
   FileText,
   AlertCircle,
   Copy,
