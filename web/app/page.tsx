@@ -225,6 +225,14 @@ export default function CustomerHomePage() {
     pricing
   );
 
+  // Customer form field configuration
+  const showNameField = pricing.form_fields?.showCustomerName !== false;
+  const isNameRequired = showNameField && Boolean(pricing.form_fields?.requireCustomerName);
+  const showPhoneField = Boolean(pricing.form_fields?.showCustomerPhone);
+  const isPhoneRequired = showPhoneField && Boolean(pricing.form_fields?.requireCustomerPhone);
+  const showNotesField = pricing.form_fields?.allowCustomerNotes !== false;
+  const showCustomerInfoSection = showNameField || showPhoneField || showNotesField;
+
   const handleOpenPayment = () => {
     if (!checkoutEnabled) return;
     if (!uploadedFile) {
@@ -232,12 +240,12 @@ export default function CustomerHomePage() {
       return;
     }
 
-    if (pricing.form_fields?.requireCustomerName && !customerName.trim()) {
+    if (isNameRequired && !customerName.trim()) {
       alert('Please enter your full name for order identification.');
       return;
     }
 
-    if (pricing.form_fields?.requireCustomerPhone && !customerPhone.trim()) {
+    if (isPhoneRequired && !customerPhone.trim()) {
       alert('Please enter your WhatsApp / mobile number for order pickup notifications.');
       return;
     }
@@ -296,11 +304,6 @@ export default function CustomerHomePage() {
     enabledAddons.stapling !== false ||
     enabledAddons.lamination !== false ||
     customAddons.length > 0;
-
-  const showNameField = pricing.form_fields?.requireCustomerName !== false;
-  const showPhoneField = pricing.form_fields?.requireCustomerPhone !== false;
-  const showNotesField = pricing.form_fields?.allowCustomerNotes !== false;
-  const showCustomerInfoSection = showNameField || showPhoneField || showNotesField;
 
   const hasActiveAdvanced =
     advancedConfig &&
@@ -465,7 +468,7 @@ export default function CustomerHomePage() {
               {showNameField && (
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Your Full Name {pricing.form_fields?.requireCustomerName && <span className="text-rose-500">*</span>}
+                    Your Full Name {isNameRequired ? <span className="text-rose-500">*</span> : <span className="text-slate-400 font-normal">(Optional)</span>}
                   </label>
                   <div className="relative">
                     <input
@@ -483,7 +486,7 @@ export default function CustomerHomePage() {
               {showPhoneField && (
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    WhatsApp / Mobile Number {pricing.form_fields?.requireCustomerPhone ? <span className="text-rose-500">*</span> : <span className="text-slate-400 font-normal">(Optional)</span>}
+                    WhatsApp / Mobile Number {isPhoneRequired ? <span className="text-rose-500">*</span> : <span className="text-slate-400 font-normal">(Optional)</span>}
                   </label>
                   <div className="relative">
                     <input

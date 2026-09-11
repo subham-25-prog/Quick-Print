@@ -95,10 +95,15 @@ export async function POST(req: NextRequest) {
     const customerPhone = textField(body.customerPhone, 20);
     const customerNotes = textField(body.customerNotes, 1000);
 
-    if (pricing.form_fields?.requireCustomerName && !customerName) {
+    const showName = pricing.form_fields?.showCustomerName !== false;
+    const requireName = showName && Boolean(pricing.form_fields?.requireCustomerName);
+    const showPhone = Boolean(pricing.form_fields?.showCustomerPhone);
+    const requirePhone = showPhone && Boolean(pricing.form_fields?.requireCustomerPhone);
+
+    if (requireName && !customerName) {
       throw new HttpError(400, 'Enter your name.');
     }
-    if (pricing.form_fields?.requireCustomerPhone && !/^\+?[0-9 ]{10,15}$/.test(customerPhone)) {
+    if (requirePhone && !/^\+?[0-9 ]{10,15}$/.test(customerPhone)) {
       throw new HttpError(400, 'Enter a valid mobile number.');
     }
 

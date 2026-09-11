@@ -80,12 +80,25 @@ export default function AdminSettingsPage() {
     }));
   };
 
-  const toggleFormField = (fieldKey: keyof NonNullable<PricingConfig['form_fields']>) => {
+  const toggleFormField = (fieldKey: keyof NonNullable<PricingConfig['form_fields']>, defaultValue = true) => {
+    setForm((prev) => {
+      const currentVal = prev.form_fields?.[fieldKey] ?? defaultValue;
+      return {
+        ...prev,
+        form_fields: {
+          ...(prev.form_fields || defaultPricingConfig.form_fields),
+          [fieldKey]: !currentVal,
+        },
+      };
+    });
+  };
+
+  const setFormFieldValue = (fieldKey: keyof NonNullable<PricingConfig['form_fields']>, value: any) => {
     setForm((prev) => ({
       ...prev,
       form_fields: {
         ...(prev.form_fields || defaultPricingConfig.form_fields),
-        [fieldKey]: !(prev.form_fields?.[fieldKey] !== false),
+        [fieldKey]: value,
       },
     }));
   };
@@ -270,11 +283,11 @@ export default function AdminSettingsPage() {
           </button>
         </div>
 
-        {/* Section 1: Store Branding & Customer Info Controls */}
+        {/* Section 1: Store Branding */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900">
-              1. Store Branding & Customer Info
+              1. Store Branding
             </h2>
             <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
               Client Header
@@ -293,82 +306,6 @@ export default function AdminSettingsPage() {
                 onChange={(e) => handleChange('shop_name', e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
               />
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 space-y-2">
-              <div className="text-[11px] font-bold text-slate-600">Customer Identification Form Fields:</div>
-
-              {/* Require Name */}
-              <label
-                onClick={() => toggleFormField('requireCustomerName')}
-                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                  form.form_fields?.requireCustomerName !== false
-                    ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <User className="w-4 h-4 text-indigo-600 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">Customer Name Field</div>
-                    <div className="text-[10px] text-slate-400 font-medium">Require customer to enter full name</div>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.requireCustomerName !== false}
-                  onChange={() => {}}
-                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
-                />
-              </label>
-
-              {/* Require Phone */}
-              <label
-                onClick={() => toggleFormField('requireCustomerPhone')}
-                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                  form.form_fields?.requireCustomerPhone !== false
-                    ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <Phone className="w-4 h-4 text-indigo-600 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">WhatsApp / Mobile Number Field</div>
-                    <div className="text-[10px] text-slate-400 font-medium">Require mobile number for order pickup</div>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.requireCustomerPhone !== false}
-                  onChange={() => {}}
-                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
-                />
-              </label>
-
-              {/* Allow Notes */}
-              <label
-                onClick={() => toggleFormField('allowCustomerNotes')}
-                className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                  form.form_fields?.allowCustomerNotes !== false
-                    ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <MessageSquare className="w-4 h-4 text-indigo-600 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">Special Instructions / Notes Field</div>
-                    <div className="text-[10px] text-slate-400 font-medium">Allow customers to write print notes</div>
-                  </div>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={form.form_fields?.allowCustomerNotes !== false}
-                  onChange={() => {}}
-                  className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
-                />
-              </label>
             </div>
           </div>
         </section>
@@ -846,14 +783,247 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Section 5: Payment & Checkout Options (Customer Step 4) */}
+        {/* Section 5: Customer Identification (Customer Step 4) */}
+        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                5. Customer Identification
+              </h2>
+              <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                Enable or disable customer input fields and set whether they are mandatory or optional
+              </p>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400">
+              Customer Step 4
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {/* Customer Name Field */}
+            <div
+              className={`p-3.5 rounded-2xl border transition-all ${
+                form.form_fields?.showCustomerName !== false
+                  ? 'border-indigo-200 bg-indigo-50/20'
+                  : 'border-slate-200 bg-slate-50/40 opacity-70'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                      form.form_fields?.showCustomerName !== false
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-200 text-slate-400'
+                    }`}
+                  >
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <span>Customer Name Field</span>
+                      {form.form_fields?.showCustomerName !== false && (
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            form.form_fields?.requireCustomerName !== false
+                              ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                              : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                          }`}
+                        >
+                          {form.form_fields?.requireCustomerName !== false ? 'Mandatory *' : 'Optional'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium">
+                      Collect customer full name on order upload
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => toggleFormField('showCustomerName', true)}
+                  className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                    form.form_fields?.showCustomerName !== false
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  {form.form_fields?.showCustomerName !== false ? 'Enabled' : 'Disabled'}
+                </button>
+              </div>
+
+              {form.form_fields?.showCustomerName !== false && (
+                <div className="mt-3 pt-3 border-t border-indigo-100/70 flex items-center justify-between text-xs">
+                  <span className="text-[11px] font-bold text-slate-600">Requirement Status:</span>
+                  <div className="inline-flex rounded-xl p-0.5 bg-slate-100 border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setFormFieldValue('requireCustomerName', true)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        form.form_fields?.requireCustomerName !== false
+                          ? 'bg-white text-indigo-700 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      Mandatory *
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormFieldValue('requireCustomerName', false)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        form.form_fields?.requireCustomerName === false
+                          ? 'bg-white text-indigo-700 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      Optional
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Phone Field */}
+            <div
+              className={`p-3.5 rounded-2xl border transition-all ${
+                Boolean(form.form_fields?.showCustomerPhone)
+                  ? 'border-indigo-200 bg-indigo-50/20'
+                  : 'border-slate-200 bg-slate-50/40 opacity-70'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                      Boolean(form.form_fields?.showCustomerPhone)
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-200 text-slate-400'
+                    }`}
+                  >
+                    <Phone className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <span>WhatsApp / Mobile Number</span>
+                      {Boolean(form.form_fields?.showCustomerPhone) && (
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            Boolean(form.form_fields?.requireCustomerPhone)
+                              ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                              : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                          }`}
+                        >
+                          {Boolean(form.form_fields?.requireCustomerPhone) ? 'Mandatory *' : 'Optional'}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium">
+                      Collect mobile number for customer order identification
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => toggleFormField('showCustomerPhone', false)}
+                  className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                    Boolean(form.form_fields?.showCustomerPhone)
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  {Boolean(form.form_fields?.showCustomerPhone) ? 'Enabled' : 'Disabled'}
+                </button>
+              </div>
+
+              {Boolean(form.form_fields?.showCustomerPhone) && (
+                <div className="mt-3 pt-3 border-t border-indigo-100/70 flex items-center justify-between text-xs">
+                  <span className="text-[11px] font-bold text-slate-600">Requirement Status:</span>
+                  <div className="inline-flex rounded-xl p-0.5 bg-slate-100 border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setFormFieldValue('requireCustomerPhone', true)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        Boolean(form.form_fields?.requireCustomerPhone)
+                          ? 'bg-white text-indigo-700 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      Mandatory *
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormFieldValue('requireCustomerPhone', false)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        !form.form_fields?.requireCustomerPhone
+                          ? 'bg-white text-indigo-700 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                      }`}
+                    >
+                      Optional
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Special Instructions / Notes Field */}
+            <div
+              className={`p-3.5 rounded-2xl border transition-all ${
+                form.form_fields?.allowCustomerNotes !== false
+                  ? 'border-indigo-200 bg-indigo-50/20'
+                  : 'border-slate-200 bg-slate-50/40 opacity-70'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                      form.form_fields?.allowCustomerNotes !== false
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-200 text-slate-400'
+                    }`}
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <span>Special Instructions / Notes</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                        Optional
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium">
+                      Allow customers to leave custom notes or instructions for printing
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => toggleFormField('allowCustomerNotes', true)}
+                  className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                    form.form_fields?.allowCustomerNotes !== false
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  {form.form_fields?.allowCustomerNotes !== false ? 'Enabled' : 'Disabled'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Section 6: Payment & Checkout Options (Customer Step 5) */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900">
-              5. Payment & Checkout Options
+              6. Payment & Checkout Options
             </h2>
             <span className="text-[10px] font-bold text-slate-400">
-              Customer Step 4
+              Customer Step 5
             </span>
           </div>
 
