@@ -108,9 +108,8 @@ export async function POST(req: NextRequest) {
 
     // Handle CASH payment flow
     if (paymentMethod === 'CASH') {
-      const orderId = randomUUID();
       const paymentId = randomUUID();
-      const accessToken = createOrderAccessToken(orderId);
+      const accessToken = createOrderAccessToken(paymentId);
       if (!accessToken) {
         throw new HttpError(503, 'Checkout access security is not configured.');
       }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { database, getOrderById, getPrintAgentInfo } from '@/lib/db';
 import { isAdminRequest } from '@/lib/admin-auth';
-import { hasOrderAccess } from '@/lib/order-access';
+import { hasOrderAccess, createOrderAccessToken } from '@/lib/order-access';
 import { getCurrentShopId } from '@/lib/shop';
 import { apiError, HttpError } from '@/lib/http';
 import { uuid } from '@/lib/validation';
@@ -29,6 +29,20 @@ export async function GET(
         .maybeSingle();
 
       if (maybeOrder?.payment_id && hasOrderAccess(req, maybeOrder.payment_id)) {
+        authorized = true;
+      }
+    }
+
+    if (!authorized) {
+      // Check if access token is signed for the order_id linked to this payment
+      const { data: maybePayment } = await database()
+        .from('payments')
+        .select('order_id')
+        .eq('id', id)
+        .eq('shop_id', getCurrentShopId())
+        .maybeSingle();
+
+      if (maybePayment?.order_id && hasOrderAccess(req, maybePayment.order_id)) {
         authorized = true;
       }
     }
@@ -119,6 +133,7 @@ export async function GET(
       currency,
       payment_status,
       order_status,
+      payment_method,
     } = order;
 
     const agent = await getPrintAgentInfo();
@@ -139,11 +154,13 @@ export async function GET(
               copies,
               total_amount,
               currency,
+              payment_method: payment_method || (order.payment_id ? 'CASH' : 'UPI'),
               payment_status,
               order_status,
             },
         job,
         agentOnline: agent?.status === 'ONLINE',
+        orderAccessToken: createOrderAccessToken(resolvedOrderId),
       },
       { headers: { 'Cache-Control': 'private, no-store' } }
     );

@@ -47,15 +47,17 @@ export default function OrderStatusPage() {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     const controller = new AbortController();
+    let currentId = id;
+    let currentToken = token;
 
     async function poll() {
       try {
-        if (!token) {
+        if (!currentToken) {
           throw new Error('This order link is missing an access token.');
         }
 
-        const res = await fetch('/api/orders/' + id, {
-          headers: { 'x-order-access-token': token },
+        const res = await fetch('/api/orders/' + currentId, {
+          headers: { 'x-order-access-token': currentToken },
           cache: 'no-store',
           signal: controller.signal,
         });
@@ -70,10 +72,16 @@ export default function OrderStatusPage() {
           setError('');
           setLastUpdated(new Date());
 
-          // If assigned a new orderId, keep the browser URL clean
-          if (typeof window !== 'undefined' && result.order?.id && result.order.id !== id) {
-            const nextUrl = `/status/${result.order.id}?access_token=${encodeURIComponent(token)}`;
-            window.history.replaceState(null, '', nextUrl);
+          // If assigned a new orderId, track it and keep the browser URL clean
+          if (result.order?.id && result.order.id !== currentId) {
+            currentId = result.order.id;
+            if (result.orderAccessToken) {
+              currentToken = result.orderAccessToken;
+            }
+            if (typeof window !== 'undefined') {
+              const nextUrl = `/status/${currentId}?access_token=${encodeURIComponent(currentToken)}`;
+              window.history.replaceState(null, '', nextUrl);
+            }
           }
         }
       } catch (e) {

@@ -72,6 +72,14 @@ export async function POST(req: NextRequest) {
         throw new HttpError(409, `Payment finalization failed: ${rpcError.message}`);
       }
 
+      if (createdOrderId) {
+        await db
+          .from('orders')
+          .update({ payment_method: 'CASH' })
+          .eq('id', createdOrderId)
+          .eq('shop_id', shopId);
+      }
+
       try {
         revalidatePath('/admin');
       } catch {}

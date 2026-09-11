@@ -19,14 +19,28 @@ export async function GET(
     const { id: rawId } = await params;
     const id = uuid(rawId);
 
-    if (!hasOrderAccess(req, id)) {
+    const db = database();
+    const shopId = getCurrentShopId();
+
+    let authorized = hasOrderAccess(req, id);
+    if (!authorized) {
+      const { data: maybePayment } = await db
+        .from('payments')
+        .select('order_id')
+        .eq('id', id)
+        .eq('shop_id', shopId)
+        .maybeSingle();
+
+      if (maybePayment?.order_id && hasOrderAccess(req, maybePayment.order_id)) {
+        authorized = true;
+      }
+    }
+
+    if (!authorized) {
       throw new HttpError(404, 'Payment not found.');
     }
 
     await rateLimit(req, `payment:${id}`, 120);
-
-    const db = database();
-    const shopId = getCurrentShopId();
 
     const { data: payment, error } = await db
       .from('payments')
