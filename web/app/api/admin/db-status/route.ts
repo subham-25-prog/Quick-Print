@@ -32,17 +32,33 @@ export async function GET(req: NextRequest) {
       process.env.NEXT_PUBLIC_SHOP_NAME ||
       'QuickPrint';
 
+    const { data: agent } = await db
+      .from('print_agents')
+      .select('agent_id, status, last_heartbeat, printer_name')
+      .eq('shop_id', shopId)
+      .order('last_heartbeat', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const isAgentOnline =
+      agent?.status === 'ONLINE' &&
+      agent?.last_heartbeat &&
+      Date.now() - new Date(agent.last_heartbeat).getTime() < 90000;
+
     return NextResponse.json({
       connected: true,
       mode: 'SUPABASE',
       message: 'Database connected.',
       shopName,
+      agentOnline: Boolean(isAgentOnline),
+      agentName: agent?.printer_name || agent?.agent_id || null,
     });
   } catch {
     return NextResponse.json({
       connected: false,
       mode: 'UNAVAILABLE',
       message: 'Database unavailable. Checkout fails closed.',
+      agentOnline: false,
     });
   }
 }
