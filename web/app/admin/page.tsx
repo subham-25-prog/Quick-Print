@@ -157,7 +157,32 @@ export default function AdminLiveOrdersPage() {
   };
 
   const handleAcceptCash = async (orderId: string) => {
+    const previousOrders = [...orders];
     setActionLoadingKey(`${orderId}_ACCEPT`);
+
+    // 1. Instant optimistic update - UI updates in 0ms without waiting for network
+    setOrders((prev) =>
+      prev.map((o) =>
+        o.id === orderId
+          ? { ...o, payment_status: 'PAID', order_status: 'PRINTING' as OrderStatus, payment_method: 'CASH' }
+          : o
+      )
+    );
+    if (selectedOrderForHistory && selectedOrderForHistory.id === orderId) {
+      setSelectedOrderForHistory((prev) =>
+        prev ? { ...prev, payment_status: 'PAID', order_status: 'PRINTING' as OrderStatus, payment_method: 'CASH' } : null
+      );
+    }
+
+    // 2. Broadcast instant verification to customer tab immediately
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        const ch = new BroadcastChannel('quickprint_order_events');
+        ch.postMessage({ type: 'ORDER_VERIFIED', orderId });
+        ch.close();
+      } catch {}
+    }
+
     try {
       const res = await fetch('/api/admin/cash-action', {
         method: 'POST',
@@ -167,30 +192,20 @@ export default function AdminLiveOrdersPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to verify cash payment');
 
-      // Optimistic update
-      setOrders((prev) =>
-        prev.map((o) =>
-          o.id === orderId
-            ? { ...o, payment_status: 'PAID', order_status: 'PRINTING' as OrderStatus }
-            : o
-        )
-      );
-      if (selectedOrderForHistory && selectedOrderForHistory.id === orderId) {
-        setSelectedOrderForHistory((prev) =>
-          prev ? { ...prev, payment_status: 'PAID', order_status: 'PRINTING' as OrderStatus } : null
-        );
-      }
-      // Broadcast instant verification to customer tab
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      // Re-broadcast with newly assigned orderId if present
+      if (data.orderId && typeof window !== 'undefined' && 'BroadcastChannel' in window) {
         try {
           const ch = new BroadcastChannel('quickprint_order_events');
-          ch.postMessage({ type: 'ORDER_VERIFIED', orderId });
+          ch.postMessage({ type: 'ORDER_VERIFIED', orderId, newOrderId: data.orderId });
           ch.close();
         } catch {}
       }
-      showToast('Cash verified! Spooling to printer...', 'success');
-      await fetchOrders();
+
+      showToast('Cash verified! Document sent to printer.', 'success');
+      void fetchOrders();
     } catch (err: any) {
+      // Rollback on error
+      setOrders(previousOrders);
       showToast(err.message || 'Failed to verify cash', 'error');
     } finally {
       setActionLoadingKey(null);
@@ -860,7 +875,7 @@ export default function AdminLiveOrdersPage() {
                               className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-[11px] flex items-center gap-1.5 shadow-xs shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-50"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>{actionLoadingKey === `${order.id}_ACCEPT` ? 'Accepting...' : 'Accept & Print'}</span>
+                              <span>{actionLoadingKey === `${order.id}_ACCEPT` ? 'Verifying...' : 'Verify Cash & Print'}</span>
                             </button>
 
                             <button
@@ -1286,7 +1301,7 @@ export default function AdminLiveOrdersPage() {
                       className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Accept Cash & Print</span>
+                      <span>{actionLoadingKey === `${selectedOrderForHistory.id}_ACCEPT` ? 'Verifying...' : 'Verify Cash & Print'}</span>
                     </button>
                   </>
                 )}

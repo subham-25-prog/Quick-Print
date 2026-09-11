@@ -49,7 +49,7 @@ export default function PaymentPage() {
           stopped = true;
           const targetToken = data.orderAccessToken || token;
           const url = `/status/${data.orderId}?access_token=${encodeURIComponent(targetToken)}`;
-          window.location.replace(url);
+          router.replace(url);
           return;
         }
 
@@ -67,9 +67,28 @@ export default function PaymentPage() {
     }
 
     void poll();
+
+    // Cross-tab immediate synchronization via BroadcastChannel for instant cash verification
+    let broadcastCh: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        broadcastCh = new BroadcastChannel('quickprint_order_events');
+        broadcastCh.onmessage = (ev) => {
+          if (!ev.data) return;
+          if (!ev.data.orderId || ev.data.orderId === id || ev.data.newOrderId === id) {
+            clearTimeout(timer);
+            void poll();
+          }
+        };
+      }
+    } catch {}
+
     return () => {
       stopped = true;
       clearTimeout(timer);
+      if (broadcastCh) {
+        try { broadcastCh.close(); } catch {}
+      }
     };
   }, [id, token, router]);
 

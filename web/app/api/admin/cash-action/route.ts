@@ -4,7 +4,6 @@ import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
 import { apiError, HttpError, readJson, requireSameOrigin } from '@/lib/http';
 import { getCurrentShopId } from '@/lib/shop';
 import { uuid } from '@/lib/validation';
-import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,23 +21,35 @@ export async function POST(req: NextRequest) {
     const db = database();
     const shopId = getCurrentShopId();
 
-    // 1. Check if orderId corresponds to an existing row in orders table:
-    const { data: existingOrder } = await db
-      .from('orders')
-      .select('id, payment_id, shop_id, uploaded_file_id')
-      .eq('id', orderId)
-      .eq('shop_id', shopId)
-      .maybeSingle();
+    // Query orders and payments in parallel for instant resolution
+    const [orderRes, paymentDirectRes] = await Promise.all([
+      db
+        .from('orders')
+        .select('id, payment_id, shop_id, uploaded_file_id')
+        .eq('id', orderId)
+        .eq('shop_id', shopId)
+        .maybeSingle(),
+      db
+        .from('payments')
+        .select('*')
+        .eq('id', orderId)
+        .eq('shop_id', shopId)
+        .maybeSingle(),
+    ]);
 
-    const paymentId = existingOrder?.payment_id || orderId;
+    const existingOrder = orderRes.data;
+    let payment = paymentDirectRes.data;
 
-    // 2. Fetch the payment record
-    const { data: payment } = await db
-      .from('payments')
-      .select('*')
-      .eq('id', paymentId)
-      .eq('shop_id', shopId)
-      .maybeSingle();
+    // If orderId was an order row ID rather than payment ID, look up payment by order's payment_id
+    if (!payment && existingOrder?.payment_id) {
+      const { data: linkedPayment } = await db
+        .from('payments')
+        .select('*')
+        .eq('id', existingOrder.payment_id)
+        .eq('shop_id', shopId)
+        .maybeSingle();
+      payment = linkedPayment;
+    }
 
     if (!payment) {
       throw new HttpError(404, 'Payment record not found.');
@@ -80,10 +91,6 @@ export async function POST(req: NextRequest) {
           .eq('shop_id', shopId);
       }
 
-      try {
-        revalidatePath('/admin');
-      } catch {}
-
       return NextResponse.json({
         success: true,
         orderId: createdOrderId,
@@ -92,7 +99,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'REJECT') {
-      // If a draft order row existed, remove it
       if (existingOrder) {
         await db.from('orders').delete().eq('id', existingOrder.id).eq('shop_id', shopId);
       }
@@ -105,10 +111,6 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', payment.id)
         .eq('shop_id', shopId);
-
-      try {
-        revalidatePath('/admin');
-      } catch {}
 
       return NextResponse.json({
         success: true,
