@@ -28,6 +28,30 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function generateUUID(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+function generateToken(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    const tokenBytes = new Uint8Array(32);
+    crypto.getRandomValues(tokenBytes);
+    return Array.from(tokenBytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  }
+  let result = '';
+  for (let i = 0; i < 64; i++) {
+    result += Math.floor(Math.random() * 16).toString(16);
+  }
+  return result;
+}
+
 export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uploadedFile }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -44,7 +68,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     return () => {
       if (activeXhr.current) {
         activeXhr.current.abort();
-        activeXhr.current = null;
       }
     };
   }, []);
@@ -53,20 +76,21 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     if (uploading || activeXhr.current) return;
     setError(null);
 
-    const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
-    if (file.size > MAX_SIZE) {
-      setError('Document exceeds the 100 MB upload limit. Please choose a smaller file.');
+    const isPdf =
+      file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isImage =
+      file.type.startsWith('image/') ||
+      file.name.toLowerCase().endsWith('.jpg') ||
+      file.name.toLowerCase().endsWith('.jpeg') ||
+      file.name.toLowerCase().endsWith('.png');
+
+    if (!isPdf && !isImage) {
+      setError('Please upload a PDF or image file (JPG, PNG)');
       return;
     }
 
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    const isImage =
-      file.type === 'image/jpeg' ||
-      file.type === 'image/png' ||
-      /\.(jpg|jpeg|png)$/i.test(file.name);
-
-    if (!isPdf && !isImage) {
-      setError('Please upload a PDF document or an image (JPG, PNG).');
+    if (file.size > 100 * 1024 * 1024) {
+      setError('File size must be less than 100 MB');
       return;
     }
 
@@ -94,15 +118,13 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
       if (totalChunks > 1) {
-        const uploadId = crypto.randomUUID();
-        const tokenBytes = new Uint8Array(32);
-        crypto.getRandomValues(tokenBytes);
-        const uploadToken = Array.from(tokenBytes, (b) => b.toString(16).padStart(2, '0')).join('');
+        const uploadId = generateUUID();
+        const uploadToken = generateToken();
 
         for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
           const start = chunkIndex * CHUNK_SIZE;
           const end = Math.min(start + CHUNK_SIZE, file.size);
-          const chunkBlob = file.slice(start, end);
+          const chunkBlob = file.slice(start, end, file.type || 'application/pdf');
 
           const chunkFormData = new FormData();
           chunkFormData.append('file', chunkBlob, file.name);

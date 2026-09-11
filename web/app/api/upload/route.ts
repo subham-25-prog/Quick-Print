@@ -240,21 +240,36 @@ export async function POST(req: NextRequest) {
       const clientFileName = String(form.get('fileName') || '');
       const file = form.get('file');
 
+      const isValidExt = ['pdf', 'jpg', 'jpeg', 'png'].includes(
+        clientFileName.split('.').pop()?.toLowerCase() || ''
+      );
+
       if (
         isNaN(chunkIndex) ||
         isNaN(totalChunks) ||
         chunkIndex < 0 ||
         chunkIndex >= totalChunks ||
-        totalChunks > 50 ||
+        totalChunks > 100 ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientUploadId) ||
         !/^[0-9a-f]{64}$/i.test(clientUploadToken) ||
         !clientFileName ||
         clientFileName.length > 200 ||
+        !isValidExt ||
         !(file instanceof File) ||
         file.size < 1 ||
-        file.size > 5 * 1024 * 1024 ||
-        !isValidFileType(file.type, clientFileName)
+        file.size > 10 * 1024 * 1024
       ) {
+        console.error('Invalid chunk upload parameters:', {
+          chunkIndex,
+          totalChunks,
+          clientUploadId,
+          clientUploadTokenLength: clientUploadToken?.length,
+          clientFileName,
+          isValidExt,
+          isFile: file instanceof File,
+          fileSize: file instanceof File ? file.size : null,
+          fileType: file instanceof File ? file.type : null,
+        });
         throw new HttpError(400, 'Invalid chunk upload parameters.');
       }
 
