@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
 import { apiError, HttpError, readJson, requireSameOrigin } from '@/lib/http';
-import { getShopPrinters, setActivePrinter } from '@/lib/db';
+import { getShopPrinters, setActivePrinter, deleteShopPrinter } from '@/lib/db';
 import { textField } from '@/lib/validation';
 import { revalidatePath } from 'next/cache';
 
@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
     try {
       revalidatePath('/admin');
       revalidatePath('/admin/settings');
+      revalidatePath('/admin/printing');
     } catch {}
 
     return NextResponse.json(
@@ -62,3 +63,42 @@ export async function POST(req: NextRequest) {
     return apiError(error);
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  if (!isAdminRequest(req)) {
+    return adminUnauthorizedResponse();
+  }
+
+  try {
+    requireSameOrigin(req);
+    const body = await readJson(req);
+    const printerName = textField(body.printerName, 200);
+
+    if (!printerName) {
+      throw new HttpError(400, 'Printer name is required.');
+    }
+
+    await deleteShopPrinter(printerName);
+
+    try {
+      revalidatePath('/admin');
+      revalidatePath('/admin/settings');
+      revalidatePath('/admin/printing');
+    } catch {}
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: `Printer "${printerName}" removed successfully`,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0',
+        },
+      }
+    );
+  } catch (error) {
+    return apiError(error);
+  }
+}
+

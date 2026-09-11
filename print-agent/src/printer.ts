@@ -41,20 +41,49 @@ export class WindowsPrinterService {
   async getInstalledPrinters(): Promise<string[]> {
     if (process.platform === 'win32') {
       try {
-        const printers = await getPrinters();
-        const names = printers.map((p) => p.name).filter(Boolean);
-        if (names.length > 0) return names;
+        const { stdout } = await execute(
+          'powershell.exe',
+          [
+            '-NoProfile',
+            '-NonInteractive',
+            '-Command',
+            'Get-CimInstance Win32_Printer | Select-Object Name,PortName,DriverName,WorkOffline | ConvertTo-Json -Compress',
+          ],
+          { windowsHide: true, timeout: 10000 }
+        );
+        const parsed = JSON.parse(stdout || '[]');
+        const list = Array.isArray(parsed) ? parsed : [parsed];
+
+        // Filter out virtual/software print drivers so ONLY real connected or previously connected physical printers appear
+        const virtualPortRegex = /^(nul:|PORTPROMPT:|SHRFAX:|FILE:)/i;
+        const virtualDriverRegex = /(OneNote|Shared Fax|XPS Document Writer|Microsoft Print to PDF|Root Print Queue)/i;
+
+        const physicalPrinters = list
+          .filter((p: any) => {
+            if (!p || !p.Name) return false;
+            const isVirtualPort = p.PortName && virtualPortRegex.test(String(p.PortName));
+            const isVirtualDriver =
+              (p.DriverName && virtualDriverRegex.test(String(p.DriverName))) ||
+              virtualDriverRegex.test(String(p.Name));
+            return !isVirtualPort && !isVirtualDriver;
+          })
+          .map((p: any) => String(p.Name).trim())
+          .filter(Boolean);
+
+        if (physicalPrinters.length > 0) {
+          return physicalPrinters;
+        }
+
+        // If no physical printer detected yet, fall back to any configured non-virtual printer
+        if (this.configuredPrinter && !virtualDriverRegex.test(this.configuredPrinter)) {
+          return [this.configuredPrinter];
+        }
       } catch {
-        // Fall back to simulation list if error or simulation
+        // Fall back if PowerShell error
       }
     }
     if (this.simulation) {
-      return [
-        'Virtual Thermal Printer (POS-80)',
-        'Standard Office Laser (A4/Duplex)',
-        'Photo Lab Inkjet (Color)',
-        'Microsoft Print to PDF',
-      ];
+      return ['HP LaserJet 1020', 'Canon LBP2900', 'Epson L3150 Series'];
     }
     return [];
   }

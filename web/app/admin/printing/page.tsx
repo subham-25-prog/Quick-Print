@@ -16,6 +16,7 @@ import {
   Layers,
   FileText,
   Tag,
+  Trash2,
 } from '@/components/ui/Icons';
 
 export default function AdminPrintingSettingsPage() {
@@ -105,6 +106,30 @@ export default function AdminPrintingSettingsPage() {
       }
     } catch {
       showToast('Network error setting active printer', 'error');
+    }
+  };
+
+  const handleDeletePrinter = async (e: React.MouseEvent, printerName: string) => {
+    e.stopPropagation();
+    if (!window.confirm(`Remove "${printerName}" from the list?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/printers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ printerName }),
+      });
+      if (res.ok) {
+        showToast(`Removed "${printerName}"`, 'success');
+        await loadPrinters();
+      } else {
+        const data = await res.json();
+        showToast(data.error || 'Failed to remove printer', 'error');
+      }
+    } catch {
+      showToast('Network error removing printer', 'error');
     }
   };
 
@@ -318,7 +343,7 @@ export default function AdminPrintingSettingsPage() {
                       </div>
                     </div>
 
-                    <div className="shrink-0 flex items-center gap-2">
+                    <div className="shrink-0 flex items-center gap-1.5">
                       {isSelected ? (
                         <span className="px-3 py-1 rounded-xl text-[10px] font-extrabold bg-indigo-600 text-white flex items-center gap-1.5 shadow-2xs">
                           <CheckCircle2 className="w-3.5 h-3.5 text-white" />
@@ -336,6 +361,15 @@ export default function AdminPrintingSettingsPage() {
                           Use This
                         </button>
                       )}
+
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeletePrinter(e, printer.name)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="Remove printer from list"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 );

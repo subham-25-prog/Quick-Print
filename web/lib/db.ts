@@ -282,11 +282,14 @@ export async function recordAgentHeartbeat(
   if (Array.isArray(installedPrinters)) {
     for (const name of installedPrinters) {
       if (typeof name === 'string' && name.trim()) {
-        discoveredNames.add(name.trim());
+        const trimmed = name.trim();
+        if (!isVirtualSystemPrinter(trimmed)) {
+          discoveredNames.add(trimmed);
+        }
       }
     }
   }
-  if (printerName && printerName !== 'Unavailable') {
+  if (printerName && printerName !== 'Unavailable' && !isVirtualSystemPrinter(printerName.trim())) {
     discoveredNames.add(printerName.trim());
   }
 
@@ -308,6 +311,20 @@ export async function recordAgentHeartbeat(
   return { activePrinter };
 }
 
+export function isVirtualSystemPrinter(name: string | null | undefined): boolean {
+  if (!name || typeof name !== 'string') return true;
+  const lower = name.toLowerCase().trim();
+  if (!lower) return true;
+  return (
+    lower.includes('onenote') ||
+    lower.includes('xps document writer') ||
+    lower.includes('print to pdf') ||
+    lower === 'fax' ||
+    lower.includes('root print queue') ||
+    lower.includes('send to onenote')
+  );
+}
+
 export async function getShopPrinters(): Promise<{
   printers: ShopPrinterItem[];
   activePrinter: string | null;
@@ -315,6 +332,26 @@ export async function getShopPrinters(): Promise<{
 }> {
   const db = database();
   const shopId = getCurrentShopId();
+
+  // Purge any legacy virtual/software printer records so they never appear
+  try {
+    const { data: legacyRows } = await db
+      .from('printers')
+      .select('id, name')
+      .eq('shop_id', shopId);
+
+    if (Array.isArray(legacyRows)) {
+      const virtualIds = legacyRows
+        .filter((p: any) => isVirtualSystemPrinter(p.name))
+        .map((p: any) => p.id);
+
+      if (virtualIds.length > 0) {
+        await db.from('printers').delete().in('id', virtualIds);
+      }
+    }
+  } catch (cleanupErr) {
+    console.warn('Virtual printer purge warning:', cleanupErr);
+  }
 
   const { data: settings } = await db
     .from('shop_settings')
@@ -348,15 +385,17 @@ export async function getShopPrinters(): Promise<{
 
   if (error) throw error;
 
-  const list: ShopPrinterItem[] = (rawPrinters || []).map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    status: p.status,
-    is_selected: Boolean(activePrinter && p.name === activePrinter),
-    last_seen: p.last_seen,
-  }));
+  const list: ShopPrinterItem[] = (rawPrinters || [])
+    .filter((p: any) => !isVirtualSystemPrinter(p.name))
+    .map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      status: p.status,
+      is_selected: Boolean(activePrinter && p.name === activePrinter),
+      last_seen: p.last_seen,
+    }));
 
-  if (activePrinter && !list.some((p) => p.name === activePrinter)) {
+  if (activePrinter && !isVirtualSystemPrinter(activePrinter) && !list.some((p) => p.name === activePrinter)) {
     list.unshift({
       name: activePrinter,
       status: isAgentOnline ? 'ONLINE' : 'UNKNOWN',
@@ -366,6 +405,36 @@ export async function getShopPrinters(): Promise<{
   }
 
   return { printers: list, activePrinter, agentOnline: isAgentOnline };
+}
+
+export async function deleteShopPrinter(printerName: string): Promise<void> {
+  const db = database();
+  const shopId = getCurrentShopId();
+  const target = printerName?.trim();
+  if (!target) return;
+
+  await db
+    .from('printers')
+    .delete()
+    .eq('shop_id', shopId)
+    .ilike('name', target);
+
+  const { data: settings } = await db
+    .from('shop_settings')
+    .select('pricing')
+    .eq('shop_id', shopId)
+    .maybeSingle();
+
+  if (settings?.pricing?.selected_printer === target) {
+    const updatedPricing = {
+      ...settings.pricing,
+      selected_printer: null,
+      updated_at: new Date().toISOString(),
+    };
+    await db
+      .from('shop_settings')
+      .upsert({ id: shopId, shop_id: shopId, pricing: updatedPricing }, { onConflict: 'id' });
+  }
 }
 
 export async function setActivePrinter(printerName: string): Promise<string> {
