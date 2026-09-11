@@ -860,13 +860,7 @@ export default function AdminLiveOrdersPage() {
                               className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-[11px] flex items-center gap-1.5 shadow-xs shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-50"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>
-                                {actionLoadingKey === `${order.id}_ACCEPT`
-                                  ? 'Verifying...'
-                                  : order.payment_method === 'UPI'
-                                  ? 'Verify & Print'
-                                  : 'Accept & Print'}
-                              </span>
+                              <span>{actionLoadingKey === `${order.id}_ACCEPT` ? 'Accepting...' : 'Accept & Print'}</span>
                             </button>
 
                             <button

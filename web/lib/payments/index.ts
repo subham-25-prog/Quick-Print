@@ -1,45 +1,80 @@
-import { DirectUpiProvider } from './direct-upi';
-import { PaymentProvider } from './provider';
-import { getActivePricing } from '../db';
+import { PhonePeProvider } from './phonepe';
+import { database } from '../db';
+import { getCurrentShopId } from '../shop';
 import { HttpError } from '../http';
-import { defaultPricingConfig } from '../config';
 
-export function configuredProvider(customUpiId?: string, customShopName?: string): PaymentProvider {
-  const providerName = (process.env.PAYMENT_PROVIDER || 'direct_upi').trim().toLowerCase();
-
-  if (providerName === 'mock') {
+export function configuredProvider(): PhonePeProvider {
+  if (process.env.PAYMENT_PROVIDER !== 'phonepe') {
     throw new HttpError(
       503,
-      'Mock payment provider is unavailable in production environments.'
+      'Online payment is unavailable. Please contact the shopkeeper.'
     );
   }
 
-  // Direct UPI Payment Flow — Money flows directly to shopkeeper's UPI VPA with zero payment gateway
-  const upiId =
-    customUpiId?.trim() ||
-    process.env.SHOP_UPI_ID?.trim() ||
-    (defaultPricingConfig as any).shop_upi_id?.trim() ||
-    'shubhamoy27@okaxis';
-  const payeeName =
-    customShopName?.trim() ||
-    (defaultPricingConfig as any).shop_upi_name?.trim() ||
-    defaultPricingConfig.shop_name ||
-    'QuickPrint Shop';
-  const env = process.env.PAYMENT_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'live';
+  const requiredFields = [
+    'PHONEPE_MERCHANT_ID',
+    'PHONEPE_CLIENT_ID',
+    'PHONEPE_CLIENT_SECRET',
+    'PHONEPE_WEBHOOK_USERNAME',
+    'PHONEPE_WEBHOOK_PASSWORD',
+  ] as const;
 
-  return new DirectUpiProvider(upiId, payeeName, env);
+  for (const field of requiredFields) {
+    if (!process.env[field]) {
+      throw new HttpError(503, 'Online payment setup is incomplete.');
+    }
+  }
+
+  const mode = process.env.PAYMENT_ENVIRONMENT?.trim();
+  if (mode !== 'live' && mode !== 'sandbox') {
+    throw new HttpError(503, 'Payment environment is not configured.');
+  }
+
+  const clientVersion = process.env.PHONEPE_CLIENT_VERSION?.trim() || '1';
+
+  return new PhonePeProvider(
+    process.env.PHONEPE_MERCHANT_ID!.trim(),
+    mode,
+    process.env.PHONEPE_CLIENT_ID!.trim(),
+    clientVersion,
+    process.env.PHONEPE_CLIENT_SECRET!.trim(),
+    process.env.PHONEPE_WEBHOOK_USERNAME!.trim(),
+    process.env.PHONEPE_WEBHOOK_PASSWORD!.trim()
+  );
 }
 
-export async function paymentProvider(): Promise<PaymentProvider> {
-  let upiId: string | undefined;
-  let shopName: string | undefined;
+export async function paymentProvider(): Promise<PhonePeProvider> {
+  const provider = configuredProvider();
+  const db = database();
+  const shopId = getCurrentShopId();
 
-  try {
-    const pricing = await getActivePricing();
-    upiId = pricing.shop_upi_id;
-    shopName = pricing.shop_upi_name || pricing.shop_name;
-  } catch {}
+  const { data, error } = await db
+    .from('payment_configs')
+    .select('*')
+    .eq('shop_id', shopId)
+    .maybeSingle();
 
-  return configuredProvider(upiId, shopName);
+  if (error) throw error;
+
+  const needsSync =
+    !data ||
+    data.provider !== provider.name ||
+    data.merchant_id !== provider.merchantId ||
+    data.environment !== provider.environment ||
+    data.credential_fingerprint !== provider.fingerprint ||
+    !data.enabled;
+
+  if (needsSync) {
+    await db.from('payment_configs').upsert({
+      shop_id: shopId,
+      provider: provider.name,
+      merchant_id: provider.merchantId,
+      credential_fingerprint: provider.fingerprint,
+      environment: provider.environment,
+      enabled: true,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  return provider;
 }
-

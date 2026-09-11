@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Acknowledge only after durable receipt; the scheduled worker/status poll
-    // verifies through the modular bank transaction-status layer, even if the customer never returns.
+    // verifies through PhonePe independently, even if the customer never returns.
     const { error: inboxError } = await db.from('webhook_inbox').upsert(
       {
         shop_id: shopId,

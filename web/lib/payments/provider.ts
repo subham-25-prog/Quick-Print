@@ -36,17 +36,7 @@ export interface PaymentProvider {
   createPayment(
     payment: PaymentContext,
     returnUrl: string
-  ): Promise<{ url: string; providerOrderId: string; upiUri?: string; qrDataUrl?: string }>;
-
-  createDynamicQr?(
-    payment: PaymentContext,
-    options?: { orderNumber?: string; shopName?: string; upiId?: string }
-  ): Promise<{ qrString: string; qrDataUrl: string; providerOrderId: string }>;
-
-  createUpiIntent?(
-    payment: PaymentContext,
-    options?: { orderNumber?: string; shopName?: string; upiId?: string }
-  ): Promise<{ intentUrl: string; providerOrderId: string }>;
+  ): Promise<{ url: string; providerOrderId: string }>;
 
   getPaymentStatus(payment: PaymentContext): Promise<VerifiedPayment>;
 

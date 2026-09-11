@@ -4,7 +4,7 @@ import {defaultPricingConfig} from '@/lib/config';
 const mocks=vi.hoisted(()=>({insert:vi.fn(),from:vi.fn(),rate:vi.fn(),rpc:vi.fn()}));
 vi.mock('@/lib/db',()=>({database:()=>({from:mocks.from,rpc:mocks.rpc}),getActivePricing:async()=>({...defaultPricingConfig,a4_bw_per_page:2,form_fields:{minOrderAmount:1}}),getAllOrders:vi.fn(),claimNextPrintJob:vi.fn()}));
 vi.mock('@/lib/security',async importOriginal=>({...await importOriginal<any>(),rateLimit:mocks.rate}));
-vi.mock('@/lib/payments',()=>({paymentProvider:async()=>({name:'direct_upi',merchantId:'shop@upi',environment:'live',fingerprint:'fp'})}));
+vi.mock('@/lib/payments',()=>({paymentProvider:async()=>({name:'phonepe',merchantId:'merchant',environment:'sandbox',fingerprint:'fp'})}));
 vi.mock('@/lib/payments/service',()=>({openPayment:async(p:any)=>({paymentId:p.id,status:p.status})}));
 import {POST,GET} from '@/app/api/orders/route';
 import {POST as jobs} from '@/app/api/agent/jobs/route';

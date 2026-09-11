@@ -51,13 +51,7 @@ export async function POST(req: NextRequest) {
       }
 
       const amountMinor = Math.round(Number(payment.amount) * 100);
-      const isUpi = payment.provider !== 'cash';
-      const defaultTxn = isUpi
-        ? `UPI_${Date.now().toString(36).toUpperCase()}`
-        : `CASH_${Date.now().toString(36).toUpperCase()}`;
-      const transactionId = (typeof body.transactionId === 'string' && body.transactionId.trim())
-        ? body.transactionId.trim()
-        : defaultTxn;
+      const transactionId = `CASH_${Date.now().toString(36).toUpperCase()}`;
 
       // Call finalize_payment - the PostgreSQL SECURITY DEFINER RPC already verified on Supabase!
       const { data: createdOrderId, error: rpcError } = await db.rpc('finalize_payment', {
@@ -81,7 +75,7 @@ export async function POST(req: NextRequest) {
       if (createdOrderId) {
         await db
           .from('orders')
-          .update({ payment_method: isUpi ? 'UPI' : 'CASH' })
+          .update({ payment_method: 'CASH' })
           .eq('id', createdOrderId)
           .eq('shop_id', shopId);
       }
@@ -93,7 +87,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         orderId: createdOrderId,
-        message: `${isUpi ? 'UPI' : 'Cash'} payment verified! Document sent to printer.`,
+        message: 'Cash payment verified! Document sent to printer.',
       });
     }
 

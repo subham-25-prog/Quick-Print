@@ -16,7 +16,7 @@ beforeEach(() => {
     return q;
   });
 });
-test('fresh installation runs retention without gateway credentials when nothing needs reconciliation', async () => {
+test('fresh installation runs retention without PhonePe credentials when nothing needs reconciliation', async () => {
   const response = await GET(new NextRequest('https://shop.test/api/maintenance', { headers: { authorization: `Bearer ${'s'.repeat(32)}` } }));
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({ checked: 0, failed: 0, deletedCount: 2 });
