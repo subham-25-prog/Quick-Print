@@ -65,14 +65,16 @@ export default function OrderStatusPage() {
           throw new Error(result.error || 'Order status is temporarily unavailable.');
         }
 
-        if (result.order?.payment_status !== 'PAID') {
-          throw new Error('Payment verification is pending. Printing is not authorized yet.');
-        }
-
         if (!stopped) {
           setData(result);
           setError('');
           setLastUpdated(new Date());
+
+          // If assigned a new orderId, keep the browser URL clean
+          if (typeof window !== 'undefined' && result.order?.id && result.order.id !== id) {
+            const nextUrl = `/status/${result.order.id}?access_token=${encodeURIComponent(token)}`;
+            window.history.replaceState(null, '', nextUrl);
+          }
         }
       } catch (e) {
         if (!stopped && (e as Error)?.name !== 'AbortError') {
@@ -81,8 +83,8 @@ export default function OrderStatusPage() {
       } finally {
         if (!stopped) {
           setLoading(false);
-          // Poll every 2.5 seconds for true live updates
-          timer = setTimeout(poll, 2500);
+          // Poll every 1.5 seconds for instant live updates
+          timer = setTimeout(poll, 1500);
         }
       }
     }
@@ -102,7 +104,14 @@ export default function OrderStatusPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const jobState = data?.job?.status || 'PENDING';
+  const isAwaitingVerification =
+    data?.order?.payment_status === 'AWAITING_VERIFICATION' ||
+    data?.order?.order_status === 'PAYMENT_VERIFICATION_PENDING' ||
+    (data?.order?.payment_status === 'PENDING' && data?.order?.payment_method === 'CASH');
+
+  const jobState = isAwaitingVerification
+    ? 'AWAITING_VERIFICATION'
+    : data?.job?.status || (data?.order?.payment_status === 'PAID' ? 'PRINTING' : 'PENDING');
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-16">
@@ -115,17 +124,29 @@ export default function OrderStatusPage() {
             <span className="relative flex h-2.5 w-2.5">
               <span
                 className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                  data?.agentOnline ? 'bg-emerald-400' : 'bg-amber-400'
+                  isAwaitingVerification
+                    ? 'bg-amber-400'
+                    : data?.agentOnline
+                    ? 'bg-emerald-400'
+                    : 'bg-amber-400'
                 }`}
               />
               <span
                 className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                  data?.agentOnline ? 'bg-emerald-500' : 'bg-amber-500'
+                  isAwaitingVerification
+                    ? 'bg-amber-500'
+                    : data?.agentOnline
+                    ? 'bg-emerald-500'
+                    : 'bg-amber-500'
                 }`}
               />
             </span>
             <span className="font-semibold text-slate-700">
-              {data?.agentOnline ? 'Shop Printer Connected & Live' : 'Shop Agent Offline (Order Queued)'}
+              {isAwaitingVerification
+                ? 'Awaiting Cash Verification at Counter'
+                : data?.agentOnline
+                ? 'Shop Printer Connected & Live'
+                : 'Shop Agent Offline (Order Queued)'}
             </span>
           </div>
           <span className="text-[11px] text-slate-400">
@@ -161,18 +182,56 @@ export default function OrderStatusPage() {
               </div>
             )}
 
-            {/* Live Animated 5-Step Print Status Pipeline */}
-            <LivePrintVisualizer
-              jobStatus={jobState}
-              pageCount={data.order.page_count}
-              copies={data.order.copies}
-              fileName={data.order.file_name}
-              isTest={data.job?.is_test}
-              shopName={shopName}
-              orderNumber={data.order.order_number}
-              paperSize={data.order.paper_size}
-              colorMode={data.order.color_mode}
-            />
+            {/* Awaiting Cash Verification Card OR Live Animated 5-Step Print Status Pipeline */}
+            {isAwaitingVerification ? (
+              <section className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 rounded-3xl p-6 sm:p-7 text-white shadow-lg space-y-4 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-100">
+                      Awaiting Cash Verification
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-extrabold bg-white/20 backdrop-blur-xs px-2.5 py-1 rounded-full">
+                    Pay at Counter
+                  </span>
+                </div>
+
+                <div className="space-y-1">
+                  <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                    Pay {formatCurrency(data.order.total_amount)} at the counter
+                  </h2>
+                  <p className="text-xs sm:text-sm text-amber-100 font-medium leading-relaxed">
+                    Please visit the counter and show your order number. Once verified by the shopkeeper, printing starts automatically on this screen.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-black/15 backdrop-blur-xs flex items-center justify-between text-xs">
+                  <span className="text-amber-100 font-medium flex items-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                    Listening live for verification...
+                  </span>
+                  <span className="font-mono font-bold text-white bg-white/20 px-2.5 py-0.5 rounded-md">
+                    {data.order.order_number}
+                  </span>
+                </div>
+              </section>
+            ) : (
+              <LivePrintVisualizer
+                jobStatus={jobState}
+                pageCount={data.order.page_count}
+                copies={data.order.copies}
+                fileName={data.order.file_name}
+                isTest={data.job?.is_test}
+                shopName={shopName}
+                orderNumber={data.order.order_number}
+                paperSize={data.order.paper_size}
+                colorMode={data.order.color_mode}
+              />
+            )}
 
             {/* 2. Order Reference & Receipt Card */}
             <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
@@ -232,13 +291,15 @@ export default function OrderStatusPage() {
 
               {/* Price Total */}
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-600">Total Paid</span>
+                <span className="text-sm font-bold text-slate-600">
+                  {isAwaitingVerification ? 'Amount Due' : 'Total Paid'}
+                </span>
                 <div className="text-right">
                   <span className="text-xl font-black text-emerald-700">
                     {formatCurrency(data.order.total_amount)}
                   </span>
-                  <span className="text-[10px] text-emerald-600 block font-semibold">
-                    ✓ Paid Online
+                  <span className={`text-[10px] block font-semibold ${isAwaitingVerification ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {isAwaitingVerification ? '⏳ Cash – Pay at Counter' : data.order.payment_method === 'CASH' ? '✓ Cash Verified' : '✓ Paid Online'}
                   </span>
                 </div>
               </div>

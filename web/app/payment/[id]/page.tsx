@@ -11,6 +11,7 @@ type Status = {
   reference: string;
   amount: number;
   environment: string;
+  paymentMethod?: string;
   paymentUrl?: string;
   orderId?: string;
   orderAccessToken?: string;
@@ -46,10 +47,11 @@ export default function PaymentPage() {
         setState(data);
         setError('');
 
-        if (data.status === 'SUCCESS' && data.orderId && data.orderAccessToken) {
+        if (data.status === 'SUCCESS' && data.orderId) {
           stopped = true;
-          const url = `/order/success/${data.orderId}?access_token=${encodeURIComponent(data.orderAccessToken)}`;
-          router.replace(url);
+          const targetToken = data.orderAccessToken || token;
+          const url = `/status/${data.orderId}?access_token=${encodeURIComponent(targetToken)}`;
+          window.location.replace(url);
           return;
         }
 
@@ -63,7 +65,7 @@ export default function PaymentPage() {
         if (!stopped) setError(e instanceof Error ? e.message : 'Connection interrupted.');
       }
 
-      if (!stopped) timer = setTimeout(poll, 3000);
+      if (!stopped) timer = setTimeout(poll, 1500);
     }
 
     void poll();
@@ -93,6 +95,7 @@ export default function PaymentPage() {
   }
 
   const failed = state && ['FAILED', 'EXPIRED', 'CANCELLED'].includes(state.status);
+  const isCash = state?.paymentMethod === 'CASH' || state?.reference?.includes('CASH');
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
@@ -110,11 +113,17 @@ export default function PaymentPage() {
 
           <div className="space-y-2">
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-              {failed ? 'Payment Not Completed' : 'Verifying Your Payment'}
+              {failed
+                ? 'Payment Not Completed'
+                : isCash
+                ? 'Waiting for Cash Verification'
+                : 'Verifying Your Payment'}
             </h1>
             <p className="text-sm text-slate-500">
               {failed
                 ? 'Returning you to the shop interface…'
+                : isCash
+                ? 'Please pay at the shop counter. The operator will verify and start printing.'
                 : 'Please complete the payment in your app. Do not close this window.'}
             </p>
           </div>

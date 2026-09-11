@@ -269,6 +269,12 @@ export default function CustomerHomePage() {
         router.push(successUrl);
         return;
       }
+      if (method === 'CASH' || data.paymentMethod === 'CASH') {
+        const statusUrl = `/status/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
+        setIsPaymentModalOpen(false);
+        router.push(statusUrl);
+        return;
+      }
       const statusUrl = `/payment/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
       setIsPaymentModalOpen(false);
       if (data.paymentUrl) { window.location.assign(data.paymentUrl); return; }

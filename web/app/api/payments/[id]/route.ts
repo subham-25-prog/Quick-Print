@@ -8,6 +8,9 @@ import { paymentProvider } from '@/lib/payments';
 import { reconcilePayment } from '@/lib/payments/service';
 import { uuid } from '@/lib/validation';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -20,7 +23,7 @@ export async function GET(
       throw new HttpError(404, 'Payment not found.');
     }
 
-    await rateLimit(req, `payment:${id}`, 20);
+    await rateLimit(req, `payment:${id}`, 120);
 
     const db = database();
     const shopId = getCurrentShopId();
@@ -40,7 +43,7 @@ export async function GET(
     let currentPayment = payment;
     let verificationPending = false;
 
-    if (currentPayment.status === 'PENDING' && !currentPayment.review_required) {
+    if (currentPayment.status === 'PENDING' && currentPayment.provider !== 'cash' && !currentPayment.review_required) {
       const { data: lock, error: lockError } = await db
         .from('payments')
         .update({ reconcile_after: new Date(Date.now() + 15000).toISOString() })
@@ -69,6 +72,7 @@ export async function GET(
         reference: currentPayment.payment_reference,
         amount: currentPayment.amount,
         environment: currentPayment.environment,
+        paymentMethod: currentPayment.provider === 'cash' ? 'CASH' : 'UPI',
         paymentUrl: currentPayment.status === 'PENDING' ? currentPayment.payment_url : undefined,
         reviewRequired: currentPayment.review_required,
         verificationPending,

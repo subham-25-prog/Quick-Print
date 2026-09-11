@@ -6,6 +6,9 @@ import { getCurrentShopId } from '@/lib/shop';
 import { apiError, HttpError } from '@/lib/http';
 import { uuid } from '@/lib/validation';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -15,7 +18,22 @@ export async function GET(
     const id = uuid(rawId);
     const isAdmin = isAdminRequest(req);
 
-    if (!isAdmin && !hasOrderAccess(req, id)) {
+    let authorized = isAdmin || hasOrderAccess(req, id);
+    if (!authorized) {
+      // Check if access token is signed for the associated payment_id
+      const { data: maybeOrder } = await database()
+        .from('orders')
+        .select('payment_id')
+        .eq('id', id)
+        .eq('shop_id', getCurrentShopId())
+        .maybeSingle();
+
+      if (maybeOrder?.payment_id && hasOrderAccess(req, maybeOrder.payment_id)) {
+        authorized = true;
+      }
+    }
+
+    if (!authorized) {
       throw new HttpError(404, 'Order not found.');
     }
 
@@ -60,6 +78,7 @@ export async function GET(
                 copies: draft.copies || 1,
                 total_amount: payment.amount,
                 currency: payment.currency || 'INR',
+                payment_method: payment.provider === 'cash' ? 'CASH' : 'UPI',
                 payment_status: payment.status === 'SUCCESS' ? 'PAID' : 'AWAITING_VERIFICATION',
                 order_status: payment.status === 'SUCCESS' ? 'CONFIRMED' : 'PAYMENT_VERIFICATION_PENDING',
               },
