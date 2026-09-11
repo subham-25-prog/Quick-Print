@@ -26,11 +26,14 @@ export async function GET(req: NextRequest) {
       .eq('shop_id', shopId)
       .maybeSingle();
 
-    const shopName =
+    let shopName =
       settings?.pricing?.shop_name ||
       shop?.name ||
       process.env.NEXT_PUBLIC_SHOP_NAME ||
       'Cyber Cafe';
+    if (/quickprint/i.test(shopName)) {
+      shopName = process.env.NEXT_PUBLIC_SHOP_NAME || 'Cyber Cafe';
+    }
 
     const { data: agent } = await db
       .from('print_agents')

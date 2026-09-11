@@ -85,6 +85,9 @@ export default function CustomerHomePage() {
     } catch {}
 
     const applyPricingConfig = (cfg: PricingConfig) => {
+      if (!cfg.shop_name || /quickprint/i.test(cfg.shop_name)) {
+        cfg.shop_name = defaultPricingConfig.shop_name;
+      }
       setPricing(cfg);
       if (cfg.shop_name) {
         document.title = `${cfg.shop_name} – Self-Service Document Printing`;
@@ -125,6 +128,9 @@ export default function CustomerHomePage() {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed && typeof parsed === 'object') {
+          if (!parsed.shop_name || /quickprint/i.test(parsed.shop_name)) {
+            parsed.shop_name = defaultPricingConfig.shop_name;
+          }
           applyPricingConfig(parsed);
         }
       }
@@ -179,8 +185,9 @@ export default function CustomerHomePage() {
     const handleCustomUpdate = (e: Event) => {
       const detail = (e as CustomEvent<string>).detail;
       if (detail && typeof detail === 'string') {
-        setPricing((prev) => ({ ...prev, shop_name: detail.trim() }));
-        document.title = `${detail.trim()} – Self-Service Document Printing`;
+        const clean = (!detail.trim() || /quickprint/i.test(detail)) ? defaultPricingConfig.shop_name : detail.trim();
+        setPricing((prev) => ({ ...prev, shop_name: clean }));
+        document.title = `${clean} – Self-Service Document Printing`;
       }
     };
     window.addEventListener('quickprint_shop_name_updated', handleCustomUpdate);
@@ -191,9 +198,10 @@ export default function CustomerHomePage() {
         channel = new BroadcastChannel('quickprint_shop_broadcast_channel');
         channel.onmessage = (event) => {
           if (event.data?.type === 'SHOP_NAME_UPDATED' && event.data?.shopName) {
-            const name = event.data.shopName.trim();
-            setPricing((prev) => ({ ...prev, shop_name: name }));
-            document.title = `${name} – Self-Service Document Printing`;
+            const raw = String(event.data.shopName).trim();
+            const clean = (!raw || /quickprint/i.test(raw)) ? defaultPricingConfig.shop_name : raw;
+            setPricing((prev) => ({ ...prev, shop_name: clean }));
+            document.title = `${clean} – Self-Service Document Printing`;
           }
         };
       }

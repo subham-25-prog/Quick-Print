@@ -4,7 +4,7 @@ import { useState,useEffect } from 'react';
 import QRCode from 'qrcode';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { shopConfig } from '@/lib/config';
-import { useShopName } from '@/lib/shop-sync';
+import { useShopName, cleanShopName } from '@/lib/shop-sync';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Printer,Download } from '@/components/ui/Icons';
 
@@ -24,7 +24,7 @@ export default function ShopWallPosterPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.pricing) {
-          if (data.pricing.shop_name) setRawShopName(data.pricing.shop_name);
+          if (data.pricing.shop_name) setRawShopName(cleanShopName(data.pricing.shop_name));
           if (data.pricing.shop_address) setShopAddress(data.pricing.shop_address);
         }
       })

@@ -8,6 +8,19 @@ export const SHOP_PRICING_STORAGE_KEY = 'quickprint_live_pricing';
 export const SHOP_BROADCAST_CHANNEL = 'quickprint_shop_broadcast_channel';
 
 /**
+ * Sanitizes any raw shop name, ensuring empty or legacy 'QuickPrint' names
+ * are cleanly replaced with the configured brand name (Cyber Cafe).
+ */
+export function cleanShopName(raw?: string | null): string {
+  if (!raw || typeof raw !== 'string') return shopConfig.name;
+  const trimmed = raw.trim();
+  if (!trimmed || /quickprint/i.test(trimmed)) {
+    return shopConfig.name;
+  }
+  return trimmed;
+}
+
+/**
  * Retrieves the currently saved shop name from localStorage,
  * falling back to the configured default shop name.
  */
@@ -19,8 +32,14 @@ export function getStoredShopName(): string {
     const cached = localStorage.getItem(SHOP_PRICING_STORAGE_KEY);
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (parsed?.shop_name && typeof parsed.shop_name === 'string' && parsed.shop_name.trim()) {
-        return parsed.shop_name.trim();
+      if (parsed?.shop_name && typeof parsed.shop_name === 'string') {
+        const cleaned = cleanShopName(parsed.shop_name);
+        if (cleaned !== parsed.shop_name) {
+          try {
+            localStorage.setItem(SHOP_PRICING_STORAGE_KEY, JSON.stringify({ ...parsed, shop_name: cleaned }));
+          } catch {}
+        }
+        return cleaned;
       }
     }
   } catch {}
@@ -33,7 +52,7 @@ export function getStoredShopName(): string {
 export function publishShopNameUpdate(newShopName: string, fullPricing?: any): void {
   if (typeof window === 'undefined') return;
 
-  const trimmed = newShopName.trim() || shopConfig.name;
+  const trimmed = cleanShopName(newShopName);
 
   // 1. Update localStorage
   try {
@@ -66,23 +85,21 @@ export function publishShopNameUpdate(newShopName: string, fullPricing?: any): v
  * in-window events, localStorage changes, and BroadcastChannel updates.
  */
 export function useShopName(explicitShopName?: string): string {
-  const [shopName, setShopName] = useState<string>(() => {
-    if (explicitShopName && explicitShopName.trim()) {
-      return explicitShopName.trim();
-    }
-    return shopConfig.name;
-  });
+  const [shopName, setShopName] = useState<string>(() => cleanShopName(explicitShopName));
 
   useEffect(() => {
-    // The parent already supplies pricing; avoid another request and subscription.
-    if (explicitShopName?.trim()) return;
+    // The parent already supplies pricing; update if explicit name changed
+    if (explicitShopName !== undefined) {
+      setShopName(cleanShopName(explicitShopName));
+      return;
+    }
     setShopName(getStoredShopName());
 
     // 1. In-tab custom event listener
     const handleCustomEvent = (e: Event) => {
       const customEvent = e as CustomEvent<string>;
       if (customEvent.detail && typeof customEvent.detail === 'string') {
-        setShopName(customEvent.detail.trim());
+        setShopName(cleanShopName(customEvent.detail));
       }
     };
     window.addEventListener(SHOP_NAME_EVENT, handleCustomEvent);
@@ -93,7 +110,7 @@ export function useShopName(explicitShopName?: string): string {
         try {
           const parsed = JSON.parse(e.newValue);
           if (parsed?.shop_name && typeof parsed.shop_name === 'string') {
-            setShopName(parsed.shop_name.trim());
+            setShopName(cleanShopName(parsed.shop_name));
           }
         } catch {}
       }
@@ -107,7 +124,7 @@ export function useShopName(explicitShopName?: string): string {
         channel = new BroadcastChannel(SHOP_BROADCAST_CHANNEL);
         channel.onmessage = (event) => {
           if (event.data?.type === 'SHOP_NAME_UPDATED' && typeof event.data?.shopName === 'string') {
-            setShopName(event.data.shopName.trim());
+            setShopName(cleanShopName(event.data.shopName));
           }
         };
       }
@@ -120,12 +137,12 @@ export function useShopName(explicitShopName?: string): string {
       .then((res) => res.json())
       .then((data) => {
         if (isMounted && typeof data?.pricing?.shop_name === 'string') {
-          const serverName = data.pricing.shop_name.trim();
-          setShopName((prev) => (prev === shopConfig.name ? serverName : prev));
+          const serverName = cleanShopName(data.pricing.shop_name);
+          setShopName(serverName);
           try {
             const cached = localStorage.getItem(SHOP_PRICING_STORAGE_KEY);
             if (!cached) {
-              localStorage.setItem(SHOP_PRICING_STORAGE_KEY, JSON.stringify(data.pricing));
+              localStorage.setItem(SHOP_PRICING_STORAGE_KEY, JSON.stringify({ ...data.pricing, shop_name: serverName }));
             }
           } catch {}
         }
@@ -143,5 +160,5 @@ export function useShopName(explicitShopName?: string): string {
     };
   }, [explicitShopName]);
 
-  return explicitShopName?.trim() || shopName;
+  return shopName;
 }

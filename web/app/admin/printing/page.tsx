@@ -68,7 +68,12 @@ export default function AdminPrintingSettingsPage() {
       fetch('/api/admin/pricing')
         .then((res) => res.json())
         .then((data) => {
-          if (data.pricing) setForm(data.pricing);
+          if (data.pricing) {
+            if (!data.pricing.shop_name || /quickprint/i.test(data.pricing.shop_name)) {
+              data.pricing.shop_name = defaultPricingConfig.shop_name;
+            }
+            setForm(data.pricing);
+          }
         }),
       loadPrinters(),
       loadDbStatus(),

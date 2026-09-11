@@ -39,7 +39,10 @@ export async function getActivePricing(): Promise<PricingConfig> {
     .eq('id', shopId)
     .maybeSingle();
 
-  const shopName = pricing.shop_name || shop?.name || defaultPricingConfig.shop_name;
+  let shopName = pricing.shop_name || shop?.name || defaultPricingConfig.shop_name;
+  if (/quickprint/i.test(shopName)) {
+    shopName = defaultPricingConfig.shop_name;
+  }
   const shopAddress = pricing.shop_address || shop?.address || defaultPricingConfig.shop_address;
   const shopPhone = pricing.shop_phone || shop?.phone || defaultPricingConfig.shop_phone;
 
