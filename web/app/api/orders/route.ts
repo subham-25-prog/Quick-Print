@@ -153,7 +153,6 @@ export async function POST(req: NextRequest) {
         currency: 'INR',
         status: 'PENDING',
         draft_order: draftOrderData,
-        order_id: orderId,
       };
 
       const { error: paymentError } = await db.from('payments').insert(paymentRecord);
@@ -192,6 +191,13 @@ export async function POST(req: NextRequest) {
 
       const { error: orderError } = await db.from('orders').insert(orderRecord);
       if (orderError) throw new HttpError(409, `Cash order creation failed: ${orderError.message}`);
+
+      // Now that the order exists in the DB, link the payment record to it
+      try {
+        await db.from('payments').update({ order_id: orderId }).eq('id', paymentId);
+      } catch (linkErr) {
+        console.warn('Non-fatal: could not link payment to order_id immediately:', linkErr);
+      }
 
       return NextResponse.json(
         {

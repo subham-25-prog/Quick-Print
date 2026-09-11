@@ -14,7 +14,7 @@ beforeEach(()=>{
   vi.stubEnv('QUICKPRINT_SHOP_ID','00000000-0000-4000-8000-000000000001');
   mocks.insert.mockReset();mocks.rate.mockReset();mocks.rpc.mockReset().mockResolvedValue({data:id,error:null});
   mocks.from.mockReset().mockImplementation((table:string)=>{
-    const chain:any={select:()=>chain,eq:()=>chain,is:()=>chain,in:()=>chain,
+    const chain:any={select:()=>chain,eq:()=>chain,is:()=>chain,in:()=>chain,update:()=>chain,
       maybeSingle:async()=>({data:table==='uploaded_files'?{id,page_count:3,expires_at:new Date(Date.now()+60000).toISOString()}:null,error:null}),
       insert:(record:any)=>{mocks.insert(table,record);return {select:()=>({single:async()=>({data:record,error:null})})};}};
     return chain;
