@@ -112,8 +112,8 @@ ALTER TABLE public.print_agents ENABLE ROW LEVEL SECURITY;
 
 -- 5. Storage Bucket for uploaded documents
 INSERT INTO storage.buckets (id, name, public, file_size_limit) 
-VALUES ('shop-documents', 'shop-documents', false, 4194304)
-ON CONFLICT (id) DO UPDATE SET public = false, file_size_limit = 4194304;
+VALUES ('shop-documents', 'shop-documents', false, 104857600)
+ON CONFLICT (id) DO UPDATE SET public = false, file_size_limit = 104857600;
 
 -- Customer files are uploaded and retrieved only through authenticated server routes.
 DROP POLICY IF EXISTS "Allow public uploads" ON storage.objects;

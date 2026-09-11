@@ -12,6 +12,11 @@ import { rateLimit, hash } from '@/lib/security';
 let lastBucketVerifiedAt = 0;
 const BUCKET_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
+const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
+const MAX_CONTENT_LENGTH_BYTES = 105 * 1024 * 1024; // 105 MB multipart overhead
+
+export const maxDuration = 60;
+
 async function ensurePrivateBucket(db: ReturnType<typeof database>) {
   const now = Date.now();
   if (now - lastBucketVerifiedAt < BUCKET_CACHE_TTL_MS) {
@@ -29,8 +34,8 @@ export async function POST(req: NextRequest) {
     requireSameOrigin(req);
 
     const contentLength = Number(req.headers.get('content-length'));
-    if (contentLength > 4300000) {
-      throw new HttpError(413, 'Upload must be at most 4 MB.');
+    if (contentLength > MAX_CONTENT_LENGTH_BYTES) {
+      throw new HttpError(413, 'Upload must be at most 100 MB.');
     }
 
     const contentType = req.headers.get('content-type') || '';
@@ -55,11 +60,11 @@ export async function POST(req: NextRequest) {
     if (
       !(file instanceof File) ||
       file.size < 1 ||
-      file.size > 4194304 ||
+      file.size > MAX_FILE_SIZE_BYTES ||
       file.name.length > 200 ||
       !isValidFileType(file.type, file.name)
     ) {
-      throw new HttpError(400, 'Upload a PDF, JPG, or PNG up to 4 MB.');
+      throw new HttpError(400, 'Upload a PDF, JPG, or PNG up to 100 MB.');
     }
 
     const rawBuffer = Buffer.from(await file.arrayBuffer());
@@ -133,8 +138,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (workingBuffer.length > 4194304) {
-      throw new HttpError(413, 'The converted document exceeds 4 MB.');
+    if (workingBuffer.length > MAX_FILE_SIZE_BYTES) {
+      throw new HttpError(413, 'The converted document exceeds 100 MB.');
     }
 
     const db = database();

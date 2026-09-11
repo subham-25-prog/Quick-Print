@@ -9,12 +9,12 @@ VALUES (
     'shop-documents',
     'shop-documents',
     false, -- Private bucket (no direct public URL browsing)
-    4194304, -- Matches the Vercel serverless upload limit
+    104857600, -- 100 MB file limit
     ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png']
 )
 ON CONFLICT (id) DO UPDATE SET
     public = false,
-    file_size_limit = 4194304,
+    file_size_limit = 104857600,
     allowed_mime_types = ARRAY['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
 
 

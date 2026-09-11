@@ -86,7 +86,8 @@ export class ShopApiClient {
     // provider URLs or redirect following can leak the agent secret.
     const { data } = await this.client.get(`/api/orders/${job.order_id}/file`, {
       responseType: 'arraybuffer',
-      maxContentLength: 4194304,
+      maxContentLength: 110100480, // 105 MB
+      maxBodyLength: 110100480,
       headers: { 'x-claim-token': job.claim_token },
     });
 

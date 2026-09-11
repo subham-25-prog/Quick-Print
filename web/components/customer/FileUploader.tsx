@@ -53,9 +53,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     if (uploading || activeXhr.current) return;
     setError(null);
 
-    const MAX_SIZE = 4 * 1024 * 1024;
+    const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
     if (file.size > MAX_SIZE) {
-      setError('Document exceeds the 4 MB upload limit. Please choose a smaller file.');
+      setError('Document exceeds the 100 MB upload limit. Please choose a smaller file.');
       return;
     }
 
@@ -141,7 +141,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
           reject(new Error('Upload cancelled.'));
         };
 
-        xhr.timeout = 60000;
+        xhr.timeout = 300000; // 5 minutes for large files
         xhr.open('POST', '/api/upload');
         xhr.send(formData);
       });
@@ -304,7 +304,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
                 Tap or Drop Document Here
               </h4>
               <p className="text-[11px] text-slate-400">
-                Auto-detects page count instantly · Max 4 MB
+                Auto-detects page count instantly · Large files supported
               </p>
             </div>
           )}

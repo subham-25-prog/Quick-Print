@@ -51,7 +51,7 @@ test('database rate-limiter failure cannot fall back to accepting checkout',asyn
 });
 test('cross-origin checkout and oversized upload rejected without writes',async()=>{
   const req=checkout();req.headers.set('origin','https://attacker.test');expect((await POST(req)).status).toBe(403);
-  expect((await upload(new NextRequest('https://shop.test/api/upload',{method:'POST',headers:{'content-length':'5000000'}}))).status).toBe(413);
+  expect((await upload(new NextRequest('https://shop.test/api/upload',{method:'POST',headers:{'content-length':'120000000'}}))).status).toBe(413);
   expect(mocks.insert).not.toHaveBeenCalled();
 });
 test('HTML disguised as PDF is rejected',async()=>{
