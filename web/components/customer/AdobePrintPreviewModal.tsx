@@ -13,6 +13,8 @@ import {
   RotateCw,
   HelpCircle,
   X,
+  FileText,
+  Sliders,
 } from '@/components/ui/Icons';
 
 interface AdobePrintPreviewModalProps {
@@ -729,40 +731,61 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       aria-label="Print preview"
       className="fixed inset-0 z-50 bg-[#202124] text-slate-100 flex flex-col md:flex-row h-[100dvh] w-screen overflow-hidden font-sans select-none"
     >
-      {/* Mobile Top Navigation Switcher */}
-      <div className="md:hidden bg-[#202124] border-b border-slate-800 px-4 py-2 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
+      {/* =========================================================================
+          MOBILE TOP NAVIGATION BAR
+          Clean segmented control: [ 📄 Preview ] [ ⚙️ Settings ] + Quick Print Action
+         ========================================================================= */}
+      <header className="md:hidden bg-[#202124] border-b border-[#3c4043]/70 px-3 py-2 flex items-center justify-between shrink-0 shadow-sm z-30">
+        <button
+          type="button"
+          onClick={onClose}
+          className="min-h-[38px] min-w-[38px] rounded-full flex items-center justify-center text-[#9aa0a6] hover:text-white hover:bg-[#35363a] transition-colors"
+          aria-label="Close"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Center Segmented Pill Controller */}
+        <div className="flex bg-[#2b2d30] p-0.5 rounded-xl border border-slate-700/60 shadow-inner">
           <button
             type="button"
             onClick={() => setMobileTab('preview')}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold ${
-              mobileTab === 'preview' ? 'bg-blue-600 text-white' : 'text-slate-400'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              mobileTab === 'preview'
+                ? 'bg-[#1a73e8] text-white shadow-sm'
+                : 'text-[#9aa0a6] hover:text-white'
             }`}
           >
-            Preview
+            <FileText className="w-3.5 h-3.5" />
+            <span>Preview</span>
           </button>
           <button
             type="button"
             onClick={() => setMobileTab('settings')}
-            className={`px-3 py-1.5 rounded-md text-xs font-semibold ${
-              mobileTab === 'settings' ? 'bg-blue-600 text-white' : 'text-slate-400'
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              mobileTab === 'settings'
+                ? 'bg-[#1a73e8] text-white shadow-sm'
+                : 'text-[#9aa0a6] hover:text-white'
             }`}
           >
-            Settings
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Settings</span>
           </button>
         </div>
+
+        {/* Right Top Quick Print Button on Mobile */}
         <button
           type="button"
-          onClick={onClose}
-          className="p-1.5 text-slate-400 hover:text-white"
+          onClick={handlePrintApply}
+          className="px-3 py-1.5 rounded-lg bg-[#1a73e8] hover:bg-[#1b66c9] active:scale-95 text-white text-xs font-bold shadow-sm transition-all cursor-pointer"
         >
-          <X className="w-5 h-5" />
+          Print
         </button>
-      </div>
+      </header>
 
       {/* =========================================================================
           LEFT SIDEBAR: Adobe Acrobat / Chromium Print Settings Panel
-          (Matches user screenshots 1 & 2 exactly, with Printer choosing removed)
+          (Side-by-side on desktop, dedicated view when settings active on mobile)
          ========================================================================= */}
       <aside
         className={`w-full md:w-[320px] lg:w-[340px] bg-[#202124] flex flex-col shrink-0 border-r border-[#3c4043]/50 h-full overflow-hidden ${
@@ -770,9 +793,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         }`}
       >
         {/* Header: Title, Dynamic Sheet Count, Help Button */}
-        <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-[#3c4043]/40 shrink-0">
+        <div className="flex items-start justify-between px-5 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-4 border-b border-[#3c4043]/40 shrink-0">
           <div>
-            <h1 className="text-xl font-semibold text-white tracking-tight">Print</h1>
+            <h1 className="text-lg sm:text-xl font-semibold text-white tracking-tight">Print</h1>
             <p className="text-xs text-[#9aa0a6] font-normal mt-0.5">
               Total: {totalSheets} sheet{totalSheets === 1 ? '' : 's'} of paper
             </p>
@@ -787,27 +810,43 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         </div>
 
         {/* Scrollable Form Settings */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-5 text-xs text-[#e8eaed]">
-          {/* Note: Printer choosing part removed per user instruction */}
-
-          {/* 1. Copies */}
+        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-5 text-xs text-[#e8eaed]">
+          {/* 1. Copies with Stepper for easy mobile tapping */}
           <div className="space-y-1.5">
             <label className="block text-xs font-normal text-[#9aa0a6]">Copies</label>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={modalCopies}
-              onChange={(e) => setModalCopies(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-24 px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs font-sans focus:outline-none focus:border-[#8ab4f8]"
-            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setModalCopies((c) => Math.max(1, c - 1))}
+                className="w-9 h-8 rounded-lg bg-[#2b2d30] hover:bg-[#35363a] border border-[#5f6368] text-white font-bold text-sm flex items-center justify-center active:scale-95 transition-all"
+                title="Decrease copies"
+              >
+                -
+              </button>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={modalCopies}
+                onChange={(e) => setModalCopies(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-16 text-center px-2 py-1.5 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs font-bold focus:outline-none focus:border-[#8ab4f8]"
+              />
+              <button
+                type="button"
+                onClick={() => setModalCopies((c) => Math.min(100, c + 1))}
+                className="w-9 h-8 rounded-lg bg-[#2b2d30] hover:bg-[#35363a] border border-[#5f6368] text-white font-bold text-sm flex items-center justify-center active:scale-95 transition-all"
+                title="Increase copies"
+              >
+                +
+              </button>
+            </div>
           </div>
 
           {/* 2. Layout */}
           <div className="space-y-2">
             <label className="block text-xs font-normal text-[#9aa0a6]">Layout</label>
             <div className="space-y-2">
-              <label className="flex items-center gap-2.5 cursor-pointer">
+              <label className="flex items-center gap-2.5 cursor-pointer py-1">
                 <input
                   type="radio"
                   name="layout"
@@ -817,7 +856,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 />
                 <span className="text-xs text-[#e8eaed]">Portrait</span>
               </label>
-              <label className="flex items-center gap-2.5 cursor-pointer">
+              <label className="flex items-center gap-2.5 cursor-pointer py-1">
                 <input
                   type="radio"
                   name="layout"
@@ -834,7 +873,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           <div className="space-y-2">
             <label className="block text-xs font-normal text-[#9aa0a6]">Pages</label>
             <div className="space-y-2.5">
-              <label className="flex items-center gap-2.5 cursor-pointer">
+              <label className="flex items-center gap-2.5 cursor-pointer py-1">
                 <input
                   type="radio"
                   name="pages"
@@ -862,7 +901,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                     setPageRangeMode('RANGE');
                     setCustomPageRange(e.target.value);
                   }}
-                  className="flex-1 px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs placeholder:text-[#80868b] focus:outline-none focus:border-[#8ab4f8]"
+                  className="flex-1 px-3 py-1.5 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs placeholder:text-[#80868b] focus:outline-none focus:border-[#8ab4f8]"
                 />
               </div>
             </div>
@@ -874,7 +913,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <select
               value={modalColorMode}
               onChange={(e) => setModalColorMode(e.target.value as ColorMode)}
-              className="w-full px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
+              className="w-full px-3 py-2 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
             >
               <option value="BW">Black and white</option>
               <option value="COLOR">Color</option>
@@ -902,7 +941,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             </button>
           </div>
 
-          {/* Collapsible Section: Screenshot 2 Controls */}
+          {/* Collapsible Section */}
           {showMoreSettings && (
             <div className="space-y-5 pt-1 border-t border-[#3c4043]/30">
               {/* Paper Size */}
@@ -911,7 +950,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 <select
                   value={modalPaperSize}
                   onChange={(e) => setModalPaperSize(e.target.value as PaperSize)}
-                  className="w-full px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
+                  className="w-full px-3 py-2 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
                 >
                   {enabledPapers.a4 !== false && <option value="A4">A4</option>}
                   <option value="LETTER">Letter</option>
@@ -929,7 +968,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               <div className="space-y-2">
                 <label className="block text-xs font-normal text-[#9aa0a6]">Scale (%)</label>
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2.5 cursor-pointer">
+                  <label className="flex items-center gap-2.5 cursor-pointer py-1">
                     <input
                       type="radio"
                       name="scale"
@@ -940,7 +979,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                     <span className="text-xs text-[#e8eaed]">Fit to printable area</span>
                   </label>
 
-                  <label className="flex items-center gap-2.5 cursor-pointer">
+                  <label className="flex items-center gap-2.5 cursor-pointer py-1">
                     <input
                       type="radio"
                       name="scale"
@@ -969,7 +1008,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                         setScaleMode('CUSTOM');
                         setCustomScalePercent(parseInt(e.target.value) || 100);
                       }}
-                      className="w-20 px-2.5 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs font-sans focus:outline-none focus:border-[#8ab4f8]"
+                      className="w-20 px-2.5 py-1.5 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs font-sans focus:outline-none focus:border-[#8ab4f8]"
                     />
                   </div>
                 </div>
@@ -981,7 +1020,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 <select
                   value={pagesPerSheet}
                   onChange={(e) => setPagesPerSheet(e.target.value as '1' | '2' | '4')}
-                  className="w-full px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
+                  className="w-full px-3 py-2 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
                 >
                   <option value="1">1</option>
                   <option value="2">2</option>
@@ -992,7 +1031,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               {/* Two-Sided Printing */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-normal text-[#9aa0a6]">Two-sided</label>
-                <label className="flex items-center gap-2.5 cursor-pointer">
+                <label className="flex items-center gap-2.5 cursor-pointer py-1">
                   <input
                     type="checkbox"
                     checked={modalPrintSides === 'DOUBLE'}
@@ -1009,7 +1048,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 <select
                   value={watermark}
                   onChange={(e) => setWatermark(e.target.value as any)}
-                  className="w-full px-3 py-1.5 rounded bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
+                  className="w-full px-3 py-2 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
                 >
                   <option value="NONE">None</option>
                   <option value="CONFIDENTIAL">CONFIDENTIAL</option>
@@ -1021,22 +1060,33 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           )}
         </div>
 
-        {/* Footer Buttons (Fixed at bottom of left panel) */}
-        <div className="px-6 py-4 border-t border-[#3c4043]/40 flex items-center gap-3 shrink-0 bg-[#202124]">
+        {/* Footer Actions (Sticky at bottom of sidebar) */}
+        <div className="px-5 sm:px-6 py-3 sm:py-4 border-t border-[#3c4043]/40 flex items-center justify-between gap-3 shrink-0 bg-[#202124]">
+          {/* On mobile settings tab: quick view preview link */}
           <button
             type="button"
-            onClick={handlePrintApply}
-            className="px-6 py-2 rounded bg-[#1a73e8] hover:bg-[#1b66c9] active:bg-[#185abc] text-white text-xs font-medium shadow-sm transition-colors cursor-pointer"
+            onClick={() => setMobileTab('preview')}
+            className="md:hidden px-3.5 py-2 rounded-lg bg-[#2b2d30] hover:bg-[#35363a] text-slate-300 text-xs font-medium border border-slate-700/60"
           >
-            Print
+            ← View
           </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2 rounded bg-[#3c4043] hover:bg-[#4a4d51] active:bg-[#35373a] text-[#e8eaed] text-xs font-medium border border-[#5f6368]/50 transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
+
+          <div className="flex items-center gap-2.5 ml-auto">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 sm:px-5 py-2 rounded-lg bg-[#3c4043] hover:bg-[#4a4d51] active:bg-[#35373a] text-[#e8eaed] text-xs font-medium border border-[#5f6368]/50 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handlePrintApply}
+              className="px-5 sm:px-6 py-2 rounded-lg bg-[#1a73e8] hover:bg-[#1b66c9] active:bg-[#185abc] text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+            >
+              Print ({totalSheets} {totalSheets === 1 ? 'sheet' : 'sheets'})
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -1044,23 +1094,23 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           RIGHT WORKSPACE: Full Adobe Acrobat / Edge Preview Canvas Area
          ========================================================================= */}
       <main
-        className={`flex-1 bg-[#323639] flex flex-col items-center justify-between p-4 sm:p-6 relative overflow-hidden h-full ${
+        className={`flex-1 bg-[#323639] flex flex-col items-center justify-between p-3 sm:p-6 relative overflow-hidden h-full ${
           mobileTab === 'settings' ? 'hidden md:flex' : 'flex'
         }`}
       >
-        {/* Top Floating Info Tag */}
+        {/* Top Info Bar */}
         <div className="w-full flex items-center justify-between text-xs text-[#9aa0a6] px-2 shrink-0 z-10">
-          <span className="truncate max-w-[200px] sm:max-w-xs font-mono text-[11px]">
+          <span className="truncate max-w-[180px] sm:max-w-xs font-mono text-[11px]">
             {fileName}
           </span>
           <span className="text-[11px] font-mono">
             {modalPaperSize} • {modalLayout === 'LANDSCAPE' ? 'Landscape' : 'Portrait'} •{' '}
-            {isBw ? 'Black & White' : 'Color'}
+            {isBw ? 'B&W' : 'Color'}
           </span>
         </div>
 
         {/* Centered Document Canvas Container */}
-        <div className="flex-1 w-full flex items-center justify-center overflow-auto p-2 sm:p-4 my-auto relative">
+        <div className="flex-1 w-full flex items-center justify-center overflow-auto p-1 sm:p-4 my-auto relative">
           <div
             className="relative bg-white shadow-[0_12px_40px_rgba(0,0,0,0.65)] transition-all duration-150 rounded-xs flex items-center justify-center overflow-hidden border border-slate-400/20"
             style={{
@@ -1069,7 +1119,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 ? `${Math.round(440 * (zoomLevel / 100))}px`
                 : `${Math.round(330 * (zoomLevel / 100))}px`,
               maxWidth: '92%',
-              maxHeight: '82vh',
+              maxHeight: '68vh',
               transform: `rotate(${rotationAngle}deg)`,
               filter: isBw ? 'grayscale(100%)' : 'none',
             }}
@@ -1079,22 +1129,22 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               className="w-full h-full object-contain block select-none pointer-events-none"
             />
 
-            {/* Document Loading Indicator */}
+            {/* Document Loading Overlay */}
             {isPdfLoading && (
-              <div className="absolute inset-0 bg-slate-900/30 backdrop-blur-xs flex items-center justify-center z-20 pointer-events-none">
+              <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center z-20 pointer-events-none">
                 <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900/90 border border-slate-700 text-white text-xs shadow-xl">
                   <div className="w-3.5 h-3.5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                  <span className="font-medium">Loading uploaded document...</span>
+                  <span className="font-medium">Rendering document...</span>
                 </div>
               </div>
             )}
           </div>
         </div>
 
-        {/* Bottom Floating Navigation & Zoom Bar */}
-        <div className="bg-[#202124]/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#3c4043] flex items-center gap-3 text-xs text-white shadow-xl z-20 shrink-0">
+        {/* Bottom Floating Navigation & Zoom Bar (Optimized for Mobile) */}
+        <div className="bg-[#202124]/95 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#3c4043] flex items-center gap-2 sm:gap-3 text-xs text-white shadow-xl z-20 shrink-0 mb-1">
           {/* Page Navigator */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             <button
               type="button"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -1138,10 +1188,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             </button>
           </div>
 
-          <div className="w-[1px] h-4 bg-[#3c4043]" />
+          <div className="w-[1px] h-3.5 bg-[#3c4043]" />
 
           {/* Zoom Controls */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5 sm:gap-1">
             <button
               type="button"
               onClick={() => setZoomLevel((z) => Math.max(50, z - 20))}
@@ -1153,7 +1203,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <button
               type="button"
               onClick={() => setZoomLevel(100)}
-              className="text-[11px] font-mono text-slate-300 hover:text-white px-1"
+              className="text-[10px] sm:text-[11px] font-mono text-slate-300 hover:text-white px-0.5 sm:px-1"
               title="Reset Zoom"
             >
               {zoomLevel}%
@@ -1168,7 +1218,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             </button>
           </div>
 
-          <div className="w-[1px] h-4 bg-[#3c4043]" />
+          <div className="w-[1px] h-3.5 bg-[#3c4043]" />
 
           {/* Rotate View */}
           <button
@@ -1178,6 +1228,31 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             title="Rotate View 90°"
           >
             <RotateCw className="w-3.5 h-3.5" />
+          </button>
+        </div>
+
+        {/* Mobile Bottom Quick-Action Bar in Preview View */}
+        <div className="md:hidden w-full px-2 pt-1 pb-2 flex items-center justify-between gap-2 z-20 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileTab('settings')}
+            className="flex-1 py-2 px-3 rounded-xl bg-[#2b2d30] border border-slate-700/80 text-slate-200 text-xs font-semibold flex items-center justify-between shadow-xs active:scale-98"
+          >
+            <div className="flex items-center gap-1.5">
+              <Sliders className="w-3.5 h-3.5 text-[#8ab4f8]" />
+              <span className="truncate max-w-[130px]">
+                {modalPaperSize} • {isBw ? 'B&W' : 'Color'} • {modalCopies}x
+              </span>
+            </div>
+            <span className="text-[#8ab4f8] text-[11px] font-bold shrink-0">Edit →</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePrintApply}
+            className="py-2 px-4 rounded-xl bg-[#1a73e8] hover:bg-[#1b66c9] active:scale-95 text-white text-xs font-bold shadow-md transition-all shrink-0 cursor-pointer"
+          >
+            Print ({totalSheets})
           </button>
         </div>
       </main>
