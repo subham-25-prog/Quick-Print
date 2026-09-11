@@ -74,16 +74,14 @@ export async function POST(req: NextRequest) {
         const paymentIds = orders.map((o) => o.payment_id).filter(Boolean) as string[];
         const uploadedFileIds = orders.map((o) => o.uploaded_file_id).filter(Boolean) as string[];
 
-        // 1. Delete storage objects (non-blocking)
+        // 1. Delete storage objects in background so database response is immediate
         if (storagePaths.length > 0 && db.storage?.from) {
-          try {
-            await db.storage.from('shop-documents').remove(storagePaths);
-          } catch (e) {
+          db.storage.from('shop-documents').remove(storagePaths).catch((e) => {
             console.warn('Storage removal warning:', e);
-          }
+          });
         }
 
-        // 2. Delete child relations
+        // 2 & 3. Delete child relations and unlink payments concurrently
         await Promise.all([
           db.from('print_jobs').delete().in('order_id', orderIds),
           db.from('order_events').delete().in('order_id', orderIds),
@@ -91,13 +89,11 @@ export async function POST(req: NextRequest) {
           paymentIds.length > 0
             ? db.from('webhook_inbox').delete().in('payment_id', paymentIds)
             : Promise.resolve(),
+          db.from('payments').update({ order_id: null }).in('order_id', orderIds),
+          paymentIds.length > 0
+            ? db.from('payments').update({ order_id: null }).in('id', paymentIds)
+            : Promise.resolve(),
         ]);
-
-        // 3. Unlink payments by order_id and id to avoid FK lock
-        await db.from('payments').update({ order_id: null }).in('order_id', orderIds);
-        if (paymentIds.length > 0) {
-          await db.from('payments').update({ order_id: null }).in('id', paymentIds);
-        }
 
         // 4. Delete orders - verify error is handled
         const { error: deleteOrdersErr } = await db
@@ -111,11 +107,13 @@ export async function POST(req: NextRequest) {
           throw new HttpError(500, `Failed to delete orders: ${deleteOrdersErr.message}`);
         }
 
-        // 5. Clean up payments and uploaded file records
-        await Promise.all([
-          paymentIds.length > 0 ? db.from('payments').delete().in('id', paymentIds) : Promise.resolve(),
-          uploadedFileIds.length > 0 ? db.from('uploaded_files').delete().in('id', uploadedFileIds) : Promise.resolve(),
-        ]);
+        // 5. Clean up payments and uploaded file records in background
+        if (paymentIds.length > 0 || uploadedFileIds.length > 0) {
+          Promise.all([
+            paymentIds.length > 0 ? db.from('payments').delete().in('id', paymentIds) : Promise.resolve(),
+            uploadedFileIds.length > 0 ? db.from('uploaded_files').delete().in('id', uploadedFileIds) : Promise.resolve(),
+          ]).catch((e) => console.warn('Orphan cleanup warning:', e));
+        }
       }
 
       return NextResponse.json({ success: true, clearedCount: orders?.length || 0 });
@@ -159,11 +157,9 @@ export async function POST(req: NextRequest) {
 
       if (order) {
         if (order.storage_path && db.storage?.from) {
-          try {
-            await db.storage.from('shop-documents').remove([order.storage_path]);
-          } catch (e) {
+          db.storage.from('shop-documents').remove([order.storage_path]).catch((e) => {
             console.warn('Storage removal warning:', e);
-          }
+          });
         }
 
         await Promise.all([
@@ -173,12 +169,11 @@ export async function POST(req: NextRequest) {
           order.payment_id
             ? db.from('webhook_inbox').delete().eq('payment_id', order.payment_id)
             : Promise.resolve(),
+          order.payment_id
+            ? db.from('payments').update({ order_id: null }).eq('id', order.payment_id)
+            : Promise.resolve(),
+          db.from('payments').update({ order_id: null }).eq('order_id', orderId),
         ]);
-
-        if (order.payment_id) {
-          await db.from('payments').update({ order_id: null }).eq('id', order.payment_id);
-        }
-        await db.from('payments').update({ order_id: null }).eq('order_id', orderId);
 
         const { error: deleteOrderErr } = await db
           .from('orders')
@@ -191,10 +186,12 @@ export async function POST(req: NextRequest) {
           throw new HttpError(500, `Failed to delete order: ${deleteOrderErr.message}`);
         }
 
-        await Promise.all([
-          order.payment_id ? db.from('payments').delete().eq('id', order.payment_id) : Promise.resolve(),
-          order.uploaded_file_id ? db.from('uploaded_files').delete().eq('id', order.uploaded_file_id) : Promise.resolve(),
-        ]);
+        if (order.payment_id || order.uploaded_file_id) {
+          Promise.all([
+            order.payment_id ? db.from('payments').delete().eq('id', order.payment_id) : Promise.resolve(),
+            order.uploaded_file_id ? db.from('uploaded_files').delete().eq('id', order.uploaded_file_id) : Promise.resolve(),
+          ]).catch((e) => console.warn('Single delete orphan cleanup warning:', e));
+        }
       }
 
       return NextResponse.json({ success: true });

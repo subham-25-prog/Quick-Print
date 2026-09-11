@@ -125,13 +125,18 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             {/* Print Agent Status & 1-Click Launch Button */}
             {dbStatus && (
               dbStatus.agentOnline ? (
-                <span
-                  title={`Windows Print Agent connected (${dbStatus.agentName || 'Active'})`}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200"
+                <Link
+                  href="/admin/settings"
+                  title={`Active Printer: ${dbStatus.agentName || 'Online'}. Click to manage printers in Settings.`}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
                 >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Printer Online</span>
-                </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span className="truncate max-w-[120px] sm:max-w-[160px]">
+                    {dbStatus.agentName && dbStatus.agentName !== 'agent-main-pc'
+                      ? dbStatus.agentName
+                      : 'Printer Online'}
+                  </span>
+                </Link>
               ) : (
                 <button
                   type="button"

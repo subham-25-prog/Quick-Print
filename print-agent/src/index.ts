@@ -52,7 +52,20 @@ async function main() {
   while (!stopping) {
     try {
       if (Date.now() - heartbeatAt >= config.heartbeatIntervalMs) {
-        await client.sendHeartbeat(config.printerName || 'Sandbox simulation');
+        const installed = await printer.getInstalledPrinters();
+        const activeName = printer.getConfiguredPrinter() || config.printerName || 'Sandbox simulation';
+        const hb = await client.sendHeartbeat(activeName, installed);
+        if (hb.activePrinter && hb.activePrinter !== printer.getConfiguredPrinter()) {
+          printer.setConfiguredPrinter(hb.activePrinter);
+          config.printerName = hb.activePrinter;
+          health.updatePrinters(installed, hb.activePrinter);
+          console.log(
+            JSON.stringify({
+              event: 'active_printer_updated',
+              printer: hb.activePrinter,
+            })
+          );
+        }
         health.recordHeartbeat();
         heartbeatAt = Date.now();
       }

@@ -141,6 +141,7 @@ export interface PricingConfig {
   shop_address?: string;
   shop_merchant_qr_image?: string;
   shop_qr_mode?: 'DYNAMIC' | 'CUSTOM_IMAGE';
+  selected_printer?: string;
   currency: string;
   updated_at?: string;
 }

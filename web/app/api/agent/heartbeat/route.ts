@@ -36,9 +36,23 @@ export async function POST(req: NextRequest) {
     const printerName = textField(body.printerName, 200) || 'Unavailable';
     const systemInfo = textField(body.systemInfo, 200);
 
-    await recordAgentHeartbeat(agentId, printerName, systemInfo, mode);
+    let installedPrinters: string[] | undefined = undefined;
+    if (Array.isArray(body.installedPrinters)) {
+      installedPrinters = body.installedPrinters
+        .filter((p: unknown) => typeof p === 'string' && p.trim().length > 0)
+        .slice(0, 50)
+        .map((p: string) => textField(p, 200));
+    }
 
-    return NextResponse.json({ success: true });
+    const { activePrinter } = await recordAgentHeartbeat(
+      agentId,
+      printerName,
+      systemInfo,
+      mode,
+      installedPrinters
+    );
+
+    return NextResponse.json({ success: true, activePrinter });
   } catch (error) {
     return apiError(error);
   }

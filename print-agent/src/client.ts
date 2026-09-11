@@ -20,6 +20,11 @@ export interface ClaimedJob {
 
 export type PrintOutcome = 'SUBMITTED' | 'FAILED' | 'REVIEW';
 
+export interface HeartbeatResponse {
+  success: boolean;
+  activePrinter?: string;
+}
+
 export class ShopApiClient {
   private client: AxiosInstance;
 
@@ -36,13 +41,20 @@ export class ShopApiClient {
     });
   }
 
-  async sendHeartbeat(printerName: string): Promise<boolean> {
-    await this.client.post('/api/agent/heartbeat', {
+  async sendHeartbeat(
+    printerName: string,
+    installedPrinters?: string[]
+  ): Promise<HeartbeatResponse> {
+    const { data } = await this.client.post('/api/agent/heartbeat', {
       printerName,
+      installedPrinters,
       systemInfo: `Node ${process.version} on ${process.platform}`,
       mode: this.config.mode,
     });
-    return true;
+    return {
+      success: true,
+      activePrinter: data?.activePrinter,
+    };
   }
 
   async claimNextJob(): Promise<ClaimedJob | null> {

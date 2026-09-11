@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Order, OrderStatus, PricingConfig } from '@/types';
@@ -50,6 +50,9 @@ export default function AdminLiveOrdersPage() {
   const [agentOnline, setAgentOnline] = useState<boolean | null>(null);
   const [showAgentModal, setShowAgentModal] = useState(false);
 
+  // Set of IDs deleted locally so background polls never resurrect them
+  const deletedOrderIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     let stopped = false;
     const checkAgent = () => {
@@ -94,23 +97,28 @@ export default function AdminLiveOrdersPage() {
 
   const handleConfirmClear = async () => {
     const previousOrders = [...orders];
-    const targetCount = clearScope === 'ALL'
-      ? orders.length
-      : orders.filter((o) => ['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status)).length;
+    const targetOrders = clearScope === 'ALL'
+      ? orders
+      : orders.filter((o) => ['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status));
+    const targetCount = targetOrders.length;
+    const targetIds = targetOrders.map((o) => o.id);
 
-    // Instant Optimistic Update (0ms) - Close modal and remove from UI immediately
+    // 0ms instant local purge: mark IDs deleted & close modal immediately
+    targetIds.forEach((id) => deletedOrderIdsRef.current.add(id));
     setShowClearModal(false);
+    setActionLoadingKey('CLEAR_HISTORY');
+    setIsClearing(true);
+
     if (clearScope === 'ALL') {
       setOrders([]);
     } else {
       setOrders((prev) =>
-        prev.filter((o) => !['PRINTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status))
+        prev.filter((o) => !deletedOrderIdsRef.current.has(o.id))
       );
     }
-    showToast(`Clearing ${targetCount} order(s)...`, 'success');
+    showToast(`Cleared ${targetCount} order(s) from history.`, 'success');
 
     try {
-      setIsClearing(true);
       const res = await fetch('/api/admin/actions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -118,14 +126,15 @@ export default function AdminLiveOrdersPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to clear history');
-      showToast(`History cleared successfully (${data.clearedCount ?? targetCount} orders removed).`, 'success');
       await fetchOrders();
     } catch (err: any) {
       // Revert state if failed
+      targetIds.forEach((id) => deletedOrderIdsRef.current.delete(id));
       setOrders(previousOrders);
       showToast(err.message || 'Could not clear history.', 'error');
     } finally {
       setIsClearing(false);
+      setActionLoadingKey(null);
     }
   };
 
@@ -134,7 +143,8 @@ export default function AdminLiveOrdersPage() {
       return;
     }
 
-    // Instant Optimistic Update (0ms) - remove from UI immediately
+    // 0ms instant local purge
+    deletedOrderIdsRef.current.add(orderId);
     const previousOrders = [...orders];
     setOrders((prev) => prev.filter((o) => o.id !== orderId));
     showToast('Order removed from history.', 'success');
@@ -151,6 +161,7 @@ export default function AdminLiveOrdersPage() {
       await fetchOrders();
     } catch (err: any) {
       // Revert state if failed
+      deletedOrderIdsRef.current.delete(orderId);
       setOrders(previousOrders);
       showToast(err.message || 'Could not delete order.', 'error');
     } finally {
@@ -178,7 +189,9 @@ export default function AdminLiveOrdersPage() {
       const res = await fetch('/api/orders', { cache: 'no-store' });
       const data = await res.json();
       if (Array.isArray(data.orders)) {
-        setOrders(data.orders);
+        // Strip out any locally purged orders so background polls never resurrect them
+        const freshOrders = data.orders.filter((o: Order) => !deletedOrderIdsRef.current.has(o.id));
+        setOrders(freshOrders);
       }
     } catch (err) {
       console.error('Error fetching orders:', err);
@@ -192,13 +205,13 @@ export default function AdminLiveOrdersPage() {
   useEffect(() => {
     fetchOrders();
     const interval = setInterval(() => {
-      // Background poll only if no button action is currently in-flight
-      if (!actionLoadingKey) {
+      // Background poll only if no mutation action is currently in-flight
+      if (!actionLoadingKey && !isClearing) {
         fetchOrders();
       }
     }, 3000);
     return () => clearInterval(interval);
-  }, [fetchOrders, actionLoadingKey]);
+  }, [fetchOrders, actionLoadingKey, isClearing]);
 
   // Counts for tabs
   const currentOrdersCount = useMemo(

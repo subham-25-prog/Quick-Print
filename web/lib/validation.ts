@@ -147,6 +147,11 @@ export function validatePricing(value: PricingConfig): PricingConfig {
   if (value.shop_name !== undefined) textField(value.shop_name, 100);
   if (value.shop_phone !== undefined) textField(value.shop_phone, 100);
   if (value.shop_address !== undefined) textField(value.shop_address, 300);
+  if (value.selected_printer !== undefined && value.selected_printer !== null) {
+    if (typeof value.selected_printer !== 'string' || value.selected_printer.length > 200) {
+      throw new HttpError(400, 'Invalid printer selection.');
+    }
+  }
 
   // Validate boolean / numeric config groups
   const settingGroups = ['enabled_papers', 'enabled_addons', 'form_fields'] as const;

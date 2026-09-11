@@ -38,3 +38,15 @@ test('completion network failure and restart retry ACK without reprinting',async
 test('printer error after dispatch becomes REVIEW and never automatic retry',async()=>{const f=fixture();f.printer.printDocument.mockRejectedValue(new Error('unknown spool outcome'));const w=new AgentWorker(f.client,f.printer,f.journal,dir);await w.tick();await w.tick();expect(f.client.reportJobCompletion).toHaveBeenCalledWith(job,'REVIEW');expect(f.printer.printDocument).toHaveBeenCalledTimes(1);});
 test('crash at dispatch boundary becomes REVIEW',async()=>{const f=fixture();f.journal.append({job,state:'STARTING'});f.client.claimNextJob.mockReset().mockResolvedValue(null);await new AgentWorker(f.client,f.printer,new Journal(join(dir,'journal.jsonl')),dir).tick();expect(f.printer.printDocument).not.toHaveBeenCalled();expect(f.client.reportJobCompletion).toHaveBeenCalledWith(job,'REVIEW');});
 test('offline printer does not claim; bad download never starts',async()=>{const f=fixture();f.printer.ensureReady.mockRejectedValueOnce(new Error('offline'));const w=new AgentWorker(f.client,f.printer,f.journal,dir);await expect(w.tick()).rejects.toThrow();expect(f.client.claimNextJob).not.toHaveBeenCalled();f.client.downloadDocument.mockRejectedValue(new Error('expired'));await w.tick();expect(f.client.startJob).not.toHaveBeenCalled();expect(f.client.reportJobCompletion).toHaveBeenCalledWith(job,'FAILED');});
+
+test('printer service reports installed printers and supports dynamic switching',async()=>{
+  const service = new WindowsPrinterService('Printer A', true);
+  expect(service.getConfiguredPrinter()).toBe('Printer A');
+  service.setConfiguredPrinter('Printer B');
+  expect(service.getConfiguredPrinter()).toBe('Printer B');
+
+  const printers = await service.getInstalledPrinters();
+  expect(Array.isArray(printers)).toBe(true);
+  expect(printers.length).toBeGreaterThan(0);
+});
+

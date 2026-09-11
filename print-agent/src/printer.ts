@@ -30,8 +30,33 @@ export class WindowsPrinterService {
     private simulation = false
   ) {}
 
+  setConfiguredPrinter(printerName: string): void {
+    this.configuredPrinter = printerName;
+  }
+
+  getConfiguredPrinter(): string {
+    return this.configuredPrinter;
+  }
+
   async getInstalledPrinters(): Promise<string[]> {
-    return process.platform === 'win32' ? (await getPrinters()).map((p) => p.name) : [];
+    if (process.platform === 'win32') {
+      try {
+        const printers = await getPrinters();
+        const names = printers.map((p) => p.name).filter(Boolean);
+        if (names.length > 0) return names;
+      } catch {
+        // Fall back to simulation list if error or simulation
+      }
+    }
+    if (this.simulation) {
+      return [
+        'Virtual Thermal Printer (POS-80)',
+        'Standard Office Laser (A4/Duplex)',
+        'Photo Lab Inkjet (Color)',
+        'Microsoft Print to PDF',
+      ];
+    }
+    return [];
   }
 
   async getDefaultPrinterName(): Promise<string> {
