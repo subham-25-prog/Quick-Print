@@ -6,5 +6,7 @@
   "migrations/20260906_multishop_foundation.sql",
   "migrations/20260907_production_invariants.sql",
   "migrations/20260908_fix_order_status_constraint.sql",
-  "migrations/20260909_fix_order_deletion.sql"
+  "migrations/20260909_fix_order_deletion.sql",
+  "migrations/20260912_allow_large_file_uploads.sql",
+  "migrations/20260912_rename_shop_to_cyber_cafe.sql"
 ]

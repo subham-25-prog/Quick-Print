@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS public.shops (
 );
 
 INSERT INTO public.shops (id, name, slug)
-VALUES ('00000000-0000-4000-8000-000000000001', 'QuickPrint Default Shop', 'default-shop')
+VALUES ('00000000-0000-4000-8000-000000000001', 'Cyber Cafe', 'cyber-cafe')
 ON CONFLICT (id) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS public.shop_members (
