@@ -74,6 +74,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
     { label: 'Orders & History', href: '/admin', icon: '📋' },
     { label: 'Shop QR Code', href: '/admin/poster', icon: '📱' },
     { label: 'Shop Settings', href: '/admin/settings', icon: '⚙️' },
+    { label: 'Printing Settings', href: '/admin/printing', icon: '🖨️' },
   ];
 
   const handleLockPortal = async () => {
@@ -126,8 +127,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             {dbStatus && (
               dbStatus.agentOnline ? (
                 <Link
-                  href="/admin/settings"
-                  title={`Active Printer: ${dbStatus.agentName || 'Online'}. Click to manage printers in Settings.`}
+                  href="/admin/printing"
+                  title={`Active Printer: ${dbStatus.agentName || 'Online'}. Click to manage printers.`}
                   className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PricingConfig, CustomAddon, CustomPaperType } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
@@ -476,9 +477,17 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-            When multiple printers are connected to your computer, choose which printer QuickPrint uses to print customer documents automatically.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[11px] text-slate-500 leading-relaxed font-medium flex-1">
+              When multiple printers are connected to your computer, choose which printer QuickPrint uses to print customer documents automatically.
+            </p>
+            <Link
+              href="/admin/printing"
+              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline shrink-0"
+            >
+              Open Printing Settings Tab →
+            </Link>
+          </div>
 
           {/* Printer List / Cards */}
           <div className="space-y-2">
