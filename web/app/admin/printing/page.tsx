@@ -15,7 +15,6 @@ import {
   Zap,
   Layers,
   FileText,
-  ShieldCheck,
   Tag,
 } from '@/components/ui/Icons';
 
@@ -485,48 +484,6 @@ export default function AdminPrintingSettingsPage() {
                 className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
               />
             </label>
-          </div>
-        </section>
-
-        {/* Section 3: Hardware Diagnostics & Protocol */}
-        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-              <h2 className="text-sm font-bold text-slate-900">
-                Print Agent Diagnostics
-              </h2>
-            </div>
-            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-              Windows Engine
-            </span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-              <div className="text-[10px] font-bold text-slate-400">Selected Active Device</div>
-              <div className="font-extrabold text-slate-900 truncate">
-                {form.selected_printer || agentName || 'Not configured'}
-              </div>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-1">
-              <div className="text-[10px] font-bold text-slate-400">1-Click Launch Protocol</div>
-              <div className="font-mono font-bold text-indigo-600 truncate">
-                quickprint://start
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-indigo-50/60 border border-indigo-100 text-[11px] text-slate-600 space-y-2">
-            <div className="font-bold text-indigo-900">💡 Quick Troubleshooting:</div>
-            <ul className="list-disc pl-4 space-y-1 text-slate-600">
-              <li>When multiple printers are connected via USB or Wi-Fi, select the one above to redirect print queue output.</li>
-              <li>To register or launch the background print engine, use the <strong>Start Print Agent</strong> button or run <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-indigo-200 text-indigo-700">register_protocol.bat</span> once.</li>
-              <li>Network printers and PDF virtual printers are supported as long as they appear in your Windows <strong>Printers & scanners</strong> control panel.</li>
-            </ul>
           </div>
         </section>
 
