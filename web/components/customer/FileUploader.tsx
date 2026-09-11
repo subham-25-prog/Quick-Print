@@ -77,87 +77,198 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     setCurrentFileSize(file.size);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
+      let resultFileInfo: {
+        uploadId: string;
+        uploadToken: string;
+        fileName: string;
+        fileType: string;
+        fileSizeBytes: number;
+        pageCount: number;
+        storagePath: string;
+        signedUrl: string;
+      };
 
-      const result = await new Promise<{
-        success: boolean;
-        fileInfo: {
-          uploadId: string;
-          uploadToken: string;
-          fileName: string;
-          fileType: string;
-          fileSizeBytes: number;
-          pageCount: number;
-          storagePath: string;
-          signedUrl: string;
-        };
-      }>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        activeXhr.current = xhr;
+      // For files > 4 MB, use Direct-to-Storage upload via pre-signed URL to bypass Vercel's 4.5 MB body limit.
+      if (file.size > 4 * 1024 * 1024) {
+        // Step 1: Request signed upload destination from server
+        const prepRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'prepare',
+            fileName: file.name,
+            fileSizeBytes: file.size,
+            fileType: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'),
+          }),
+        });
 
-        xhr.upload.onprogress = (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.min(Math.round((event.loaded / event.total) * 92), 92);
-            setUploadProgress(percent);
-            if (percent >= 90) {
-              setUploadStage('processing');
+        const prepData = await prepRes.json();
+        if (!prepRes.ok || !prepData.signedUrl) {
+          throw new Error(prepData.error || 'Failed to prepare upload destination.');
+        }
+
+        // Step 2: Upload directly to Supabase Storage pre-signed URL
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          activeXhr.current = xhr;
+
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percent = Math.min(Math.round((event.loaded / event.total) * 88), 88);
+              setUploadProgress(percent);
+              if (percent >= 85) {
+                setUploadStage('processing');
+              }
             }
-          }
-        };
+          };
 
-        xhr.onload = () => {
-          activeXhr.current = null;
-          setUploadProgress(100);
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const res = JSON.parse(xhr.responseText);
-              resolve(res);
-            } catch {
-              reject(new Error('Invalid response received from server.'));
+          xhr.onload = () => {
+            activeXhr.current = null;
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              try {
+                const res = JSON.parse(xhr.responseText);
+                reject(new Error(res.message || res.error || `Direct storage upload failed with status ${xhr.status}`));
+              } catch {
+                reject(new Error(`Storage upload failed with status ${xhr.status}`));
+              }
             }
-          } else {
-            try {
-              const res = JSON.parse(xhr.responseText);
-              reject(new Error(res.error || `Upload failed with status ${xhr.status}`));
-            } catch {
-              reject(new Error('Failed to upload document. Please try again.'));
+          };
+
+          xhr.onerror = () => {
+            activeXhr.current = null;
+            reject(new Error('Network connection failed during upload to storage.'));
+          };
+
+          xhr.ontimeout = () => {
+            activeXhr.current = null;
+            reject(new Error('Upload timed out. Please try again.'));
+          };
+
+          xhr.onabort = () => {
+            activeXhr.current = null;
+            reject(new Error('Upload cancelled.'));
+          };
+
+          xhr.timeout = 300000; // 5 minutes
+          xhr.open('PUT', prepData.signedUrl);
+          xhr.setRequestHeader('Content-Type', file.type || (isPdf ? 'application/pdf' : 'image/jpeg'));
+          xhr.setRequestHeader('Cache-Control', 'max-age=3600');
+          xhr.send(file);
+        });
+
+        // Step 3: Finalize on server to verify file and extract page count
+        setUploadProgress(92);
+        setUploadStage('processing');
+
+        const finalRes = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'finalize',
+            uploadId: prepData.uploadId,
+            uploadToken: prepData.uploadToken,
+            storagePath: prepData.storagePath,
+            fileName: file.name,
+            fileSizeBytes: file.size,
+            fileType: file.type || (isPdf ? 'application/pdf' : 'image/jpeg'),
+          }),
+        });
+
+        const finalResult = await finalRes.json();
+        if (!finalRes.ok || !finalResult.fileInfo) {
+          throw new Error(finalResult.error || 'Failed to finalize uploaded document.');
+        }
+
+        setUploadProgress(100);
+        resultFileInfo = finalResult.fileInfo;
+      } else {
+        // Standard path for <= 4 MB files: single-request multipart upload
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const result = await new Promise<{
+          success: boolean;
+          fileInfo: {
+            uploadId: string;
+            uploadToken: string;
+            fileName: string;
+            fileType: string;
+            fileSizeBytes: number;
+            pageCount: number;
+            storagePath: string;
+            signedUrl: string;
+          };
+        }>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          activeXhr.current = xhr;
+
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percent = Math.min(Math.round((event.loaded / event.total) * 92), 92);
+              setUploadProgress(percent);
+              if (percent >= 90) {
+                setUploadStage('processing');
+              }
             }
-          }
-        };
+          };
 
-        xhr.onerror = () => {
-          activeXhr.current = null;
-          reject(new Error('Network connection failed during upload.'));
-        };
+          xhr.onload = () => {
+            activeXhr.current = null;
+            setUploadProgress(100);
+            if (xhr.status >= 200 && xhr.status < 300) {
+              try {
+                const res = JSON.parse(xhr.responseText);
+                resolve(res);
+              } catch {
+                reject(new Error('Invalid response received from server.'));
+              }
+            } else {
+              try {
+                const res = JSON.parse(xhr.responseText);
+                reject(new Error(res.error || `Upload failed with status ${xhr.status}`));
+              } catch {
+                reject(new Error('Failed to upload document. Please try again.'));
+              }
+            }
+          };
 
-        xhr.ontimeout = () => {
-          activeXhr.current = null;
-          reject(new Error('Upload timed out. Please try again.'));
-        };
+          xhr.onerror = () => {
+            activeXhr.current = null;
+            reject(new Error('Network connection failed during upload.'));
+          };
 
-        xhr.onabort = () => {
-          activeXhr.current = null;
-          reject(new Error('Upload cancelled.'));
-        };
+          xhr.ontimeout = () => {
+            activeXhr.current = null;
+            reject(new Error('Upload timed out. Please try again.'));
+          };
 
-        xhr.timeout = 300000; // 5 minutes for large files
-        xhr.open('POST', '/api/upload');
-        xhr.send(formData);
-      });
+          xhr.onabort = () => {
+            activeXhr.current = null;
+            reject(new Error('Upload cancelled.'));
+          };
+
+          xhr.timeout = 300000; // 5 minutes for large files
+          xhr.open('POST', '/api/upload');
+          xhr.send(formData);
+        });
+
+        resultFileInfo = result.fileInfo;
+      }
 
       const uploadedData: UploadedFileState = {
-        uploadId: result.fileInfo.uploadId,
-        uploadToken: result.fileInfo.uploadToken,
+        uploadId: resultFileInfo.uploadId,
+        uploadToken: resultFileInfo.uploadToken,
         checkoutKey: crypto.randomUUID(),
         file,
         fileName: file.name,
-        fileType: result.fileInfo?.fileType || file.type,
-        fileSizeBytes: file.size,
-        pageCount: result.fileInfo?.pageCount || 1,
-        storagePath: result.fileInfo?.storagePath || `shop-documents/orders/${file.name}`,
-        signedUrl: result.fileInfo?.signedUrl,
-        previewUrl: result.fileInfo?.signedUrl,
+        fileType: resultFileInfo.fileType || file.type,
+        fileSizeBytes: resultFileInfo.fileSizeBytes || file.size,
+        pageCount: resultFileInfo.pageCount || 1,
+        storagePath: resultFileInfo.storagePath || `shop-documents/orders/${file.name}`,
+        signedUrl: resultFileInfo.signedUrl,
+        previewUrl: resultFileInfo.signedUrl,
       };
 
       onFileUploaded(uploadedData);
