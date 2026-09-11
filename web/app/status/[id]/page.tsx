@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
@@ -24,6 +24,10 @@ export default function OrderStatusPage() {
   const token = search.get('access_token');
   const shopName = useShopName();
 
+  const currentIdRef = useRef(id);
+  const currentTokenRef = useRef(token || '');
+  const hasReplacedUrlRef = useRef(false);
+
   const [data, setData] = useState<{
     order: Order;
     job: { status: string; is_test: boolean; submitted_at?: string };
@@ -35,6 +39,12 @@ export default function OrderStatusPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    if (token) {
+      currentTokenRef.current = token;
+    }
+  }, [token]);
+
+  useEffect(() => {
     if (data?.order?.order_number && typeof document !== 'undefined') {
       document.title = `${shopName} – Order #${data.order.order_number}`;
     }
@@ -44,17 +54,16 @@ export default function OrderStatusPage() {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     let consecutiveErrors = 0;
-    let currentId = id;
-    let currentToken = token;
 
     async function poll() {
       try {
-        if (!currentToken) {
+        const activeToken = currentTokenRef.current;
+        if (!activeToken) {
           throw new Error('This order link is missing an access token.');
         }
 
-        const res = await fetch('/api/orders/' + currentId, {
-          headers: { 'x-order-access-token': currentToken },
+        const res = await fetch('/api/orders/' + currentIdRef.current, {
+          headers: { 'x-order-access-token': activeToken },
           cache: 'no-store',
         });
 
@@ -68,14 +77,20 @@ export default function OrderStatusPage() {
           setData(result);
           setError('');
 
-          // If assigned a new orderId, track it and keep the browser URL clean
-          if (result.order?.id && result.order.id !== currentId) {
-            currentId = result.order.id;
-            const nextToken: string = typeof result.orderAccessToken === 'string' && result.orderAccessToken
-              ? result.orderAccessToken : currentToken;
-            currentToken = nextToken;
+          // If assigned a new orderId (e.g. cash order verified and promoted to orders table),
+          // update the browser URL exactly once to keep the URL stable and prevent looping.
+          if (
+            result.order?.id &&
+            result.order.id !== id &&
+            !hasReplacedUrlRef.current
+          ) {
+            hasReplacedUrlRef.current = true;
+            currentIdRef.current = result.order.id;
+            if (result.orderAccessToken) {
+              currentTokenRef.current = result.orderAccessToken;
+            }
             if (typeof window !== 'undefined') {
-              const nextUrl = `/status/${currentId}?access_token=${encodeURIComponent(nextToken)}`;
+              const nextUrl = `/status/${result.order.id}?access_token=${encodeURIComponent(currentTokenRef.current)}`;
               window.history.replaceState(null, '', nextUrl);
             }
           }
@@ -112,7 +127,7 @@ export default function OrderStatusPage() {
         broadcastCh = new BroadcastChannel('quickprint_order_events');
         broadcastCh.onmessage = (ev) => {
           if (!ev.data) return;
-          if (!ev.data.orderId || ev.data.orderId === currentId) {
+          if (!ev.data.orderId || ev.data.orderId === currentIdRef.current) {
             // Trigger instantaneous check without waiting for timer
             clearTimeout(timer);
             void poll();
@@ -128,7 +143,7 @@ export default function OrderStatusPage() {
         try { broadcastCh.close(); } catch {}
       }
     };
-  }, [id, token]);
+  }, [id]);
 
   const copyOrderId = () => {
     if (!data?.order?.order_number) return;
