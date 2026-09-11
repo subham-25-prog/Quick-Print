@@ -115,7 +115,6 @@ export async function POST(req: NextRequest) {
       }
 
       const paymentReference = `QP_CASH_${paymentId.replace(/-/g, '').slice(0, 16)}`;
-      const transactionId = `CASH_${paymentId.replace(/-/g, '').slice(0, 12)}`;
       const isSandbox = (process.env.PAYMENT_ENVIRONMENT || 'sandbox') === 'sandbox';
 
       const draftOrderData = {

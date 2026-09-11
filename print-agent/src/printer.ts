@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
-import { print, getPrinters, getDefaultPrinter } from 'pdf-to-printer';
+import { print, getDefaultPrinter } from 'pdf-to-printer';
 import { ClaimedJob } from './client';
 
 const execute = promisify(execFile);

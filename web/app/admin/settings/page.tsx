@@ -5,24 +5,18 @@ import Link from 'next/link';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PricingConfig, CustomAddon, CustomPaperType } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
-import { formatCurrency } from '@/lib/utils';
 import { publishShopNameUpdate } from '@/lib/shop-sync';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import {
-  Save,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCw,
-  Layers,
-  FileText,
-  CreditCard,
-  Plus,
-  Trash2,
-  User,
-  Phone,
-  MessageSquare,
-  Zap,
-  Printer,
+Save,
+CheckCircle2,
+AlertCircle,
+RefreshCw,
+Layers,Plus,
+Trash2,
+User,
+Phone,
+MessageSquare,Printer
 } from '@/components/ui/Icons';
 
 export default function AdminSettingsPage() {

@@ -6,17 +6,13 @@ import { PricingConfig } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import {
-  Printer,
-  CheckCircle2,
-  AlertCircle,
-  RefreshCw,
-  Save,
-  Play,
-  Zap,
-  Layers,
-  FileText,
-  Tag,
-  Trash2,
+Printer,
+CheckCircle2,
+AlertCircle,
+RefreshCw,
+Save,
+Play,
+Zap,Trash2
 } from '@/components/ui/Icons';
 
 export default function AdminPrintingSettingsPage() {
@@ -31,7 +27,6 @@ export default function AdminPrintingSettingsPage() {
   >([]);
   const [loadingPrinters, setLoadingPrinters] = useState(false);
   const [agentOnline, setAgentOnline] = useState(false);
-  const [agentName, setAgentName] = useState<string | null>(null);
   const [manualPrinterName, setManualPrinterName] = useState('');
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
@@ -64,7 +59,6 @@ export default function AdminPrintingSettingsPage() {
       if (res.ok) {
         const data = await res.json();
         if (data.agentOnline !== undefined) setAgentOnline(Boolean(data.agentOnline));
-        if (data.agentName) setAgentName(data.agentName);
       }
     } catch {}
   };

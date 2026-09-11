@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { shopConfig } from '@/lib/config';
 import { useShopName } from '@/lib/shop-sync';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Lock, AlertCircle, ArrowRight } from '@/components/ui/Icons';

@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText, CheckCircle2, AlertCircle, RefreshCw, X } from '@/components/ui/Icons';
-import { formatBytes } from '@/lib/utils';
+import { FileText,AlertCircle,RefreshCw,X } from '@/components/ui/Icons';
 
 export interface UploadedFileState {
   uploadId: string;

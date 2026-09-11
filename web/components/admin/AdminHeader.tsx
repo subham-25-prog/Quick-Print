@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Zap, Lock, Save, Play, Printer, X } from '@/components/ui/Icons';
-import { shopConfig } from '@/lib/config';
 import { useShopName } from '@/lib/shop-sync';
 
 interface AdminHeaderProps {

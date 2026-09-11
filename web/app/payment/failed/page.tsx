@@ -1,7 +1,5 @@
 'use client';
-import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { ArrowLeft, ShieldAlert } from '@/components/ui/Icons';
 

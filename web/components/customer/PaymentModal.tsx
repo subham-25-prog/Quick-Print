@@ -9,7 +9,6 @@ interface PaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   amount: number;
-  orderNumberPreview: string;
   onConfirmPayment: (method: 'UPI' | 'CASH') => Promise<void>;
   submitting: boolean;
   pricing?: PricingConfig;
@@ -20,7 +19,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   isOpen,
   onClose,
   amount,
-  orderNumberPreview,
   onConfirmPayment,
   submitting,
   pricing,

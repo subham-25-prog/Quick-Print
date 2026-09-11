@@ -79,11 +79,10 @@ export async function rateLimit(
 }
 
 const DEFAULT_AGENT_ID = 'agent-main-pc';
-const DEFAULT_AGENT_SECRET = 'pYk-d8ajyGIcuqLqETqVrVWg7KOmiIuf8RR3hQze1c8';
 
 export function agentIdentity(req: Request): string {
   const expectedId = process.env.PRINT_AGENT_ID || DEFAULT_AGENT_ID;
-  const expectedSecret = process.env.PRINT_AGENT_SECRET || DEFAULT_AGENT_SECRET;
+  const expectedSecret = process.env.PRINT_AGENT_SECRET || '';
   const token = req.headers.get('authorization')?.replace(/^Bearer /i, '') || '';
   const agentId = req.headers.get('x-agent-id') || '';
 

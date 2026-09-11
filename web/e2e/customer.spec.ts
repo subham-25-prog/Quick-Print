@@ -19,20 +19,20 @@ test('mobile upload, authoritative checkout UI, pending refresh and backend-conf
   await page.getByRole('button',{name:'Pay & Print',exact:false}).click();
   await page.getByRole('button',{name:/Pay Online/}).click();
   await expect(page).toHaveURL(/\/payment\//);
-  await expect(page.getByRole('heading',{name:'Waiting for payment confirmation'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Verifying Your Payment'})).toBeVisible();
   await page.reload();await expect(page.getByText('Order confirmed',{exact:false})).toHaveCount(0);
-  verified=true;await expect(page).toHaveURL(/\/order\/success\//,{timeout:15000});
-  await expect(page.getByText('Payment verified · Order confirmed')).toBeVisible();
-  await expect(page.getByText('The shop computer is offline.',{exact:false})).toBeVisible();
+  verified=true;await expect(page).toHaveURL(/\/status\//,{timeout:15000});
+  await expect(page.getByText('QP-TEST',{exact:false}).first()).toBeVisible();
+  await expect(page.getByText('Shop Agent Offline (Order Queued)')).toBeVisible();
   expect(errors).toEqual([]);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await page.screenshot({path:'test-results/verified-order-mobile.png',fullPage:true});
 });
-test('forged return parameters never confirm payment; failed payment offers retry',async({page})=>{
+test('forged return parameters never confirm payment; failed payment returns to checkout',async({page})=>{
   await page.route('**/api/payments/'+id,r=>r.fulfill({json:{status:'FAILED',reference:'QP-failed',amount:5,environment:'sandbox'}}));
   await page.goto('/payment/'+id+'?access_token=invalid&status=SUCCESS&paid=true');
-  await expect(page.getByRole('heading',{name:'Payment not completed'})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Retry payment'})).toBeVisible();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByText('Previous payment was not completed.',{exact:false})).toBeVisible();
   await expect(page.getByText('Order confirmed',{exact:false})).toHaveCount(0);
 });
 test('missing merchant setup disables payment even with an uploaded document',async({page})=>{
@@ -57,6 +57,6 @@ test('dashboard and settings show server data without manual payment approval',a
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await page.screenshot({path:'test-results/dashboard-mobile.png',fullPage:true});
   await page.goto('/admin/settings');await expect(page.getByRole('heading',{name:'Customize Client Page'})).toBeVisible();
-  await expect(page.getByRole('heading',{name:'5. Payment & Checkout Settings'})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/Payment & Checkout Settings/})).toBeVisible();
   await page.screenshot({path:'test-results/settings-mobile.png',fullPage:true});
 });

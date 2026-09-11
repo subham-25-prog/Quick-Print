@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Order } from '@/types';
-import { Clock, Printer, CheckCircle2, AlertCircle, ShoppingCart } from '@/components/ui/Icons';
+import { Clock,Printer,CheckCircle2,ShoppingCart } from '@/components/ui/Icons';
 
 interface AdminStatsOverviewProps {
   orders: Order[];
@@ -16,10 +16,6 @@ export const AdminStatsOverview: React.FC<AdminStatsOverviewProps> = ({ orders }
   const approved = orders.filter((o) => o.order_status === 'APPROVED').length;
   const printing = orders.filter((o) => o.order_status === 'PRINTING').length;
   const completed = orders.filter((o) => o.order_status === 'PRINTED' || o.order_status === 'SUBMITTED').length;
-
-  const totalRevenue = orders
-    .filter((o) => o.order_status === 'PRINTED' || o.order_status === 'SUBMITTED' || o.payment_status === 'VERIFIED' || o.payment_status === 'PAID')
-    .reduce((sum, o) => sum + (o.total_amount || 0), 0);
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

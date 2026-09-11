@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useParams, useSearchParams, useRouter } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Order } from '@/types';
@@ -22,7 +22,6 @@ import { useShopName } from '@/lib/shop-sync';
 export default function OrderStatusPage() {
   const { id } = useParams<{ id: string }>();
   const search = useSearchParams();
-  const router = useRouter();
   const token = search.get('access_token');
   const shopName = useShopName();
 
@@ -35,7 +34,6 @@ export default function OrderStatusPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   useEffect(() => {
     if (data?.order?.order_number && typeof document !== 'undefined') {
@@ -70,16 +68,15 @@ export default function OrderStatusPage() {
         if (!stopped) {
           setData(result);
           setError('');
-          setLastUpdated(new Date());
 
           // If assigned a new orderId, track it and keep the browser URL clean
           if (result.order?.id && result.order.id !== currentId) {
             currentId = result.order.id;
-            if (result.orderAccessToken) {
-              currentToken = result.orderAccessToken;
-            }
+            const nextToken: string = typeof result.orderAccessToken === 'string' && result.orderAccessToken
+              ? result.orderAccessToken : currentToken;
+            currentToken = nextToken;
             if (typeof window !== 'undefined') {
-              const nextUrl = `/status/${currentId}?access_token=${encodeURIComponent(currentToken)}`;
+              const nextUrl = `/status/${currentId}?access_token=${encodeURIComponent(nextToken)}`;
               window.history.replaceState(null, '', nextUrl);
             }
           }

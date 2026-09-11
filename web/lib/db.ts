@@ -159,7 +159,7 @@ export async function getAllOrders(status = 'ALL'): Promise<Order[]> {
   const existingPaymentIds = new Set(existingOrders.map((o) => o.payment_id).filter(Boolean));
 
   // Include pending cash payments that are awaiting counter verification
-  let pendingCashOrders: Order[] = [];
+  const pendingCashOrders: Order[] = [];
   if (status === 'ALL' || status === 'PENDING' || status === 'PAYMENT_VERIFICATION_PENDING') {
     try {
       const { data: pendingPayments } = await db
@@ -220,7 +220,7 @@ export async function getAllOrders(status = 'ALL'): Promise<Order[]> {
 export async function updateOrderStatus(
   id: string,
   status: OrderStatus,
-  actor = 'ADMIN',
+  _actor = 'ADMIN',
   extra: Record<string, unknown> = {}
 ): Promise<Order> {
   const db = database();
@@ -356,9 +356,9 @@ export async function recordAgentHeartbeat(
     discoveredNames.add(printerName.trim());
   }
 
-  for (const name of discoveredNames) {
-    await db.from('printers').upsert(
-      {
+  if (discoveredNames.size > 0) {
+    const { error: printerError } = await db.from('printers').upsert(
+      [...discoveredNames].map((name) => ({
         shop_id: shopId,
         agent_id: agentId,
         name,
@@ -366,9 +366,10 @@ export async function recordAgentHeartbeat(
         status: 'ONLINE',
         last_seen: nowIso,
         updated_at: nowIso,
-      },
+      })),
       { onConflict: 'shop_id,system_identifier' }
     );
+    if (printerError) throw printerError;
   }
 
   return { activePrinter };
@@ -395,26 +396,6 @@ export async function getShopPrinters(): Promise<{
 }> {
   const db = database();
   const shopId = getCurrentShopId();
-
-  // Purge any legacy virtual/software printer records so they never appear
-  try {
-    const { data: legacyRows } = await db
-      .from('printers')
-      .select('id, name')
-      .eq('shop_id', shopId);
-
-    if (Array.isArray(legacyRows)) {
-      const virtualIds = legacyRows
-        .filter((p: any) => isVirtualSystemPrinter(p.name))
-        .map((p: any) => p.id);
-
-      if (virtualIds.length > 0) {
-        await db.from('printers').delete().in('id', virtualIds);
-      }
-    }
-  } catch (cleanupErr) {
-    console.warn('Virtual printer purge warning:', cleanupErr);
-  }
 
   const { data: settings } = await db
     .from('shop_settings')

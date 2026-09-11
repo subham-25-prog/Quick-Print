@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { PaperSize, ColorMode, PrintSides, PricingConfig, AdvancedPrintConfig } from '@/types';
-import { FileText, Image as ImageIcon, Sliders, CheckCircle2 } from '@/components/ui/Icons';
+import { PaperSize, ColorMode, PrintSides, PricingConfig } from '@/types';
+import { FileText,Image as ImageIcon } from '@/components/ui/Icons';
 import { formatCurrency } from '@/lib/utils';
 
 interface PrintOptionsSelectorProps {
@@ -15,8 +15,6 @@ interface PrintOptionsSelectorProps {
   copies: number;
   onCopiesChange: (val: number) => void;
   pricing: PricingConfig;
-  advancedConfig?: AdvancedPrintConfig;
-  onOpenAdobeModal?: () => void;
 }
 
 export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
@@ -29,8 +27,6 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
   copies,
   onCopiesChange,
   pricing,
-  advancedConfig,
-  onOpenAdobeModal,
 }) => {
   const enabledPapers = pricing?.enabled_papers || { a4: true, a3: true, legal: true, photo: true };
   const customPapers = (pricing?.custom_papers || []).filter((p) => p.enabled);

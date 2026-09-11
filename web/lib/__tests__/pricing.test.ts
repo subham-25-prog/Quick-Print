@@ -1,4 +1,5 @@
 import assert from 'node:assert';
+import { test } from 'vitest';
 import { calculateOrderPrice } from '../pricing';
 import { PricingConfig, Order } from '../../types';
 
@@ -37,8 +38,8 @@ const updatedPricing: PricingConfig = {
   addon_spiral_binding: 50.0, // Increased from 30.0 to 50.0
 };
 
-console.log('--- Running Pricing Engine & Immutability Tests ---');
 
+test('pricing accuracy and historical snapshot immutability', () => {
 // Test 1: Calculation accuracy
 const breakdown1 = calculateOrderPrice(10, {
   paperSize: 'A4',
@@ -54,7 +55,6 @@ const breakdown1 = calculateOrderPrice(10, {
 assert.strictEqual(breakdown1.printSubtotal, 40.0, 'Print subtotal should be 40.0');
 assert.strictEqual(breakdown1.addOnsSubtotal, 60.0, 'Add-ons subtotal should be 60.0');
 assert.strictEqual(breakdown1.totalAmount, 100.0, 'Total amount should be 100.0');
-console.log('✅ Test 1 Passed: Order price calculation is accurate.');
 
 // Test 2: Historical Pricing Snapshot Immutability
 const historicOrder: Order = {
@@ -112,5 +112,5 @@ assert.strictEqual(recalculatedWithSnapshot.totalAmount, historicOrder.total_amo
 assert.strictEqual(recalculatedWithNewPricing.totalAmount, 180.0, 'New pricing total should reflect updated rates (180.0)');
 assert.notStrictEqual(recalculatedWithSnapshot.totalAmount, recalculatedWithNewPricing.totalAmount, 'Historic snapshot total MUST remain immune to active pricing changes');
 
-console.log('✅ Test 2 Passed: Historical pricing snapshot immutability verified!');
-console.log('🎉 All Pricing Engine Tests Passed Successfully!\n');
+
+});

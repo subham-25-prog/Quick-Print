@@ -260,7 +260,7 @@ export class PhonePeProvider implements PaymentProvider {
     }
 
     const raw = await readText(req, 65536);
-    let data: any = {};
+    let data: any;
     try {
       data = raw.trim() ? JSON.parse(raw) : {};
     } catch {

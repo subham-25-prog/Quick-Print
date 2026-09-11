@@ -3,7 +3,6 @@
 import React from 'react';
 import { AddOnOptions, PricingConfig } from '@/types';
 import { formatCurrency } from '@/lib/utils';
-import { Sparkles } from '@/components/ui/Icons';
 
 interface AddOnsSelectorProps {
   addOns: AddOnOptions;

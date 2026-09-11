@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState,useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
@@ -9,7 +9,7 @@ import { FileUploader, UploadedFileState } from '@/components/customer/FileUploa
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
 import { calculateOrderPrice } from '@/lib/pricing';
-import { formatCurrency, generateOrderNumber } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { defaultPricingConfig } from '@/lib/config';
 import {
   PaperSize,
@@ -34,7 +34,6 @@ const AdobePrintPreviewModal = dynamic(
 export default function CustomerHomePage() {
   const router = useRouter();
 
-  const [mounted, setMounted] = useState(false);
 
   // Shop pricing state
   const [pricing, setPricing] = useState<PricingConfig>(defaultPricingConfig);
@@ -71,11 +70,9 @@ export default function CustomerHomePage() {
   const [pricingReady,setPricingReady]=useState(false);
   const [checkoutEnabled,setCheckoutEnabled]=useState(false);
   const [paymentErrorNotice, setPaymentErrorNotice] = useState<string | null>(null);
-  const [tempOrderNumber, setTempOrderNumber] = useState<string>('QP-PREV');
 
   // Fetch shop pricing on mount & listen for live admin updates
   useEffect(() => {
-    setMounted(true);
     try {
       localStorage.removeItem('quickprint_last_checkout');
       if (typeof window !== 'undefined') {
@@ -202,7 +199,6 @@ export default function CustomerHomePage() {
       }
     } catch {}
 
-    setTempOrderNumber(generateOrderNumber());
 
     return () => {
       disposed = true;
@@ -375,8 +371,6 @@ export default function CustomerHomePage() {
             copies={copies}
             onCopiesChange={setCopies}
             pricing={pricing}
-            advancedConfig={advancedConfig}
-            onOpenAdobeModal={() => setIsAdobeModalOpen(true)}
           />
         </section>
 
@@ -560,7 +554,6 @@ export default function CustomerHomePage() {
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         amount={priceBreakdown.totalAmount}
-        orderNumberPreview={tempOrderNumber}
         onConfirmPayment={handleConfirmOrder}
         submitting={submitting}
         pricing={pricing}

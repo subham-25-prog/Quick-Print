@@ -7,31 +7,17 @@ import { Order, OrderStatus, PricingConfig } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
-  Printer,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Eye,
-  RefreshCw,
-  FileText,
-  CreditCard,
-  Banknote,
-  ShieldCheck,
-  AlertCircle,
-  Inbox,
-  Sparkles,
-  Search,
-  Copy,
-  Check,
-  Phone,
-  MessageSquare,
-  Layers,
-  Zap,
-  RotateCcw,
-  X,
-  Tag,
-  Trash2,
-  Play,
+Printer,
+CheckCircle2,Clock,RefreshCw,
+FileText,AlertCircle,
+Inbox,Search,
+Copy,
+Check,
+Phone,
+MessageSquare,
+Layers,RotateCcw,
+X,Trash2,
+Play
 } from '@/components/ui/Icons';
 
 export default function AdminLiveOrdersPage() {
@@ -680,11 +666,6 @@ export default function AdminLiveOrdersPage() {
                 const isPrinting = order.order_status === 'APPROVED' || order.order_status === 'PRINTING';
                 const isPrinted = order.order_status === 'PRINTED' || order.order_status === 'SUBMITTED';
                 const isRejected = order.order_status === 'REJECTED';
-
-                const isApproving = actionLoadingKey === `${order.id}_APPROVE_PRINT`;
-                const isRejecting = actionLoadingKey === `${order.id}_REJECT`;
-                const isCompleting = actionLoadingKey === `${order.id}_MARK_PRINTED`;
-                const isRetrying = actionLoadingKey === `${order.id}_RETRY_PRINT`;
 
                 const fileBadge = getFileBadge(order.file_name);
                 const initials = getInitials(order.customer_name);

@@ -70,17 +70,14 @@ export function useShopName(explicitShopName?: string): string {
     if (explicitShopName && explicitShopName.trim()) {
       return explicitShopName.trim();
     }
-    return getStoredShopName();
+    return shopConfig.name;
   });
 
-  // Sync if explicitShopName prop changes
   useEffect(() => {
-    if (explicitShopName && explicitShopName.trim()) {
-      setShopName(explicitShopName.trim());
-    }
-  }, [explicitShopName]);
+    // The parent already supplies pricing; avoid another request and subscription.
+    if (explicitShopName?.trim()) return;
+    setShopName(getStoredShopName());
 
-  useEffect(() => {
     // 1. In-tab custom event listener
     const handleCustomEvent = (e: Event) => {
       const customEvent = e as CustomEvent<string>;
@@ -109,7 +106,7 @@ export function useShopName(explicitShopName?: string): string {
       if ('BroadcastChannel' in window) {
         channel = new BroadcastChannel(SHOP_BROADCAST_CHANNEL);
         channel.onmessage = (event) => {
-          if (event.data?.type === 'SHOP_NAME_UPDATED' && event.data?.shopName) {
+          if (event.data?.type === 'SHOP_NAME_UPDATED' && typeof event.data?.shopName === 'string') {
             setShopName(event.data.shopName.trim());
           }
         };
@@ -118,10 +115,11 @@ export function useShopName(explicitShopName?: string): string {
 
     // 4. Initial fetch fallback if we're still on default
     let isMounted = true;
-    fetch('/api/admin/pricing', { cache: 'no-store' })
+    const controller = new AbortController();
+    fetch('/api/admin/pricing', { cache: 'no-store', signal: controller.signal })
       .then((res) => res.json())
       .then((data) => {
-        if (isMounted && data?.pricing?.shop_name) {
+        if (isMounted && typeof data?.pricing?.shop_name === 'string') {
           const serverName = data.pricing.shop_name.trim();
           setShopName((prev) => (prev === shopConfig.name ? serverName : prev));
           try {
@@ -136,13 +134,14 @@ export function useShopName(explicitShopName?: string): string {
 
     return () => {
       isMounted = false;
+      controller.abort();
       window.removeEventListener(SHOP_NAME_EVENT, handleCustomEvent);
       window.removeEventListener('storage', handleStorage);
       if (channel) {
         channel.close();
       }
     };
-  }, []);
+  }, [explicitShopName]);
 
-  return shopName;
+  return explicitShopName?.trim() || shopName;
 }

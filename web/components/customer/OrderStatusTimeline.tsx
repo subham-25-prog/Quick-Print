@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { OrderStatus, PaymentMethod, PaymentStatus } from '@/types';
-import { CheckCircle2, Clock, Printer, Check, XCircle, AlertTriangle, AlertCircle } from '@/components/ui/Icons';
+import { Check,XCircle,AlertTriangle } from '@/components/ui/Icons';
 
 interface OrderStatusTimelineProps {
   orderStatus: OrderStatus;

@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { formatCurrency } from '@/lib/utils';
 import { ArrowLeft, RefreshCw, AlertCircle, ShieldAlert } from '@/components/ui/Icons';
@@ -28,7 +27,6 @@ export default function PaymentPage() {
   const [state, setState] = useState<Status | null>(null);
   const [error, setError] = useState('');
   const [retrying, setRetrying] = useState(false);
-  const [statusMessage, setStatusMessage] = useState('Waiting for payment confirmation…');
 
   useEffect(() => {
     let stopped = false;

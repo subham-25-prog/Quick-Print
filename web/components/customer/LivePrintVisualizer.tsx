@@ -2,16 +2,13 @@
 
 import React from 'react';
 import {
-  CheckCircle2,
-  RefreshCw,
-  Printer,
-  FileText,
-  Sparkles,
-  Cloud,
-  Check,
-  AlertCircle,
-  Clock,
-  ShieldCheck,
+CheckCircle2,
+RefreshCw,
+Printer,
+FileText,
+Sparkles,
+Cloud,
+Check
 } from '@/components/ui/Icons';
 import { useShopName } from '@/lib/shop-sync';
 

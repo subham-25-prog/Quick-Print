@@ -7,10 +7,6 @@ const SESSION_TTL_SECONDS = 60 * 60 * 12;
 const DEVELOPMENT_SESSION_SECRET = 'quickprint-development-session-secret-change-before-launch';
 const DEVELOPMENT_PIN = '123456';
 
-function isProduction(): boolean {
-  return process.env.NODE_ENV === 'production';
-}
-
 function safeEqual(left: string, right: string): boolean {
   const leftBuffer = Buffer.from(left);
   const rightBuffer = Buffer.from(right);
@@ -20,13 +16,13 @@ function safeEqual(left: string, right: string): boolean {
 function sessionSecret(): string {
   const secret = process.env.ADMIN_SESSION_SECRET?.trim();
   if (secret && secret.length >= 16) return secret;
-  return secret || DEVELOPMENT_SESSION_SECRET;
+  return process.env.NODE_ENV === 'production' ? '' : DEVELOPMENT_SESSION_SECRET;
 }
 
 export function configuredAdminPin(): string {
   const pin = process.env.ADMIN_PIN?.trim();
   if (pin && pin.length >= 4) return pin;
-  return DEVELOPMENT_PIN;
+  return process.env.NODE_ENV === 'production' ? '' : DEVELOPMENT_PIN;
 }
 
 function signature(payload: string): string | null {
