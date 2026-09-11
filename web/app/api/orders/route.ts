@@ -158,53 +158,12 @@ export async function POST(req: NextRequest) {
       const { error: paymentError } = await db.from('payments').insert(paymentRecord);
       if (paymentError) throw new HttpError(409, `Payment creation failed: ${paymentError.message}`);
 
-      const orderRecord = {
-        id: orderId,
-        shop_id: shopId,
-        order_number: `QP-${orderId.replace(/-/g, '').slice(0, 16).toUpperCase()}`,
-        payment_id: paymentId,
-        uploaded_file_id: uploadId,
-        file_name: file.file_name,
-        storage_path: file.storage_path,
-        file_type: 'application/pdf',
-        file_size_bytes: file.file_size_bytes,
-        page_count: file.page_count,
-        paper_size: options.paperSize,
-        color_mode: options.colorMode,
-        print_sides: options.printSides,
-        copies: options.copies,
-        add_ons: options.addOns,
-        per_page_rate: price.effectiveRatePerPage,
-        print_subtotal: price.printSubtotal,
-        addons_subtotal: price.addOnsSubtotal,
-        total_amount: price.totalAmount,
-        currency: 'INR',
-        pricing_snapshot: pricing,
-        payment_method: 'CASH',
-        payment_status: 'AWAITING_VERIFICATION',
-        order_status: 'PAYMENT_VERIFICATION_PENDING',
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_notes: customerNotes,
-        transaction_ref: transactionId,
-      };
-
-      const { error: orderError } = await db.from('orders').insert(orderRecord);
-      if (orderError) throw new HttpError(409, `Cash order creation failed: ${orderError.message}`);
-
-      // Now that the order exists in the DB, link the payment record to it
-      try {
-        await db.from('payments').update({ order_id: orderId }).eq('id', paymentId);
-      } catch (linkErr) {
-        console.warn('Non-fatal: could not link payment to order_id immediately:', linkErr);
-      }
-
       return NextResponse.json(
         {
           success: true,
           paymentId,
           accessToken,
-          orderId,
+          orderId: paymentId,
           orderAccessToken: accessToken,
           amount: price.totalAmount,
           reference: paymentReference,

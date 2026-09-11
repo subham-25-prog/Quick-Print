@@ -137,10 +137,13 @@ export async function getOrderById(id: string): Promise<Order | null> {
 }
 
 export async function getAllOrders(status = 'ALL'): Promise<Order[]> {
-  let query = database()
+  const db = database();
+  const shopId = getCurrentShopId();
+
+  let query = db
     .from('orders')
     .select('*')
-    .eq('shop_id', getCurrentShopId())
+    .eq('shop_id', shopId)
     .not('payment_id', 'is', null)
     .order('created_at', { ascending: false })
     .limit(500);
@@ -151,7 +154,67 @@ export async function getAllOrders(status = 'ALL'): Promise<Order[]> {
 
   const { data, error } = await query;
   if (error) throw error;
-  return data as Order[];
+
+  const existingOrders = (data || []) as Order[];
+  const existingPaymentIds = new Set(existingOrders.map((o) => o.payment_id).filter(Boolean));
+
+  // Include pending cash payments that are awaiting counter verification
+  let pendingCashOrders: Order[] = [];
+  if (status === 'ALL' || status === 'PENDING' || status === 'PAYMENT_VERIFICATION_PENDING') {
+    try {
+      const { data: pendingPayments } = await db
+        .from('payments')
+        .select('*')
+        .eq('shop_id', shopId)
+        .eq('provider', 'cash')
+        .eq('status', 'PENDING')
+        .is('order_id', null)
+        .order('created_at', { ascending: false });
+
+      if (Array.isArray(pendingPayments)) {
+        for (const p of pendingPayments) {
+          if (existingPaymentIds.has(p.id)) continue;
+          const draft = p.draft_order || {};
+          pendingCashOrders.push({
+            id: p.id,
+            shop_id: p.shop_id,
+            order_number: `QP-CASH-${p.id.replace(/-/g, '').slice(0, 8).toUpperCase()}`,
+            payment_id: p.id,
+            uploaded_file_id: p.uploaded_file_id,
+            file_name: draft.file_name || 'document.pdf',
+            storage_path: draft.storage_path || '',
+            file_type: 'application/pdf',
+            file_size_bytes: 0,
+            page_count: draft.page_count || 1,
+            paper_size: draft.paper_size || 'A4',
+            color_mode: draft.color_mode || 'BW',
+            print_sides: draft.print_sides || 'SINGLE',
+            copies: draft.copies || 1,
+            add_ons: draft.add_ons || {},
+            per_page_rate: draft.per_page_rate || 0,
+            print_subtotal: draft.print_subtotal || p.amount,
+            addons_subtotal: draft.addons_subtotal || 0,
+            total_amount: p.amount,
+            currency: p.currency || 'INR',
+            pricing_snapshot: draft.pricing_snapshot || {},
+            payment_method: 'CASH',
+            payment_status: 'AWAITING_VERIFICATION',
+            order_status: 'PAYMENT_VERIFICATION_PENDING',
+            customer_name: draft.customer_name,
+            customer_phone: draft.customer_phone,
+            customer_notes: draft.customer_notes,
+            transaction_ref: p.payment_reference,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+          } as Order);
+        }
+      }
+    } catch (err) {
+      console.warn('Pending cash query warning:', err);
+    }
+  }
+
+  return [...pendingCashOrders, ...existingOrders];
 }
 
 export async function updateOrderStatus(

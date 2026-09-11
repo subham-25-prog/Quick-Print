@@ -39,7 +39,7 @@ test('cash payment creates pending order awaiting shopkeeper verification',async
   const data=await res.json();
   expect(data.paymentMethod).toBe('CASH');
   expect(data.status).toBe('PENDING');
-  expect(mocks.insert).toHaveBeenCalledTimes(2);
+  expect(mocks.insert).toHaveBeenCalledTimes(1);
 });
 test('anonymous dashboard and invalid agent are denied before database access',async()=>{
   expect((await GET(new NextRequest('https://shop.test/api/orders'))).status).toBe(401);

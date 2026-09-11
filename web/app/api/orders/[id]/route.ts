@@ -33,6 +33,45 @@ export async function GET(
       }
     }
 
+    if (!order) {
+      const { data: payment } = await database()
+        .from('payments')
+        .select('*')
+        .eq('id', id)
+        .eq('shop_id', getCurrentShopId())
+        .maybeSingle();
+
+      if (payment) {
+        if (payment.order_id) {
+          order = await getOrderById(payment.order_id);
+        } else if (payment.draft_order) {
+          const draft = payment.draft_order as any;
+          return NextResponse.json(
+            {
+              order: {
+                id: payment.id,
+                order_number: `QP-${payment.id.replace(/-/g, '').slice(0, 8).toUpperCase()}`,
+                created_at: payment.created_at,
+                file_name: draft.file_name || 'document.pdf',
+                page_count: draft.page_count || 1,
+                paper_size: draft.paper_size || 'A4',
+                color_mode: draft.color_mode || 'BW',
+                print_sides: draft.print_sides || 'SINGLE',
+                copies: draft.copies || 1,
+                total_amount: payment.amount,
+                currency: payment.currency || 'INR',
+                payment_status: payment.status === 'SUCCESS' ? 'PAID' : 'AWAITING_VERIFICATION',
+                order_status: payment.status === 'SUCCESS' ? 'CONFIRMED' : 'PAYMENT_VERIFICATION_PENDING',
+              },
+              job: null,
+              agentOnline: true,
+            },
+            { headers: { 'Cache-Control': 'private, no-store' } }
+          );
+        }
+      }
+    }
+
     if (!order || !order.payment_id) {
       throw new HttpError(404, 'Order not found.');
     }
