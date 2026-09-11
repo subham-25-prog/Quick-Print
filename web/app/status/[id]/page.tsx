@@ -160,8 +160,6 @@ export default function OrderStatusPage() {
         ? 'PRINTED'
         : isHardwarePrinting
         ? 'PRINTING'
-        : data?.order?.order_status === 'CLAIMED'
-        ? 'CLAIMED'
         : 'PENDING');
 
   return (

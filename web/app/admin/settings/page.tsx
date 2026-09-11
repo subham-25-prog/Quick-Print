@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PricingConfig, CustomAddon, CustomPaperType } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
