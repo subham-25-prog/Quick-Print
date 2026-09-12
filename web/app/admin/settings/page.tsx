@@ -15,6 +15,7 @@ import {
   Layers,
   Plus,
   Trash2,
+  X,
   User,
   Phone,
   MessageSquare
@@ -38,6 +39,7 @@ export default function AdminSettingsPage() {
   const [newPaperBwDouble, setNewPaperBwDouble] = useState<number | ''>('');
   const [newPaperColorSingle, setNewPaperColorSingle] = useState<number | ''>('');
   const [newPaperColorDouble, setNewPaperColorDouble] = useState<number | ''>('');
+  const [showAddPaperForm, setShowAddPaperForm] = useState(false);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToast({ text, type });
@@ -156,9 +158,9 @@ export default function AdminSettingsPage() {
       id: `paper_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       name: newPaperName.trim(),
       bw_single: Number(newPaperBwSingle || 0),
-      bw_double: Number(newPaperBwDouble || newPaperBwSingle || 0),
+      bw_double: Number(newPaperBwDouble !== '' ? newPaperBwDouble : newPaperBwSingle || 0),
       color_single: Number(newPaperColorSingle || 0),
-      color_double: Number(newPaperColorDouble || newPaperColorSingle || 0),
+      color_double: Number(newPaperColorDouble !== '' ? newPaperColorDouble : newPaperColorSingle || 0),
       enabled: true,
     };
 
@@ -172,6 +174,32 @@ export default function AdminSettingsPage() {
     setNewPaperBwDouble('');
     setNewPaperColorSingle('');
     setNewPaperColorDouble('');
+    setShowAddPaperForm(false);
+    showToast(`Added page specification "${newPaper.name}"`, 'success');
+  };
+
+  const updateCustomPaperRate = (
+    paperId: string,
+    field: 'bw_single' | 'bw_double' | 'color_single' | 'color_double',
+    val: number
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      custom_papers: (prev.custom_papers || []).map((p) =>
+        p.id === paperId ? { ...p, [field]: Math.max(0, val) } : p
+      ),
+    }));
+  };
+
+  const handlePhotoRateChange = (
+    field: 'photo_bw_per_page' | 'photo_bw_double_per_page' | 'photo_color_per_page' | 'photo_color_double_per_page',
+    val: number
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      [field]: val,
+      ...(field === 'photo_color_per_page' ? { photo_paper_per_page: val } : {}),
+    }));
   };
 
   const toggleCustomPaper = (paperId: string) => {
@@ -188,6 +216,7 @@ export default function AdminSettingsPage() {
       ...prev,
       custom_papers: (prev.custom_papers || []).filter((p) => p.id !== paperId),
     }));
+    showToast('Removed custom page specification', 'success');
   };
 
   const handleSave = async () => {
@@ -319,227 +348,481 @@ export default function AdminSettingsPage() {
         {/* Section 2: Paper Sizes & Per-Page Rates (Customer Step 1) */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h2 className="text-sm font-bold text-slate-900">
-              2. Paper Sizes & Per-Page Rates
-            </h2>
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">
+                2. Paper Sizes & Per-Page Rates
+              </h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Configure rates and enable or disable specific page specifications.
+              </p>
+            </div>
             <span className="text-[10px] font-bold text-slate-400">
               Customer Step 1
             </span>
           </div>
 
-          {/* A4 Paper */}
-          <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-slate-900">📄 A4 Standard Paper</span>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <span className="text-[11px] font-bold text-slate-600">Enabled</span>
-                <input
-                  type="checkbox"
-                  checked={form.enabled_papers?.a4 !== false}
-                  onChange={() => toggleEnabledPaper('a4')}
-                  className="w-4 h-4 rounded text-indigo-600"
-                />
-              </label>
-            </div>
-
-            {form.enabled_papers?.a4 !== false && (
-              <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-slate-200/60 text-xs">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Single (₹/pg)</label>
+          <div className="space-y-3.5">
+            {/* A4 Paper */}
+            <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <span>📄 A4 Standard Paper</span>
+                  <span className="text-[10px] text-slate-400 font-normal">(210×297 mm)</span>
+                </span>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <span className="text-[11px] font-bold text-slate-600">Enabled</span>
                   <input
-                    type="number"
-                    step="0.5"
-                    value={form.a4_bw_per_page}
-                    onChange={(e) => handleChange('a4_bw_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    type="checkbox"
+                    checked={form.enabled_papers?.a4 !== false}
+                    onChange={() => toggleEnabledPaper('a4')}
+                    className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
                   />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Duplex (₹/pg)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.a4_bw_double_per_page || 3}
-                    onChange={(e) => handleChange('a4_bw_double_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Single (₹/pg)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.a4_color_per_page}
-                    onChange={(e) => handleChange('a4_color_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Duplex (₹/pg)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.a4_color_double_per_page || 18}
-                    onChange={(e) => handleChange('a4_color_double_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
-                  />
-                </div>
+                </label>
               </div>
-            )}
-          </div>
 
-          {/* A3 Paper */}
-          <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-extrabold text-slate-900">📑 A3 Large Paper</span>
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <span className="text-[11px] font-bold text-slate-600">Enabled</span>
-                <input
-                  type="checkbox"
-                  checked={form.enabled_papers?.a3 !== false}
-                  onChange={() => toggleEnabledPaper('a3')}
-                  className="w-4 h-4 rounded text-indigo-600"
-                />
-              </label>
+              {form.enabled_papers?.a4 !== false && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 border-t border-slate-200/60 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Single (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.a4_bw_per_page}
+                      onChange={(e) => handleChange('a4_bw_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Duplex (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.a4_bw_double_per_page ?? 3}
+                      onChange={(e) => handleChange('a4_bw_double_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Single (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.a4_color_per_page}
+                      onChange={(e) => handleChange('a4_color_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Duplex (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.a4_color_double_per_page ?? 18}
+                      onChange={(e) => handleChange('a4_color_double_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {form.enabled_papers?.a3 !== false && (
-              <div className="grid grid-cols-2 gap-2.5 pt-1 border-t border-slate-200/60 text-xs">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">A3 B&W (₹/pg)</label>
+            {/* A3 Paper */}
+            <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <span>📑 A3 Large Paper</span>
+                  <span className="text-[10px] text-slate-400 font-normal">(297×420 mm)</span>
+                </span>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <span className="text-[11px] font-bold text-slate-600">Enabled</span>
                   <input
-                    type="number"
-                    step="0.5"
-                    value={form.a3_bw_per_page}
-                    onChange={(e) => handleChange('a3_bw_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    type="checkbox"
+                    checked={form.enabled_papers?.a3 !== false}
+                    onChange={() => toggleEnabledPaper('a3')}
+                    className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
                   />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 mb-1">A3 Color (₹/pg)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    value={form.a3_color_per_page}
-                    onChange={(e) => handleChange('a3_color_per_page', parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
-                  />
-                </div>
+                </label>
               </div>
-            )}
-          </div>
 
-          {/* Legal & Photo Paper Switches */}
-          <div className="grid grid-cols-2 gap-3">
-            <label
-              onClick={() => toggleEnabledPaper('legal')}
-              className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                form.enabled_papers?.legal !== false
-                  ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <span className="text-xs font-bold">Legal Size Paper</span>
-              <input
-                type="checkbox"
-                checked={form.enabled_papers?.legal !== false}
-                onChange={() => {}}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0"
-              />
-            </label>
-
-            <label
-              onClick={() => toggleEnabledPaper('photo')}
-              className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                form.enabled_papers?.photo !== false
-                  ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <span className="text-xs font-bold">Glossy Photo Paper</span>
-              <input
-                type="checkbox"
-                checked={form.enabled_papers?.photo !== false}
-                onChange={() => {}}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0"
-              />
-            </label>
-          </div>
-
-          {/* Custom Paper Sizes */}
-          <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-200 space-y-3">
-            <div className="font-extrabold text-indigo-900 text-xs flex items-center justify-between">
-              <span>✨ Custom Paper Sizes</span>
-              <span className="text-[10px] text-indigo-600 font-mono font-bold">
-                {(form.custom_papers || []).length} Sizes
-              </span>
+              {form.enabled_papers?.a3 !== false && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 border-t border-slate-200/60 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Single (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.a3_bw_per_page}
+                      onChange={(e) => handleChange('a3_bw_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Duplex (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.a3_bw_double_per_page ?? 8}
+                      onChange={(e) => handleChange('a3_bw_double_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Single (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.a3_color_per_page}
+                      onChange={(e) => handleChange('a3_color_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Duplex (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.a3_color_double_per_page ?? 35}
+                      onChange={(e) => handleChange('a3_color_double_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
-            {(form.custom_papers || []).length > 0 && (
-              <div className="space-y-2">
-                {form.custom_papers!.map((paper) => (
-                  <div key={paper.id} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200 text-xs">
-                    <div className="flex items-center gap-2">
+            {/* Legal Paper */}
+            <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <span>⚖️ Legal Size Paper</span>
+                  <span className="text-[10px] text-slate-400 font-normal">(216×356 mm)</span>
+                </span>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <span className="text-[11px] font-bold text-slate-600">Enabled</span>
+                  <input
+                    type="checkbox"
+                    checked={form.enabled_papers?.legal !== false}
+                    onChange={() => toggleEnabledPaper('legal')}
+                    className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              {form.enabled_papers?.legal !== false && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 border-t border-slate-200/60 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Single (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.legal_bw_per_page ?? 3}
+                      onChange={(e) => handleChange('legal_bw_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Duplex (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.legal_bw_double_per_page ?? 5}
+                      onChange={(e) => handleChange('legal_bw_double_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Single (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.legal_color_per_page ?? 12}
+                      onChange={(e) => handleChange('legal_color_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Duplex (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.legal_color_double_per_page ?? 22}
+                      onChange={(e) => handleChange('legal_color_double_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Photo Paper */}
+            <div className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <span>🖼️ Glossy Photo Paper</span>
+                  <span className="text-[10px] text-slate-400 font-normal">(240 GSM Glossy)</span>
+                </span>
+                <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                  <span className="text-[11px] font-bold text-slate-600">Enabled</span>
+                  <input
+                    type="checkbox"
+                    checked={form.enabled_papers?.photo !== false}
+                    onChange={() => toggleEnabledPaper('photo')}
+                    className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              {form.enabled_papers?.photo !== false && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 border-t border-slate-200/60 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Single (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.photo_bw_per_page ?? 15}
+                      onChange={(e) => handlePhotoRateChange('photo_bw_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Duplex (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.photo_bw_double_per_page ?? 25}
+                      onChange={(e) => handlePhotoRateChange('photo_bw_double_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Single (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.photo_color_per_page ?? form.photo_paper_per_page ?? 25}
+                      onChange={(e) => handlePhotoRateChange('photo_color_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Duplex (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      value={form.photo_color_double_per_page ?? 45}
+                      onChange={(e) => handlePhotoRateChange('photo_color_double_per_page', parseFloat(e.target.value) || 0)}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Custom Paper Sizes / Other Page Specifications */}
+            {(form.custom_papers || []).map((paper) => (
+              <div key={paper.id} className="p-3.5 rounded-2xl border border-indigo-200 bg-indigo-50/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-extrabold text-slate-900">✨ {paper.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteCustomPaper(paper.id)}
+                      title="Delete this page specification"
+                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                    <span className="text-[11px] font-bold text-slate-600">Enabled</span>
+                    <input
+                      type="checkbox"
+                      checked={paper.enabled}
+                      onChange={() => toggleCustomPaper(paper.id)}
+                      className="w-4 h-4 rounded text-indigo-600 cursor-pointer"
+                    />
+                  </label>
+                </div>
+
+                {paper.enabled && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1 border-t border-indigo-100 text-xs">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Single (₹/pg)</label>
                       <input
-                        type="checkbox"
-                        checked={paper.enabled}
-                        onChange={() => toggleCustomPaper(paper.id)}
-                        className="w-4 h-4 rounded text-indigo-600"
+                        type="number"
+                        step="0.25"
+                        min="0"
+                        value={paper.bw_single}
+                        onChange={(e) => updateCustomPaperRate(paper.id, 'bw_single', parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
                       />
-                      <span className="font-bold text-slate-900">{paper.name}</span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-semibold text-slate-700">B&W ₹{paper.bw_single}</span>
-                      <span className="font-semibold text-indigo-700">Color ₹{paper.color_single}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteCustomPaper(paper.id)}
-                        className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Duplex (₹/pg)</label>
+                      <input
+                        type="number"
+                        step="0.25"
+                        min="0"
+                        value={paper.bw_double}
+                        onChange={(e) => updateCustomPaperRate(paper.id, 'bw_double', parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Single (₹/pg)</label>
+                      <input
+                        type="number"
+                        step="0.25"
+                        min="0"
+                        value={paper.color_single}
+                        onChange={(e) => updateCustomPaperRate(paper.id, 'color_single', parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Duplex (₹/pg)</label>
+                      <input
+                        type="number"
+                        step="0.25"
+                        min="0"
+                        value={paper.color_double}
+                        onChange={(e) => updateCustomPaperRate(paper.id, 'color_double', parseFloat(e.target.value) || 0)}
+                        className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                      />
                     </div>
                   </div>
-                ))}
+                )}
               </div>
-            )}
+            ))}
+          </div>
 
-            {/* Add Custom Paper Form */}
-            <div className="p-3 rounded-xl bg-white border border-indigo-200 space-y-2 text-xs">
-              <div className="font-bold text-slate-800 text-[11px]">+ Add Custom Paper Size</div>
-              <div className="grid grid-cols-3 gap-2">
-                <input
-                  type="text"
-                  placeholder="Paper Name (A5)"
-                  value={newPaperName}
-                  onChange={(e) => setNewPaperName(e.target.value)}
-                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold"
-                />
-                <input
-                  type="number"
-                  placeholder="B&W (₹/pg)"
-                  value={newPaperBwSingle}
-                  onChange={(e) => setNewPaperBwSingle(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold"
-                />
-                <input
-                  type="number"
-                  placeholder="Color (₹/pg)"
-                  value={newPaperColorSingle}
-                  onChange={(e) => setNewPaperColorSingle(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="px-2.5 py-1.5 rounded-lg border border-slate-300 font-bold"
-                />
-              </div>
+          {/* Add Other Page Specification Button & Form */}
+          <div className="pt-2 border-t border-slate-100">
+            {!showAddPaperForm ? (
               <button
                 type="button"
-                onClick={handleAddCustomPaper}
-                disabled={!newPaperName.trim() || newPaperBwSingle === ''}
-                className="w-full py-1.5 rounded-xl bg-indigo-600 text-white font-bold text-xs flex items-center justify-center gap-1 disabled:opacity-40"
+                onClick={() => setShowAddPaperForm(true)}
+                className="w-full py-3 px-4 rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/40 hover:bg-indigo-50/80 text-indigo-700 font-bold text-xs flex items-center justify-center gap-2 transition-all active:scale-[0.99] cursor-pointer"
               >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Paper Option</span>
+                <Plus className="w-4 h-4" />
+                <span>Add Other Page Specification</span>
               </button>
-            </div>
+            ) : (
+              <div className="p-4 rounded-2xl border-2 border-indigo-300 bg-white shadow-xs space-y-3 animate-in fade-in duration-150">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
+                    <Plus className="w-4 h-4 text-indigo-600" />
+                    <span>Add Other Page Specification</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPaperForm(false)}
+                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-500 mb-1">
+                    Page Specification / Paper Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. A5 Pocket Size, Letter, Certificate Bond Paper"
+                    value={newPaperName}
+                    onChange={(e) => setNewPaperName(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Single (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      placeholder="e.g. 2.0"
+                      value={newPaperBwSingle}
+                      onChange={(e) => setNewPaperBwSingle(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">B&W Duplex (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      placeholder="e.g. 3.0"
+                      value={newPaperBwDouble}
+                      onChange={(e) => setNewPaperBwDouble(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Single (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      placeholder="e.g. 10.0"
+                      value={newPaperColorSingle}
+                      onChange={(e) => setNewPaperColorSingle(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 mb-1">Color Duplex (₹/pg)</label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      placeholder="e.g. 18.0"
+                      value={newPaperColorDouble}
+                      onChange={(e) => setNewPaperColorDouble(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      className="w-full px-3 py-1.5 rounded-xl border border-slate-300 bg-white font-bold text-slate-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowAddPaperForm(false)}
+                    className="px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 font-bold text-xs hover:bg-slate-50 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddCustomPaper}
+                    disabled={!newPaperName.trim() || newPaperBwSingle === ''}
+                    className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 disabled:opacity-40 shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Add Page Specification</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </section>
 

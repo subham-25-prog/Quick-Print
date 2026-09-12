@@ -19,15 +19,39 @@ export function calculateOrderPrice(
 
   const paperPrefix = options.paperSize.toLowerCase();
   const colorMode = options.colorMode === 'COLOR' ? 'color' : 'bw';
-  const duplexSuffix = options.printSides === 'DOUBLE' ? '_double' : '';
+  const isDuplex = options.printSides === 'DOUBLE';
 
-  const rateKey =
-    paperPrefix === 'photo'
-      ? 'photo_paper_per_page'
-      : `${paperPrefix}_${colorMode}${duplexSuffix}_per_page`;
+  let perPageRate: number | undefined;
 
-  const perPageRate = Number((pricing as unknown as Record<string, unknown>)[rateKey]);
-  if (!Number.isFinite(perPageRate) || perPageRate < 0) {
+  // Check if matching custom paper
+  const customPaper = (pricing.custom_papers || []).find(
+    (p) => p.id === options.paperSize || p.name.toLowerCase() === options.paperSize.toLowerCase()
+  );
+
+  if (customPaper) {
+    if (colorMode === 'color') {
+      perPageRate = isDuplex ? (customPaper.color_double || customPaper.color_single) : customPaper.color_single;
+    } else {
+      perPageRate = isDuplex ? (customPaper.bw_double || customPaper.bw_single) : customPaper.bw_single;
+    }
+  } else if (paperPrefix === 'photo') {
+    const specificKey = isDuplex ? `photo_${colorMode}_double_per_page` : `photo_${colorMode}_per_page`;
+    const specificVal = Number((pricing as unknown as Record<string, unknown>)[specificKey]);
+    if (Number.isFinite(specificVal) && specificVal > 0) {
+      perPageRate = specificVal;
+    } else {
+      perPageRate = Number(pricing.photo_paper_per_page) || 25;
+    }
+  } else {
+    const doubleKey = `${paperPrefix}_${colorMode}_double_per_page`;
+    const singleKey = `${paperPrefix}_${colorMode}_per_page`;
+    const pricingRecord = pricing as unknown as Record<string, unknown>;
+    perPageRate = isDuplex
+      ? Number(pricingRecord[doubleKey] ?? pricingRecord[singleKey])
+      : Number(pricingRecord[singleKey]);
+  }
+
+  if (typeof perPageRate !== 'number' || !Number.isFinite(perPageRate) || perPageRate < 0) {
     throw new Error('Pricing unavailable for this option');
   }
 

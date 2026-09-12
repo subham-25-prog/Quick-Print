@@ -97,6 +97,10 @@ export interface PricingConfig {
   legal_color_per_page: number;
   legal_color_double_per_page?: number;
   photo_paper_per_page: number;
+  photo_bw_per_page?: number;
+  photo_bw_double_per_page?: number;
+  photo_color_per_page?: number;
+  photo_color_double_per_page?: number;
   double_sided_multiplier: number;
 
   // Add-on rates

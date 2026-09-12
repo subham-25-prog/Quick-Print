@@ -83,6 +83,10 @@ export async function updatePricing(patch: Partial<PricingConfig>): Promise<Pric
     'custom_addons',
     'form_fields',
     'selected_printer',
+    'photo_bw_per_page',
+    'photo_bw_double_per_page',
+    'photo_color_per_page',
+    'photo_color_double_per_page',
   ]);
 
   const cleanPatch = Object.fromEntries(

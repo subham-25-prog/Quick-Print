@@ -49,7 +49,8 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
       return isDouble ? (pricing?.legal_bw_double_per_page ?? 5) : (pricing?.legal_bw_per_page ?? 3);
     }
     if (size === 'PHOTO') {
-      return pricing?.photo_paper_per_page ?? 25;
+      if (isColor) return isDouble ? (pricing?.photo_color_double_per_page ?? 45) : (pricing?.photo_color_per_page ?? pricing?.photo_paper_per_page ?? 25);
+      return isDouble ? (pricing?.photo_bw_double_per_page ?? 25) : (pricing?.photo_bw_per_page ?? 15);
     }
     const custom = customPapers.find((p) => p.id === size);
     if (custom) {

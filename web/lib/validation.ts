@@ -43,9 +43,13 @@ export function printOptions(
   const printSidesStr = String(printSides);
 
   // Validate paper size
+  const isStandardPaper = ['A4', 'A3', 'LEGAL', 'PHOTO'].includes(paperSizeStr);
+  const matchingCustom = (pricing.custom_papers || []).find(
+    (p) => p.id === paperSizeStr || p.name.toLowerCase() === paperSizeStr.toLowerCase()
+  );
   if (
-    !['A4', 'A3', 'LEGAL', 'PHOTO'].includes(paperSizeStr) ||
-    pricing.enabled_papers?.[paperSizeStr.toLowerCase()] === false
+    (!isStandardPaper && (!matchingCustom || !matchingCustom.enabled)) ||
+    (isStandardPaper && pricing.enabled_papers?.[paperSizeStr.toLowerCase()] === false)
   ) {
     throw new HttpError(400, 'This paper size is unavailable.');
   }
@@ -175,8 +179,24 @@ export function validatePricing(value: PricingConfig): PricingConfig {
     }
   }
 
-  if (value.custom_papers && value.custom_papers.length > 0) {
-    throw new HttpError(400, 'Custom paper sizes need a supported printer adapter; use standard sizes.');
+  if (value.custom_papers !== undefined && !Array.isArray(value.custom_papers)) {
+    throw new HttpError(400, 'Invalid custom paper sizes.');
+  }
+
+  for (const paper of value.custom_papers || []) {
+    if (
+      !paper ||
+      typeof paper.id !== 'string' ||
+      typeof paper.name !== 'string' ||
+      !paper.name.trim() ||
+      typeof paper.enabled !== 'boolean' ||
+      !Number.isFinite(paper.bw_single) || paper.bw_single < 0 ||
+      !Number.isFinite(paper.bw_double) || paper.bw_double < 0 ||
+      !Number.isFinite(paper.color_single) || paper.color_single < 0 ||
+      !Number.isFinite(paper.color_double) || paper.color_double < 0
+    ) {
+      throw new HttpError(400, 'Invalid custom paper configuration.');
+    }
   }
 
   if (value.custom_addons !== undefined && !Array.isArray(value.custom_addons)) {
