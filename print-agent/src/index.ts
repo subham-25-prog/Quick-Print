@@ -24,11 +24,6 @@ async function main() {
   const journal = new Journal(path.join(config.stateDir, 'dispatch.jsonl'));
   const worker = new AgentWorker(client, printer, journal, config.downloadDir);
 
-  health.updatePrinters(
-    await printer.getInstalledPrinters(),
-    config.printerName || 'Sandbox simulation'
-  );
-
   console.log(
     JSON.stringify({
       event: 'agent_started',
@@ -52,13 +47,21 @@ async function main() {
   while (!stopping) {
     try {
       if (Date.now() - heartbeatAt >= config.heartbeatIntervalMs) {
-        const installed = await printer.getInstalledPrinters();
-        const activeName = printer.getConfiguredPrinter() || config.printerName || 'Sandbox simulation';
-        const hb = await client.sendHeartbeat(activeName, installed);
-        if (hb.activePrinter && hb.activePrinter !== printer.getConfiguredPrinter()) {
+        const detected = await printer.getDetectedPrinters();
+        const installed = detected.map((p) => p.name);
+        // Choose an initial device only when no explicit choice exists. Never
+        // silently reroute an unavailable selected printer to another device.
+        if (!printer.getConfiguredPrinter()) {
+          const defaultName = await printer.getDefaultPrinterName();
+          const initial = detected.find((p) => p.name === defaultName && p.status === 'ONLINE')
+            || detected.find((p) => p.status === 'ONLINE');
+          if (initial) printer.setConfiguredPrinter(initial.name);
+        }
+        const activeName = printer.getConfiguredPrinter() || 'Unavailable';
+        const hb = await client.sendHeartbeat(activeName, installed, detected);
+        if (hb.activePrinter && !/^(Unavailable|Sandbox simulation)$/i.test(hb.activePrinter) && hb.activePrinter !== printer.getConfiguredPrinter()) {
           printer.setConfiguredPrinter(hb.activePrinter);
           config.printerName = hb.activePrinter;
-          health.updatePrinters(installed, hb.activePrinter);
           console.log(
             JSON.stringify({
               event: 'active_printer_updated',
@@ -66,11 +69,16 @@ async function main() {
             })
           );
         }
+        health.updatePrinters(installed, printer.getConfiguredPrinter());
         health.recordHeartbeat();
         heartbeatAt = Date.now();
       }
 
-      await worker.tick();
+      try {
+        await worker.tick();
+      } catch {
+        console.error(JSON.stringify({ event: 'printer_unavailable' }));
+      }
       backoffMs = config.pollIntervalMs;
     } catch {
       // Axios errors may contain Authorization headers: never serialize them.

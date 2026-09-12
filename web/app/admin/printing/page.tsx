@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PricingConfig } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
@@ -29,83 +29,100 @@ export default function AdminPrintingSettingsPage() {
   const [loadingPrinters, setLoadingPrinters] = useState(false);
   const [agentOnline, setAgentOnline] = useState(false);
   const [manualPrinterName, setManualPrinterName] = useState('');
+  const [switchingPrinter, setSwitchingPrinter] = useState(false);
+  const [printerError, setPrinterError] = useState('');
+  const [selectionPending, setSelectionPending] = useState(false);
+  const [agentMode, setAgentMode] = useState<string | null>(null);
+  const printerRequest = useRef(0);
+  const printerBusy = useRef(false);
+  const printerLoading = useRef(false);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToast({ text, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  const loadPrinters = async () => {
+  const loadPrinters = useCallback(async () => {
+    if (printerBusy.current || printerLoading.current) return;
+    const request = ++printerRequest.current;
+    printerLoading.current = true;
     setLoadingPrinters(true);
     try {
-      const res = await fetch('/api/admin/printers');
-      if (res.ok) {
-        const data = await res.json();
+      const res = await fetch('/api/admin/printers', { cache: 'no-store', signal: AbortSignal.timeout(10000) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not refresh printers');
+      if (request === printerRequest.current) {
         setPrinters(data.printers || []);
         setAgentOnline(Boolean(data.agentOnline));
-        if (data.activePrinter) {
-          setForm((prev) => ({ ...prev, selected_printer: data.activePrinter }));
-        }
+        setAgentMode(data.agentMode || null);
+        setSelectionPending(Boolean(data.selectionPending));
+        setForm((prev) => ({ ...prev, selected_printer: data.activePrinter || null }));
+        setPrinterError('');
       }
     } catch (err) {
-      console.error('Failed to load printers:', err);
+      if (request === printerRequest.current) setPrinterError(err instanceof Error ? err.message : 'Could not refresh printers');
     } finally {
+      printerLoading.current = false;
       setLoadingPrinters(false);
     }
-  };
-
-  const loadDbStatus = async () => {
-    try {
-      const res = await fetch('/api/admin/db-status');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.agentOnline !== undefined) setAgentOnline(Boolean(data.agentOnline));
-      }
-    } catch {}
-  };
+  }, []);
 
   useEffect(() => {
-    Promise.all([
+    let disposed = false;
       fetch('/api/admin/pricing')
         .then((res) => res.json())
         .then((data) => {
-          if (data.pricing) {
+          if (!disposed && data.pricing) {
             if (!data.pricing.shop_name || /quickprint/i.test(data.pricing.shop_name)) {
               data.pricing.shop_name = defaultPricingConfig.shop_name;
             }
             setForm(data.pricing);
           }
-        }),
-      loadPrinters(),
-      loadDbStatus(),
-    ])
+        })
+      .then(() => { if (!disposed) return loadPrinters(); })
       .catch((err) => console.error('Failed to initialize printing settings:', err))
-      .finally(() => setLoading(false));
-  }, []);
+      .finally(() => { if (!disposed) setLoading(false); });
+    const refresh = () => { if (!document.hidden) void loadPrinters(); };
+    const interval = window.setInterval(refresh, 5000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      disposed = true;
+      printerRequest.current++;
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [loadPrinters]);
 
   const handleSelectPrinter = async (printerName: string) => {
-    if (!printerName.trim()) return;
+    if (!printerName.trim() || printerBusy.current) return;
     const target = printerName.trim();
-    setForm((prev) => ({ ...prev, selected_printer: target }));
-    setPrinters((prev) =>
-      prev.map((p) => ({ ...p, is_selected: p.name === target }))
-    );
+    printerBusy.current = true;
+    printerRequest.current++;
+    setSwitchingPrinter(true);
 
     try {
       const res = await fetch('/api/admin/printers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ printerName: target }),
+        signal: AbortSignal.timeout(10000),
       });
       if (res.ok) {
-        showToast(`Active output printer set to "${target}"`, 'success');
-        loadPrinters();
+        const data = await res.json();
+        setForm((prev) => ({ ...prev, selected_printer: data.activePrinter }));
+        setPrinters((prev) => prev.map((p) => ({ ...p, is_selected: p.name === data.activePrinter })));
+        setSelectionPending(true);
+        showToast(`Saved "${target}". Waiting for the print agent to apply it.`, 'success');
       } else {
         const data = await res.json();
         showToast(data.error || 'Failed to switch printer', 'error');
       }
     } catch {
       showToast('Network error setting active printer', 'error');
+    } finally {
+      printerBusy.current = false;
+      setSwitchingPrinter(false);
+      void loadPrinters();
     }
   };
 
@@ -139,12 +156,12 @@ export default function AdminPrintingSettingsPage() {
       const res = await fetch('/api/admin/pricing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pricing: form }),
+        body: JSON.stringify({ pricing: { ...form, selected_printer: undefined } }),
       });
 
       const data = await res.json();
       if (res.ok && data.pricing) {
-        setForm(data.pricing);
+        setForm((prev) => ({ ...data.pricing, selected_printer: prev.selected_printer }));
         showToast('Printing settings saved successfully!', 'success');
       } else {
         throw new Error(data.error || 'Failed to update printing settings');
@@ -161,7 +178,6 @@ export default function AdminPrintingSettingsPage() {
     showToast('Launching Windows Print Agent via quickprint://start...', 'success');
     setTimeout(() => {
       loadPrinters();
-      loadDbStatus();
     }, 4000);
   };
 
@@ -257,7 +273,7 @@ export default function AdminPrintingSettingsPage() {
               {agentOnline ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Spooler Online
+                  Agent Online
                 </span>
               ) : (
                 <button
@@ -282,8 +298,12 @@ export default function AdminPrintingSettingsPage() {
           </div>
 
           <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-            If you have multiple printers connected (e.g. Black & White Laser, Color Inkjet, POS Slip), choose which printer Cyber Cafe should use to print customer documents automatically.
+            Printers are detected by the Windows Print Agent and refreshed automatically. Choose the output for subsequent documents; a document already printing finishes on its current printer.
           </p>
+          <p className="text-[11px] text-slate-500">New connections and selections appear after the next agent update, usually within 15–20 seconds.</p>
+          {agentMode === 'sandbox' && <p role="status" className="text-xs text-amber-700">Simulation mode: physical printing is disabled. Printer discovery and selection are available.</p>}
+          {selectionPending && <p role="status" className="text-xs text-amber-700">Selection saved. Waiting for the print agent to confirm it.</p>}
+          {printerError && <p role="alert" className="text-xs text-rose-700">{printerError}. Displayed printer information may be out of date.</p>}
 
           {/* List of Connected Printers */}
           <div className="space-y-2">
@@ -295,8 +315,7 @@ export default function AdminPrintingSettingsPage() {
                 return (
                   <div
                     key={printer.name}
-                    onClick={() => handleSelectPrinter(printer.name)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                    className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                       isSelected
                         ? 'border-indigo-600 bg-indigo-50/60 text-slate-900 ring-2 ring-indigo-600/30 shadow-xs'
                         : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50/60 text-slate-700'
@@ -313,8 +332,8 @@ export default function AdminPrintingSettingsPage() {
                         <Printer className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-900 truncate">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-bold text-slate-900 break-all">
                             {printer.name}
                           </span>
                           <span
@@ -328,20 +347,22 @@ export default function AdminPrintingSettingsPage() {
                           </span>
                         </div>
                         <div className="text-[10px] text-slate-400 font-medium truncate">
-                          {isSelected ? 'Assigned for live document spooling' : 'Click to select this printer'}
+                          {isSelected ? (selectionPending ? 'Waiting for agent confirmation' : 'Selected output') : 'Select this printer for subsequent documents'}
                         </div>
                       </div>
                     </div>
 
-                    <div className="shrink-0 flex items-center gap-1.5">
+                    <div className="shrink-0 flex items-center justify-end gap-1.5">
                       {isSelected ? (
                         <span className="px-3 py-1 rounded-xl text-[10px] font-extrabold bg-indigo-600 text-white flex items-center gap-1.5 shadow-2xs">
                           <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                          <span>Active Printer</span>
+                          <span>{selectionPending ? 'Pending' : 'Selected Printer'}</span>
                         </span>
                       ) : (
                         <button
                           type="button"
+                          disabled={switchingPrinter}
+                          aria-label={`Use ${printer.name}`}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSelectPrinter(printer.name);
@@ -354,6 +375,7 @@ export default function AdminPrintingSettingsPage() {
 
                       <button
                         type="button"
+                        disabled={switchingPrinter}
                         onClick={(e) => handleDeletePrinter(e, printer.name)}
                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                         title="Remove printer from list"
@@ -392,6 +414,8 @@ export default function AdminPrintingSettingsPage() {
                   Choose from detected printers:
                 </label>
                 <select
+                  aria-label="Choose from detected printers"
+                  disabled={switchingPrinter}
                   value={form.selected_printer || ''}
                   onChange={(e) => handleSelectPrinter(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
@@ -418,6 +442,7 @@ export default function AdminPrintingSettingsPage() {
                   />
                   <button
                     type="button"
+                    disabled={switchingPrinter || !manualPrinterName.trim()}
                     onClick={() => {
                       if (manualPrinterName.trim()) {
                         handleSelectPrinter(manualPrinterName.trim());

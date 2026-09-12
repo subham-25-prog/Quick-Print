@@ -6,6 +6,23 @@ import { ClaimedJob } from './client';
 
 const execute = promisify(execFile);
 
+export interface DetectedPrinter {
+  name: string;
+  status: 'ONLINE' | 'OFFLINE' | 'ERROR' | 'UNKNOWN';
+}
+
+export function parseDetectedPrinters(raw: unknown): DetectedPrinter[] {
+  const list = Array.isArray(raw) ? raw : [raw];
+  const virtual = /OneNote|Shared Fax|XPS Document Writer|Microsoft Print to PDF|Root Print Queue|^Fax$/i;
+  return list.filter((p) => p?.Name && !virtual.test(p.Name) &&
+    !virtual.test(p.DriverName || '') && !/^(nul:|PORTPROMPT:|SHRFAX:|FILE:)/i.test(p.PortName || ''))
+    .map((p) => ({
+      name: String(p.Name).trim(),
+      status: p.WorkOffline || [6, 7].includes(p.PrinterStatus) ? 'OFFLINE' :
+        printerHasBlockingError(p) ? 'ERROR' : 'ONLINE',
+    }));
+}
+
 export function printerHasBlockingError(
   printer:
     | {
@@ -39,6 +56,10 @@ export class WindowsPrinterService {
   }
 
   async getInstalledPrinters(): Promise<string[]> {
+    return (await this.getDetectedPrinters()).map((p) => p.name);
+  }
+
+  async getDetectedPrinters(): Promise<DetectedPrinter[]> {
     if (process.platform === 'win32') {
       try {
         const { stdout } = await execute(
@@ -47,43 +68,15 @@ export class WindowsPrinterService {
             '-NoProfile',
             '-NonInteractive',
             '-Command',
-            'Get-CimInstance Win32_Printer | Select-Object Name,PortName,DriverName,WorkOffline | ConvertTo-Json -Compress',
+            '$ErrorActionPreference = "Stop"; Get-CimInstance Win32_Printer | Select-Object Name,PortName,DriverName,WorkOffline,PrinterStatus,DetectedErrorState | ConvertTo-Json -Compress',
           ],
           { windowsHide: true, timeout: 10000 }
         );
-        const parsed = JSON.parse(stdout || '[]');
-        const list = Array.isArray(parsed) ? parsed : [parsed];
-
-        // Filter out virtual/software print drivers so ONLY real connected or previously connected physical printers appear
-        const virtualPortRegex = /^(nul:|PORTPROMPT:|SHRFAX:|FILE:)/i;
-        const virtualDriverRegex = /(OneNote|Shared Fax|XPS Document Writer|Microsoft Print to PDF|Root Print Queue)/i;
-
-        const physicalPrinters = list
-          .filter((p: any) => {
-            if (!p || !p.Name) return false;
-            const isVirtualPort = p.PortName && virtualPortRegex.test(String(p.PortName));
-            const isVirtualDriver =
-              (p.DriverName && virtualDriverRegex.test(String(p.DriverName))) ||
-              virtualDriverRegex.test(String(p.Name));
-            return !isVirtualPort && !isVirtualDriver;
-          })
-          .map((p: any) => String(p.Name).trim())
-          .filter(Boolean);
-
-        if (physicalPrinters.length > 0) {
-          return physicalPrinters;
-        }
-
-        // If no physical printer detected yet, fall back to any configured non-virtual printer
-        if (this.configuredPrinter && !virtualDriverRegex.test(this.configuredPrinter)) {
-          return [this.configuredPrinter];
-        }
+        return parseDetectedPrinters(JSON.parse(stdout.trim() || '[]'));
       } catch {
-        // Fall back if PowerShell error
+        // A failed scan is not an empty inventory or proof of a connection.
+        throw new Error('Windows printer discovery failed');
       }
-    }
-    if (this.simulation) {
-      return ['HP LaserJet 1020', 'Canon LBP2900', 'Epson L3150 Series'];
     }
     return [];
   }

@@ -49,9 +49,7 @@ export function loadConfig(): AgentConfig {
   }
 
   const printerName = process.env.PRINTER_NAME || '';
-  if (!simulatePrint && !printerName) {
-    throw new Error('Select PRINTER_NAME explicitly before starting the live agent');
-  }
+  // Start discovery even before a printer is selected in the dashboard.
 
   function parseDuration(value: string | undefined, fallback: number): number {
     const n = Number(value || fallback);

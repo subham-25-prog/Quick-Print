@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 import { writeFile } from 'node:fs/promises';
 import { AgentConfig } from './config';
+import type { DetectedPrinter } from './printer';
 
 export interface ClaimedJob {
   job_id: string;
@@ -43,11 +44,13 @@ export class ShopApiClient {
 
   async sendHeartbeat(
     printerName: string,
-    installedPrinters?: string[]
+    installedPrinters?: string[],
+    printerDetails?: DetectedPrinter[]
   ): Promise<HeartbeatResponse> {
     const { data } = await this.client.post('/api/agent/heartbeat', {
       printerName,
       installedPrinters,
+      printerDetails,
       systemInfo: `Node ${process.version} on ${process.platform}`,
       mode: this.config.mode,
     });

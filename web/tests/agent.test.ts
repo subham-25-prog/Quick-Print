@@ -5,7 +5,7 @@ import {beforeEach,afterEach,expect,test,vi} from 'vitest';
 import {Journal,acquireLock} from '../../print-agent/src/journal';
 import {AgentWorker} from '../../print-agent/src/worker';
 import {ClaimedJob} from '../../print-agent/src/client';
-import {printerHasBlockingError,WindowsPrinterService} from '../../print-agent/src/printer';
+import {printerHasBlockingError,WindowsPrinterService,parseDetectedPrinters} from '../../print-agent/src/printer';
 let dir:string;
 test('Windows no-error code 2 is ready; actual offline/jam/paper errors block',()=>{
   expect(printerHasBlockingError({PrinterStatus:3,DetectedErrorState:2})).toBe(false);
@@ -45,8 +45,20 @@ test('printer service reports installed printers and supports dynamic switching'
   service.setConfiguredPrinter('Printer B');
   expect(service.getConfiguredPrinter()).toBe('Printer B');
 
-  const printers = await service.getInstalledPrinters();
-  expect(Array.isArray(printers)).toBe(true);
-  expect(printers.length).toBeGreaterThan(0);
+});
+
+test('printer discovery filters virtual queues and preserves offline and error states', () => {
+  expect(parseDetectedPrinters([
+    {Name:'HP LaserJet', WorkOffline:true},
+    {Name:'Canon', PrinterStatus:3, DetectedErrorState:2},
+    {Name:'Epson', DetectedErrorState:7},
+    {Name:'Microsoft Print to PDF', PortName:'PORTPROMPT:'},
+  ])).toEqual([
+    {name:'HP LaserJet',status:'OFFLINE'},
+    {name:'Canon',status:'ONLINE'},
+    {name:'Epson',status:'ERROR'},
+  ]);
+  expect(parseDetectedPrinters(null)).toEqual([]);
+  expect(parseDetectedPrinters({Name:'Single Printer', PrinterStatus:3})).toEqual([{name:'Single Printer',status:'ONLINE'}]);
 });
 

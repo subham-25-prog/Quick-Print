@@ -121,13 +121,6 @@ export async function updatePricing(patch: Partial<PricingConfig>): Promise<Pric
     await db.from('shops').update(shopUpdate).eq('id', shopId);
   }
 
-  if (typeof cleanPatch.selected_printer === 'string' && cleanPatch.selected_printer.trim()) {
-    await db
-      .from('print_agents')
-      .update({ printer_name: cleanPatch.selected_printer.trim(), updated_at: new Date().toISOString() })
-      .eq('shop_id', shopId);
-  }
-
   return updatedPricing;
 }
 
@@ -303,7 +296,8 @@ export async function recordAgentHeartbeat(
   printerName: string,
   systemInfo: string,
   mode: 'live' | 'sandbox',
-  installedPrinters?: string[]
+  installedPrinters?: string[],
+  printerDetails?: Array<{ name: string; status: 'ONLINE' | 'OFFLINE' | 'ERROR' | 'UNKNOWN' }>
 ): Promise<{ activePrinter: string }> {
   const db = database();
   const shopId = getCurrentShopId();
@@ -320,15 +314,16 @@ export async function recordAgentHeartbeat(
   }
 
   // Check if shop has a customized selected printer
-  const { data: settings } = await db
+  const { data: settings, error: settingsError } = await db
     .from('shop_settings')
     .select('pricing')
     .eq('shop_id', shopId)
     .maybeSingle();
 
+  if (settingsError) throw settingsError;
   const configuredPrinter = settings?.pricing?.selected_printer;
   const activePrinter =
-    configuredPrinter && typeof configuredPrinter === 'string' && configuredPrinter.trim()
+    configuredPrinter && typeof configuredPrinter === 'string' && !isVirtualSystemPrinter(configuredPrinter)
       ? configuredPrinter.trim()
       : printerName;
 
@@ -336,7 +331,8 @@ export async function recordAgentHeartbeat(
     agent_id: agentId,
     shop_id: shopId,
     device_name: agentId,
-    printer_name: activePrinter,
+    // Only the agent can report which selection it has actually applied.
+    printer_name: printerName,
     system_info: systemInfo,
     mode,
     status: 'ONLINE',
@@ -359,7 +355,7 @@ export async function recordAgentHeartbeat(
       }
     }
   }
-  if (printerName && printerName !== 'Unavailable' && !isVirtualSystemPrinter(printerName.trim())) {
+  if (!Array.isArray(installedPrinters) && printerName && !isVirtualSystemPrinter(printerName.trim())) {
     discoveredNames.add(printerName.trim());
   }
 
@@ -370,13 +366,27 @@ export async function recordAgentHeartbeat(
         agent_id: agentId,
         name,
         system_identifier: name,
-        status: 'ONLINE',
+        status: printerDetails?.find((p) => p.name === name)?.status || 'UNKNOWN',
         last_seen: nowIso,
         updated_at: nowIso,
       })),
       { onConflict: 'shop_id,system_identifier' }
     );
     if (printerError) throw printerError;
+  }
+
+  // A complete successful scan retires missing devices from this agent only.
+  // Keep their last_seen unchanged so the UI can show when they disappeared.
+  if (Array.isArray(installedPrinters)) {
+    const { data: previous, error: previousError } = await db.from('printers')
+      .select('id, name').eq('shop_id', shopId).eq('agent_id', agentId);
+    if (previousError) throw previousError;
+    const missing = (previous || []).filter((p) => !discoveredNames.has(p.name)).map((p) => p.id);
+    if (missing.length) {
+      const { error } = await db.from('printers').update({ status: 'OFFLINE', updated_at: nowIso })
+        .eq('shop_id', shopId).eq('agent_id', agentId).in('id', missing);
+      if (error) throw error;
+    }
   }
 
   return { activePrinter };
@@ -388,6 +398,7 @@ export function isVirtualSystemPrinter(name: string | null | undefined): boolean
   if (!lower) return true;
   return (
     lower.includes('onenote') ||
+    lower === 'sandbox simulation' || lower === 'unavailable' ||
     lower.includes('xps document writer') ||
     lower.includes('print to pdf') ||
     lower === 'fax' ||
@@ -400,33 +411,40 @@ export async function getShopPrinters(): Promise<{
   printers: ShopPrinterItem[];
   activePrinter: string | null;
   agentOnline: boolean;
+  agentMode: string | null;
+  appliedPrinter: string | null;
+  selectionPending: boolean;
 }> {
   const db = database();
   const shopId = getCurrentShopId();
 
-  const { data: settings } = await db
+  const { data: settings, error: settingsError } = await db
     .from('shop_settings')
     .select('pricing')
     .eq('shop_id', shopId)
     .maybeSingle();
 
-  const selectedPrinter = settings?.pricing?.selected_printer || null;
+  if (settingsError) throw settingsError;
+  const configured = settings?.pricing?.selected_printer;
+  const selectedPrinter = !isVirtualSystemPrinter(configured) ? configured : null;
 
-  const { data: agent } = await db
+  const { data: agent, error: agentError } = await db
     .from('print_agents')
-    .select('printer_name, status, last_heartbeat')
+    .select('printer_name, status, last_heartbeat, mode')
     .eq('shop_id', shopId)
     .order('last_heartbeat', { ascending: false })
     .limit(1)
     .maybeSingle();
 
+  if (agentError) throw agentError;
   const isAgentOnline = Boolean(
     agent?.status === 'ONLINE' &&
     agent?.last_heartbeat &&
     Date.now() - new Date(agent.last_heartbeat).getTime() < 90000
   );
 
-  const activePrinter = selectedPrinter || agent?.printer_name || null;
+  const appliedPrinter = !isVirtualSystemPrinter(agent?.printer_name) ? agent?.printer_name : null;
+  const activePrinter = selectedPrinter || appliedPrinter || null;
 
   const { data: rawPrinters, error } = await db
     .from('printers')
@@ -441,7 +459,8 @@ export async function getShopPrinters(): Promise<{
     .map((p: any) => ({
       id: p.id,
       name: p.name,
-      status: p.status,
+      status: !isAgentOnline || !p.last_seen || Date.now() - new Date(p.last_seen).getTime() >= 90000
+        ? 'OFFLINE' : p.status,
       is_selected: Boolean(activePrinter && p.name === activePrinter),
       last_seen: p.last_seen,
     }));
@@ -449,13 +468,14 @@ export async function getShopPrinters(): Promise<{
   if (activePrinter && !isVirtualSystemPrinter(activePrinter) && !list.some((p) => p.name === activePrinter)) {
     list.unshift({
       name: activePrinter,
-      status: isAgentOnline ? 'ONLINE' : 'UNKNOWN',
+      status: 'UNKNOWN',
       is_selected: true,
-      last_seen: new Date().toISOString(),
     });
   }
 
-  return { printers: list, activePrinter, agentOnline: isAgentOnline };
+  return { printers: list, activePrinter, agentOnline: isAgentOnline,
+    agentMode: agent?.mode || null, appliedPrinter: appliedPrinter || null,
+    selectionPending: Boolean(activePrinter && (!isAgentOnline || activePrinter !== appliedPrinter)) };
 }
 
 export async function deleteShopPrinter(printerName: string): Promise<void> {
@@ -489,14 +509,18 @@ export async function deleteShopPrinter(printerName: string): Promise<void> {
 }
 
 export async function setActivePrinter(printerName: string): Promise<string> {
+  printerName = printerName.trim();
+  if (isVirtualSystemPrinter(printerName)) throw new HttpError(400, 'Choose a physical printer.');
   const db = database();
   const shopId = getCurrentShopId();
 
-  const { data: current } = await db
+  const { data: current, error: readError } = await db
     .from('shop_settings')
     .select('pricing')
     .eq('shop_id', shopId)
     .maybeSingle();
+
+  if (readError) throw readError;
 
   const updatedPricing = {
     ...(current?.pricing || defaultPricingConfig),
@@ -509,11 +533,6 @@ export async function setActivePrinter(printerName: string): Promise<string> {
     .upsert({ id: shopId, shop_id: shopId, pricing: updatedPricing }, { onConflict: 'id' });
 
   if (settingsError) throw settingsError;
-
-  await db
-    .from('print_agents')
-    .update({ printer_name: printerName, updated_at: new Date().toISOString() })
-    .eq('shop_id', shopId);
 
   return printerName;
 }
