@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 import pricing from '../public/config/pricing_config.json';
 const id='00000000-0000-4000-8000-000000000003';
 test('unconfigured backend fails closed and anonymous admin is redirected',async({page})=>{
-  await page.goto('/');await expect(page.getByRole('button',{name:'Pay & Print',exact:false})).toBeDisabled();
+  await page.goto('/');await expect(page.getByRole('button',{name:'Preview',exact:false})).toBeDisabled();
   await page.goto('/admin');await expect(page).toHaveURL(/\/admin\/login/);
   await expect(page.getByRole('heading',{name:'Admin Access Required'})).toBeVisible();
 });
@@ -16,7 +16,8 @@ test('mobile upload, authoritative checkout UI, pending refresh and backend-conf
   await page.route('**/api/payments/'+id,r=>r.fulfill({json:verified?{status:'SUCCESS',orderId:id,orderAccessToken:'test-token'}:{status:'PENDING',amount:7.5,reference:'QP-test',environment:'sandbox'}}));
   await page.route('**/api/orders/'+id,r=>r.fulfill({json:{order:{id,order_number:'QP-TEST',payment_status:'PAID',order_status:'CONFIRMED',file_name:'test.pdf',page_count:3,copies:1,paper_size:'A4',color_mode:'BW',print_sides:'SINGLE',total_amount:7.5},job:{status:'PENDING',is_test:true},agentOnline:false}}));
   await page.goto('/');await page.locator('input[type=file]').setInputFiles({name:'test.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.7 fixture')});
-  await page.getByRole('button',{name:'Pay & Print',exact:false}).click();
+  await page.getByRole('button',{name:'Preview',exact:false}).click();
+  await page.getByRole('button',{name:'Confirm & Pay',exact:false}).filter({visible:true}).click();
   await page.getByRole('button',{name:/Pay Online/}).click();
   await expect(page).toHaveURL(/\/payment\//);
   await expect(page.getByRole('heading',{name:'Verifying Your Payment'})).toBeVisible();
@@ -35,13 +36,15 @@ test('forged return parameters never confirm payment; failed payment returns to 
   await expect(page.getByText('Previous payment was not completed.',{exact:false})).toBeVisible();
   await expect(page.getByText('Order confirmed',{exact:false})).toHaveCount(0);
 });
-test('missing merchant setup disables payment even with an uploaded document',async({page})=>{
+test('missing merchant setup prevents checkout even with an uploaded document',async({page})=>{
   await page.route('**/api/admin/pricing*',r=>r.fulfill({json:{pricing,checkoutEnabled:false}}));
   await page.route('**/api/upload',r=>r.fulfill({json:{success:true,fileInfo:{uploadId:id,uploadToken:'a'.repeat(64),fileName:'test.pdf',fileType:'application/pdf',fileSizeBytes:100,pageCount:3}}}));
   await page.goto('/');
   await page.locator('input[type=file]').setInputFiles({name:'test.pdf',mimeType:'application/pdf',buffer:Buffer.from('%PDF-1.7 fixture')});
   await expect(page.getByText('Online ordering is not available yet.',{exact:false})).toBeVisible();
-  await expect(page.getByRole('button',{name:'Pay & Print',exact:false})).toBeDisabled();
+  await page.getByRole('button',{name:'Preview',exact:false}).click();
+  await page.getByRole('button',{name:'Confirm & Pay',exact:false}).filter({visible:true}).click();
+  await expect(page.getByRole('heading',{name:'Secure payment'})).toHaveCount(0);
 });
 
 test('dashboard and settings show server data without manual payment approval',async({page})=>{
@@ -57,6 +60,6 @@ test('dashboard and settings show server data without manual payment approval',a
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await page.screenshot({path:'test-results/dashboard-mobile.png',fullPage:true});
   await page.goto('/admin/settings');await expect(page.getByRole('heading',{name:'Customize Client Page'})).toBeVisible();
-  await expect(page.getByRole('heading',{name:/Payment & Checkout Settings/})).toBeVisible();
+  await expect(page.getByRole('heading',{name:/Payment & Checkout Options/})).toBeVisible();
   await page.screenshot({path:'test-results/settings-mobile.png',fullPage:true});
 });

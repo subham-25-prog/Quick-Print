@@ -53,45 +53,6 @@ export const AlertTriangle: React.FC<IconProps> = ({ className = 'w-5 h-5', ...p
   </svg>
 );
 
-export const Activity: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.48 12H2" />
-  </svg>
-);
-
-export const QrCode: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <rect width="5" height="5" x="3" y="3" rx="1" />
-    <rect width="5" height="5" x="16" y="3" rx="1" />
-    <rect width="5" height="5" x="3" y="16" rx="1" />
-    <path d="M21 16h-3a2 2 0 0 0-2 2v3" />
-    <path d="M21 21v.01" />
-    <path d="M12 7v3a2 2 0 0 1-2 2H7" />
-    <path d="M3 12h.01" />
-    <path d="M12 3h.01" />
-    <path d="M12 16v.01" />
-    <path d="M16 12h1" />
-    <path d="M21 12v.01" />
-    <path d="M12 21v-1" />
-  </svg>
-);
-
-export const Calculator: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <rect width="16" height="20" x="4" y="2" rx="2" />
-    <line x1="8" x2="16" y1="6" y2="6" />
-    <line x1="16" x2="16" y1="14" y2="18" />
-    <path d="M16 10h.01M12 10h.01M8 10h.01M12 14h.01M8 14h.01M12 18h.01M8 18h.01" />
-  </svg>
-);
-
-export const Tag: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
-    <path d="M7 7h.01" />
-  </svg>
-);
-
 export const ShieldAlert: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -105,46 +66,6 @@ export const Info: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) =
     <circle cx="12" cy="12" r="10" />
     <path d="M12 16v-4" />
     <path d="M12 8h.01" />
-  </svg>
-);
-
-export const ShoppingCart: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <circle cx="8" cy="21" r="1" />
-    <circle cx="19" cy="21" r="1" />
-    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12" />
-  </svg>
-);
-
-export const Terminal: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <polyline points="4 17 10 11 4 5" />
-    <line x1="12" x2="20" y1="19" y2="19" />
-  </svg>
-);
-
-export const ListOrdered: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <line x1="10" x2="21" y1="6" y2="6" />
-    <line x1="10" x2="21" y1="12" y2="12" />
-    <line x1="10" x2="21" y1="18" y2="18" />
-    <path d="M4 6h1v4" />
-    <path d="M4 10h2" />
-    <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" />
-  </svg>
-);
-
-export const DollarSign: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <line x1="12" x2="12" y1="2" y2="22" />
-    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-  </svg>
-);
-
-export const Mail: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <rect width="20" height="16" x="2" y="4" rx="2" />
-    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
   </svg>
 );
 
@@ -184,13 +105,6 @@ export const Shield: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props })
   </svg>
 );
 
-export const ShieldCheck: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    <path d="m9 12 2 2 4-4" />
-  </svg>
-);
-
 export const Zap: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
@@ -205,25 +119,11 @@ export const Banknote: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props 
   </svg>
 );
 
-export const CreditCard: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <rect width="20" height="14" x="2" y="5" rx="2" />
-    <line x1="2" x2="22" y1="10" y2="10" />
-  </svg>
-);
-
 export const Download: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
     <polyline points="7 10 12 15 17 10" />
     <line x1="12" x2="12" y1="15" y2="3" />
-  </svg>
-);
-
-export const Eye: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-    <circle cx="12" cy="12" r="3" />
   </svg>
 );
 
@@ -276,20 +176,6 @@ export const ArrowLeft: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props
   </svg>
 );
 
-export const ArrowDown: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <path d="M12 5v14" />
-    <path d="m19 12-7 7-7-7" />
-  </svg>
-);
-
-export const MapPin: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-    <circle cx="12" cy="10" r="3" />
-  </svg>
-);
-
 export const Image: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
     <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
@@ -305,22 +191,6 @@ export const Inbox: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) 
   </svg>
 );
 
-export const Volume2: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-    <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-    <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-  </svg>
-);
-
-export const VolumeX: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
-    <line x1="22" x2="16" y1="9" y2="15" />
-    <line x1="16" x2="22" y1="9" y2="15" />
-  </svg>
-);
-
 export const Trash2: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
     <path d="M3 6h18" />
@@ -328,14 +198,6 @@ export const Trash2: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props })
     <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
     <line x1="10" x2="10" y1="11" y2="17" />
     <line x1="14" x2="14" y1="11" y2="17" />
-  </svg>
-);
-
-export const ExternalLink: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <path d="M15 3h6v6" />
-    <path d="M10 14 21 3" />
-    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
   </svg>
 );
 
@@ -349,13 +211,6 @@ export const Lock: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) =
 export const Cloud: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
     <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
-  </svg>
-);
-
-export const TrendingUp: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-    <polyline points="16 7 22 7 22 13" />
   </svg>
 );
 
@@ -473,15 +328,6 @@ export const Sliders: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }
     <line x1="2" x2="6" y1="14" y2="14" />
     <line x1="10" x2="14" y1="8" y2="8" />
     <line x1="18" x2="22" y1="16" y2="16" />
-  </svg>
-);
-
-export const Maximize2: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
-    <polyline points="15 3 21 3 21 9" />
-    <polyline points="9 21 3 21 3 15" />
-    <line x1="21" x2="14" y1="3" y2="10" />
-    <line x1="3" x2="10" y1="21" y2="14" />
   </svg>
 );
 

@@ -217,13 +217,3 @@ export interface PrintAgentInfo {
   last_heartbeat: string;
   system_info?: string;
 }
-
-export interface OrderEvent {
-  id: string;
-  order_id: string;
-  previous_status?: OrderStatus | null;
-  new_status: OrderStatus;
-  actor: 'CUSTOMER' | 'ADMIN' | 'PRINT_AGENT' | 'SYSTEM';
-  message?: string;
-  created_at: string;
-}

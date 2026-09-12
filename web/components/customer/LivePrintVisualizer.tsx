@@ -78,7 +78,9 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
   // Step 4: Active Hardware Printing in Progress
   // Step 5: Completed & Ready for Counter Pickup
   let targetStep = 1;
-  if (isPrinted) {
+  if (isReview || isFailed) {
+    targetStep = 3;
+  } else if (isPrinted) {
     targetStep = 5;
   } else if (isPrinting) {
     targetStep = 4;
@@ -86,20 +88,10 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
     targetStep = 3;
   } else if (isPending) {
     targetStep = 2;
-  } else if (isReview || isFailed) {
-    targetStep = 3;
   }
 
-  // Smooth monotonic progression: prevent temporary backwards jumping due to polling race conditions
-  const [highestStep, setHighestStep] = useState<number>(() => targetStep);
-
-  useEffect(() => {
-    if (targetStep > highestStep) {
-      setHighestStep(targetStep);
-    }
-  }, [targetStep, highestStep]);
-
-  const currentStep = isFailed || isReview ? targetStep : Math.max(targetStep, highestStep);
+  // A retry can move backwards; always reflect the latest server status.
+  const currentStep = targetStep;
 
   // Live animated page printing progression during hardware printing
   const totalPages = Math.max(1, (pageCount || 1) * (copies || 1));
@@ -110,7 +102,10 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
       setPrintedPages(totalPages);
       return;
     }
-    if (!isPrinting && currentStep !== 4) return;
+    if (!isPrinting || isReview || isFailed) {
+      setPrintedPages(1);
+      return;
+    }
 
     // Advance page counter smoothly every 1.5 - 2.5s for realistic physical print feedback
     const stepDuration = Math.max(1400, Math.min(2600, 7500 / totalPages));
@@ -122,16 +117,16 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
     }, stepDuration);
 
     return () => clearInterval(interval);
-  }, [isPrinting, isPrinted, currentStep, totalPages]);
+  }, [isPrinting, isPrinted, isReview, isFailed, currentStep, totalPages]);
 
   // Compute smooth progress percentage
-  let progressPercentage = 20;
+  let progressPercentage: number;
   if (currentStep >= 5) {
     progressPercentage = 100;
   } else if (currentStep === 4) {
     const pageFraction = totalPages > 1 ? (printedPages - 1) / (totalPages - 1) : 0.6;
     progressPercentage = Math.round(75 + pageFraction * 20); // 75% -> 95%
-  } else if (currentStep === 3) {
+  } else if ((currentStep === 3 && !isReview && !isFailed)) {
     progressPercentage = 60;
   } else if (currentStep === 2) {
     progressPercentage = 38;
@@ -167,7 +162,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
       description: 'In print queue',
       icon: Cloud,
       isDone: currentStep > 3,
-      isActive: currentStep === 3,
+      isActive: (currentStep === 3 && !isReview && !isFailed),
     },
     {
       step: 4,
@@ -217,7 +212,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
               ? 'Document Printed & Ready!'
               : currentStep === 4
               ? `Printing Live at Counter (${printedPages}/${totalPages})`
-              : currentStep === 3
+              : (currentStep === 3 && !isReview && !isFailed)
               ? 'Sent to Shop Printer'
               : currentStep === 2
               ? 'Preparing Document Pages'
@@ -260,7 +255,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
               ? '100% Complete • Ready'
               : currentStep === 4
               ? `Step 4 of 5 • Printing Pg ${printedPages}/${totalPages}`
-              : currentStep === 3
+              : (currentStep === 3 && !isReview && !isFailed)
               ? 'Step 3 of 5 • In Queue'
               : currentStep === 2
               ? 'Step 2 of 5 • Preparing'
@@ -332,7 +327,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
                   <Check className="w-4 h-4 text-white stroke-[3] transition-transform duration-300 scale-100" />
                 ) : isCurrent && currentStep === 4 ? (
                   <Printer className="w-4 h-4 text-cyan-300 animate-pulse" />
-                ) : isCurrent && (currentStep === 2 || currentStep === 3) ? (
+                ) : isCurrent && (currentStep === 2 || (currentStep === 3 && !isReview && !isFailed)) ? (
                   <RefreshCw className="w-4 h-4 text-indigo-200 animate-spin" />
                 ) : (
                   <Icon className="w-4 h-4" />
@@ -401,7 +396,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
                     ? 'Print Completed Successfully'
                     : currentStep === 4
                     ? `Printing in Progress (Page ${printedPages} of ${totalPages})`
-                    : currentStep === 3
+                    : (currentStep === 3 && !isReview && !isFailed)
                     ? 'Ready in Shop Printer Queue'
                     : currentStep === 2
                     ? 'Preparing Document Pages'
@@ -444,7 +439,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
                 </span>
                 <span>Feeding Pages…</span>
               </div>
-            ) : currentStep === 3 ? (
+            ) : (currentStep === 3 && !isReview && !isFailed) ? (
               <span className="text-[11px] text-indigo-300 font-mono flex items-center justify-center sm:justify-end gap-1.5">
                 <RefreshCw className="w-3 h-3 animate-spin text-indigo-400" />
                 <span>In Queue</span>

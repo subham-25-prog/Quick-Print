@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import { useParams, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Order } from '@/types';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/Icons';
 import { LivePrintVisualizer } from '@/components/customer/LivePrintVisualizer';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
+import { startPolling } from '@/lib/polling';
 import { useShopName } from '@/lib/shop-sync';
 
 export default function OrderStatusPage() {
@@ -24,9 +25,8 @@ export default function OrderStatusPage() {
   const token = search.get('access_token');
   const shopName = useShopName();
 
-  const currentIdRef = useRef(id);
-  const currentTokenRef = useRef(token || '');
-  const hasReplacedUrlRef = useRef(false);
+  const router = useRouter();
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const [data, setData] = useState<{
     order: Order;
@@ -39,117 +39,85 @@ export default function OrderStatusPage() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (token) {
-      currentTokenRef.current = token;
-    }
-  }, [token]);
-
-  useEffect(() => {
     if (data?.order?.order_number && typeof document !== 'undefined') {
       document.title = `${shopName} – Order #${data.order.order_number}`;
     }
   }, [data?.order?.order_number, shopName]);
 
   useEffect(() => {
+    setData(null);
+    setError('');
+    setLoading(true);
+    setCopied(false);
+    if (!token) {
+      setLoading(false);
+      setError('This order link is missing an access token.');
+      return;
+    }
     let stopped = false;
-    let timer: ReturnType<typeof setTimeout>;
-    let consecutiveErrors = 0;
-
-    async function poll() {
-      try {
-        const activeToken = currentTokenRef.current;
-        if (!activeToken) {
-          throw new Error('This order link is missing an access token.');
-        }
-
-        const res = await fetch('/api/orders/' + currentIdRef.current, {
-          headers: { 'x-order-access-token': activeToken },
-          cache: 'no-store',
+    const polling = startPolling({
+      intervalMs: 1000,
+      poll: async (signal) => {
+        const res = await fetch('/api/orders/' + id, {
+          headers: { 'x-order-access-token': token }, cache: 'no-store', signal,
         });
-
         const result = await res.json();
+        if (stopped || signal.aborted) return false;
         if (!res.ok) {
+          if ([401, 403, 404].includes(res.status)) {
+            setLoading(false);
+            setError(result.error || 'This order link is unavailable.');
+            return false;
+          }
           throw new Error(result.error || 'Order status is temporarily unavailable.');
         }
-
-        if (!stopped) {
-          consecutiveErrors = 0;
-          setData(result);
-          setError('');
-
-          // If assigned a new orderId (e.g. cash order verified and promoted to orders table),
-          // update the browser URL exactly once to keep the URL stable and prevent looping.
-          if (
-            result.order?.id &&
-            result.order.id !== id &&
-            !hasReplacedUrlRef.current
-          ) {
-            hasReplacedUrlRef.current = true;
-            currentIdRef.current = result.order.id;
-            if (result.orderAccessToken) {
-              currentTokenRef.current = result.orderAccessToken;
-            }
-            if (typeof window !== 'undefined') {
-              const nextUrl = `/status/${result.order.id}?access_token=${encodeURIComponent(currentTokenRef.current)}`;
-              window.history.replaceState(null, '', nextUrl);
-            }
-          }
+        if (!result?.order?.id) throw new Error('Order status is temporarily unavailable.');
+        setData(result);
+        setError('');
+        setLoading(false);
+        if (result.order.id !== id) {
+          const nextToken = result.orderAccessToken || token;
+          router.replace('/status/' + result.order.id + '?access_token=' + encodeURIComponent(nextToken));
+          return false;
         }
-      } catch (e) {
-        if (!stopped && (e as Error)?.name !== 'AbortError') {
-          consecutiveErrors++;
-          // Only show error banner after multiple persistent failures to avoid layout twitch
-          if (consecutiveErrors >= 3) {
-            setError(e instanceof Error ? e.message : 'Connection interrupted.');
-          }
-        }
-      } finally {
+        const done = ['PRINTED', 'SUBMITTED', 'FAILED', 'REVIEW', 'CANCELLED', 'REJECTED'];
+        return done.includes(result.order.order_status) || done.includes(result.job?.status) ? 4000 : 1000;
+      },
+      onError: (error) => {
         if (!stopped) {
           setLoading(false);
-          // Rapid 1-second polling while in progress, 4s once completed
-          const isDone =
-            data?.order?.order_status === 'PRINTED' ||
-            data?.order?.order_status === 'SUBMITTED' ||
-            data?.job?.status === 'PRINTED' ||
-            data?.job?.status === 'SUBMITTED';
-          const nextInterval = isDone ? 4000 : 1000;
-          timer = setTimeout(poll, nextInterval);
+          setError(error instanceof Error ? error.message : 'Connection interrupted. Retrying automatically.');
         }
-      }
-    }
-
-    void poll();
-
-    // Cross-tab immediate synchronization via BroadcastChannel
-    let broadcastCh: BroadcastChannel | null = null;
+      },
+    });
+    let channel: BroadcastChannel | undefined;
     try {
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        broadcastCh = new BroadcastChannel('quickprint_order_events');
-        broadcastCh.onmessage = (ev) => {
-          if (!ev.data) return;
-          if (!ev.data.orderId || ev.data.orderId === currentIdRef.current) {
-            // Trigger instantaneous check without waiting for timer
-            clearTimeout(timer);
-            void poll();
-          }
+      if ('BroadcastChannel' in window) {
+        channel = new BroadcastChannel('quickprint_order_events');
+        channel.onmessage = ({ data: event }) => {
+          if (event && (!event.orderId || event.orderId === id || event.newOrderId === id)) polling.refresh();
         };
       }
     } catch {}
-
     return () => {
       stopped = true;
-      clearTimeout(timer);
-      if (broadcastCh) {
-        try { broadcastCh.close(); } catch {}
-      }
+      polling.stop();
+      channel?.close();
     };
-  }, [id]);
+  }, [id, token, router]);
 
-  const copyOrderId = () => {
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
+
+  const copyOrderId = async () => {
     if (!data?.order?.order_number) return;
-    void navigator.clipboard.writeText(data.order.order_number);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(data.order.order_number);
+      setCopied(true);
+      clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError('Unable to copy. Please select and copy the order number manually.');
+    }
   };
 
   const isAwaitingVerification =
@@ -213,7 +181,7 @@ export default function OrderStatusPage() {
                 ? 'Printing on Counter Hardware...'
                 : data?.agentOnline
                 ? 'Shop Printer Connected & Live'
-                : 'Shop Agent Active (Order Queued)'}
+                : 'Shop Agent Offline (Order Queued)'}
             </span>
           </div>
           <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">

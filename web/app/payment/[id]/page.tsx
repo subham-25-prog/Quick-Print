@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
+import { startPolling } from '@/lib/polling';
 import { Header } from '@/components/Header';
 import { formatCurrency } from '@/lib/utils';
 import { ArrowLeft, RefreshCw, AlertCircle, ShieldAlert } from '@/components/ui/Icons';
@@ -30,65 +31,56 @@ export default function PaymentPage() {
 
   useEffect(() => {
     let stopped = false;
-    let timer: ReturnType<typeof setTimeout>;
-
-    async function poll() {
-      try {
-        const res = await fetch(`/api/payments/${id}`, {
-          headers: { 'x-order-access-token': token },
-          cache: 'no-store',
+    setState(null);
+    setError('');
+    if (!token) {
+      setError('This payment link is missing an access token.');
+      return;
+    }
+    const polling = startPolling({
+      intervalMs: 1500,
+      poll: async (signal) => {
+        const res = await fetch('/api/payments/' + id, {
+          headers: { 'x-order-access-token': token }, cache: 'no-store', signal,
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Unable to check payment.');
-        if (stopped) return;
-
+        if (stopped || signal.aborted) return false;
+        if (!res.ok) {
+          if ([401, 403, 404].includes(res.status)) {
+            setError(data.error || 'This payment link is unavailable.');
+            return false;
+          }
+          throw new Error(data.error || 'Unable to check payment.');
+        }
+        if (!data || typeof data.status !== 'string') throw new Error('Unable to check payment.');
         setState(data);
         setError('');
-
         if (data.status === 'SUCCESS' && data.orderId) {
-          stopped = true;
-          const targetToken = data.orderAccessToken || token;
-          const url = `/status/${data.orderId}?access_token=${encodeURIComponent(targetToken)}`;
-          router.replace(url);
-          return;
+          router.replace('/status/' + data.orderId + '?access_token=' + encodeURIComponent(data.orderAccessToken || token));
+          return false;
         }
-
         if (['FAILED', 'EXPIRED', 'CANCELLED'].includes(data.status)) {
-          stopped = true;
-          // When payment fails, automatically redirect back to client interface
           router.replace('/?payment_error=' + encodeURIComponent(data.status.toLowerCase()));
-          return;
+          return false;
         }
-      } catch (e) {
-        if (!stopped) setError(e instanceof Error ? e.message : 'Connection interrupted.');
-      }
-
-      if (!stopped) timer = setTimeout(poll, 1500);
-    }
-
-    void poll();
-
-    // Cross-tab immediate synchronization via BroadcastChannel for instant cash verification
-    let broadcastCh: BroadcastChannel | null = null;
+      },
+      onError: (error) => {
+        if (!stopped) setError(error instanceof Error ? error.message : 'Connection interrupted.');
+      },
+    });
+    let channel: BroadcastChannel | undefined;
     try {
-      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-        broadcastCh = new BroadcastChannel('quickprint_order_events');
-        broadcastCh.onmessage = (ev) => {
-          if (!ev.data) return;
-          if (!ev.data.orderId || ev.data.orderId === id || ev.data.newOrderId === id) {
-            clearTimeout(timer);
-            void poll();
-          }
+      if ('BroadcastChannel' in window) {
+        channel = new BroadcastChannel('quickprint_order_events');
+        channel.onmessage = ({ data: event }) => {
+          if (event && (!event.orderId || event.orderId === id || event.newOrderId === id)) polling.refresh();
         };
       }
     } catch {}
-
     return () => {
       stopped = true;
-      clearTimeout(timer);
-      if (broadcastCh) {
-        try { broadcastCh.close(); } catch {}
-      }
+      polling.stop();
+      channel?.close();
     };
   }, [id, token, router]);
 

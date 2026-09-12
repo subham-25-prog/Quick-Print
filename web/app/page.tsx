@@ -1,6 +1,6 @@
 'use client';
 
-import { useState,useEffect } from 'react';
+import { useState,useEffect,useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
@@ -67,6 +67,7 @@ export default function CustomerHomePage() {
   // Payment modal & order submission
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const checkoutRequest = useRef(false);
   const [checkoutError,setCheckoutError]=useState('');
   const [pricingReady,setPricingReady]=useState(false);
   const [checkoutEnabled,setCheckoutEnabled]=useState(false);
@@ -85,7 +86,8 @@ export default function CustomerHomePage() {
       }
     } catch {}
 
-    const applyPricingConfig = (cfg: PricingConfig) => {
+    const applyPricingConfig = (incoming: PricingConfig) => {
+      const cfg = { ...incoming };
       if (!cfg.shop_name || /quickprint/i.test(cfg.shop_name)) {
         cfg.shop_name = defaultPricingConfig.shop_name;
       }
@@ -139,10 +141,10 @@ export default function CustomerHomePage() {
           const data = await res.json();
           if (disposed) return;
           setCheckoutEnabled(data.checkoutEnabled === true);
-          if (data.pricing) {
+          if (data.pricing && typeof data.pricing === 'object' && !Array.isArray(data.pricing)) {
             applyPricingConfig(data.pricing);
             setPricingReady(true);
-          }
+          } else { setPricingReady(false); setCheckoutEnabled(false); }
         } else {setPricingReady(false);setCheckoutEnabled(false);}
       } catch (err) {
         if (disposed) return;
@@ -162,12 +164,8 @@ export default function CustomerHomePage() {
     document.addEventListener('visibilitychange', fetchFreshPricing);
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'quickprint_live_pricing' && e.newValue) {
-        try {
-          const updated = JSON.parse(e.newValue);
-          applyPricingConfig(updated);
-        } catch {}
-      }
+      // Storage is only a refresh signal; prices and checkout availability come from the server.
+      if (e.key === 'quickprint_live_pricing') void fetchFreshPricing();
     };
     window.addEventListener('storage', handleStorageChange);
 
@@ -210,7 +208,8 @@ export default function CustomerHomePage() {
 
   // Calculate live order pricing
   const effectivePages = uploadedFile ? uploadedFile.pageCount : 1;
-  const priceBreakdown = calculateOrderPrice(
+  const priceBreakdown = (() => {
+    try { return calculateOrderPrice(
     effectivePages,
     {
       paperSize,
@@ -220,7 +219,8 @@ export default function CustomerHomePage() {
       addOns,
     },
     pricing
-  );
+  ); } catch { return null; }
+  })();
 
   // Customer form field configuration
   const showNameField = pricing.form_fields?.showCustomerName !== false;
@@ -231,7 +231,7 @@ export default function CustomerHomePage() {
   const showCustomerInfoSection = showNameField || showPhoneField || showNotesField;
 
   const handleOpenPayment = () => {
-    if (!checkoutEnabled) return;
+    if (!checkoutEnabled || !pricingReady || !priceBreakdown) return;
     if (!uploadedFile) {
       alert('Please upload a document to proceed.');
       return;
@@ -251,11 +251,13 @@ export default function CustomerHomePage() {
   };
 
   const handleConfirmOrder = async (method: PaymentMethod) => {
-    if (!uploadedFile || submitting) return;
+    if (!uploadedFile || checkoutRequest.current || submitting || !pricingReady || !checkoutEnabled || !priceBreakdown) return;
+    checkoutRequest.current = true;
     setSubmitting(true);setCheckoutError('');
     try {
       const res = await fetch('/api/orders', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(30000),
         body: JSON.stringify({
           uploadId:uploadedFile.uploadId,uploadToken:uploadedFile.uploadToken,
           idempotencyKey:uploadedFile.checkoutKey,paperSize,colorMode,printSides,copies,addOns,
@@ -281,7 +283,7 @@ export default function CustomerHomePage() {
       if (data.paymentUrl) { window.location.assign(data.paymentUrl); return; }
       router.push(statusUrl);
     }catch(e){setCheckoutError(e instanceof Error?e.message:'Unable to start payment. Please retry.');}
-    finally{setSubmitting(false);}
+    finally{checkoutRequest.current = false;setSubmitting(false);}
   };
 
   // Determine if finishing section has active options
@@ -303,11 +305,12 @@ export default function CustomerHomePage() {
     customAddons.length > 0;
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-28">
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
       {/* 1. Header */}
       <Header shopName={pricing.shop_name} />
 
-      <main className="max-w-xl mx-auto w-full px-4 pt-4 space-y-4">
+      <main className="max-w-xl mx-auto w-full px-4 pt-4 pb-4 space-y-4">
+        {!priceBreakdown && <p role="alert" className="rounded-xl bg-amber-50 p-4 text-amber-900">Pricing is unavailable for this selection. Choose another print option or contact the shopkeeper.</p>}
         {paymentErrorNotice && (
           <div role="alert" className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between text-sm shadow-xs animate-fadeIn">
             <div className="flex items-center gap-2.5">
@@ -450,16 +453,16 @@ export default function CustomerHomePage() {
         <DeveloperBadge className="mt-4" />
       </main>
 
-      {/* Floating Bottom Order Summary & Proceed Button Bar */}
-      <div className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-xl z-40">
+      {/* Sticky Bottom Order Summary & Proceed Button Bar */}
+      <div className="sticky bottom-0 mt-auto bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-xl z-40">
         {pricingReady && !checkoutEnabled && <p role="status" className="max-w-xl mx-auto mb-2 text-sm text-amber-900">Online ordering is not available yet. Please contact the shopkeeper.</p>}
-        <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
+        <div className="max-w-xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               TOTAL AMOUNT
             </div>
-            <div className="text-2xl font-extrabold text-emerald-600 leading-tight">
-              {formatCurrency(priceBreakdown.totalAmount)}
+            <div className="text-2xl font-extrabold text-emerald-600 leading-tight [overflow-wrap:anywhere]">
+              {priceBreakdown ? formatCurrency(priceBreakdown.totalAmount) : 'Unavailable'}
             </div>
           </div>
 
@@ -472,7 +475,7 @@ export default function CustomerHomePage() {
               }
               setIsAdobeModalOpen(true);
             }}
-            disabled={!pricingReady||!uploadedFile||submitting}
+            disabled={!pricingReady||!uploadedFile||submitting||!priceBreakdown}
             className="py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span>Preview</span>
@@ -486,9 +489,9 @@ export default function CustomerHomePage() {
         error={checkoutError}
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
-        amount={priceBreakdown.totalAmount}
+        amount={priceBreakdown?.totalAmount ?? 0}
         onConfirmPayment={handleConfirmOrder}
-        submitting={submitting}
+        submitting={submitting || !pricingReady || !checkoutEnabled || !priceBreakdown}
         pricing={pricing}
       />}
 

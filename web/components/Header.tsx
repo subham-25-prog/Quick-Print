@@ -26,12 +26,12 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin = false, shopName }) => 
 
   return (
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
-      <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
+      <div className="max-w-2xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <Link href="/" className="flex min-w-0 flex-1 items-center gap-3 group">
+          <div className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-sm group-hover:scale-105 transition-transform">
             <Printer className="w-5 h-5 text-white" />
           </div>
-          <div>
+          <div className="min-w-0 [overflow-wrap:anywhere]">
             <h1 className="text-sm sm:text-base font-bold text-slate-900 leading-tight">
               {displayName}
             </h1>
@@ -43,7 +43,7 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin = false, shopName }) => 
           </div>
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
 
           {/* Store Online Badge */}
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">

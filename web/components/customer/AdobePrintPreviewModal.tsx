@@ -835,7 +835,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           (Side-by-side on desktop, dedicated view when settings active on mobile)
          ========================================================================= */}
       <aside
-        className={`w-full md:w-[320px] lg:w-[340px] bg-[#202124] flex flex-col shrink-0 border-r border-[#3c4043]/50 h-full overflow-hidden ${
+        className={`w-full md:w-[320px] lg:w-[340px] bg-[#202124] flex flex-col flex-1 min-h-0 md:flex-none border-r border-[#3c4043]/50 md:h-full overflow-hidden ${
           mobileTab === 'preview' ? 'hidden md:flex' : 'flex'
         }`}
       >
@@ -875,7 +875,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 min={1}
                 max={100}
                 value={modalCopies}
-                onChange={(e) => setModalCopies(Math.max(1, parseInt(e.target.value) || 1))}
+                aria-label="Copies"
+                onChange={(e) => setModalCopies(Math.min(100, Math.max(1, parseInt(e.target.value) || 1)))}
                 className="w-16 text-center px-2 py-1.5 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs font-bold focus:outline-none focus:border-[#8ab4f8]"
               />
               <button
@@ -1108,7 +1109,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         </div>
 
         {/* Footer Actions (Sticky at bottom of sidebar) */}
-        <div className="px-5 sm:px-6 py-3 sm:py-4 border-t border-[#3c4043]/40 flex items-center justify-between gap-3 shrink-0 bg-[#202124]">
+        <div className="px-5 sm:px-6 py-3 sm:py-4 border-t border-[#3c4043]/40 flex flex-wrap items-center justify-between gap-3 shrink-0 bg-[#202124]">
           {/* On mobile settings tab: quick view preview link */}
           <button
             type="button"
@@ -1142,7 +1143,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           RIGHT WORKSPACE: Full Adobe Acrobat / Edge Preview Canvas Area
          ========================================================================= */}
       <main
-        className={`flex-1 bg-[#323639] flex flex-col items-center justify-between p-3 sm:p-6 relative overflow-hidden h-full ${
+        className={`flex-1 min-h-0 min-w-0 bg-[#323639] flex flex-col items-center justify-between p-3 sm:p-6 relative overflow-hidden h-full ${
           mobileTab === 'settings' ? 'hidden md:flex' : 'flex'
         }`}
       >
@@ -1281,7 +1282,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         </div>
 
         {/* Mobile Bottom Quick-Action Bar in Preview View */}
-        <div className="md:hidden w-full px-3 pt-1.5 pb-2.5 flex items-center justify-between gap-2.5 z-20 shrink-0 bg-[#202124]/90 backdrop-blur-md border-t border-[#3c4043]/60">
+        <div className="md:hidden w-full px-3 pt-1.5 pb-2.5 flex flex-wrap items-center justify-between gap-2.5 z-20 shrink-0 bg-[#202124]/90 backdrop-blur-md border-t border-[#3c4043]/60">
           <button
             type="button"
             onClick={() => setMobileTab('settings')}

@@ -6,7 +6,6 @@ import { developerConfig } from '@/lib/config';
 interface DeveloperBadgeProps {
   dark?: boolean;
   className?: string;
-  variant?: 'card' | 'inline' | 'poster'; // For backward compatibility with existing prop calls
 }
 
 export const DeveloperBadge: React.FC<DeveloperBadgeProps> = ({
@@ -16,7 +15,7 @@ export const DeveloperBadge: React.FC<DeveloperBadgeProps> = ({
   return (
     <div className={`text-center py-2.5 select-none ${className}`}>
       <div
-        className={`text-xs font-medium flex items-center justify-center gap-1.5 ${
+        className={`text-xs font-medium flex flex-wrap items-center justify-center gap-1.5 ${
           dark ? 'text-slate-400' : 'text-slate-500'
         }`}
       >

@@ -482,7 +482,7 @@ export default function AdminPrintingSettingsPage() {
         </div>
 
         {/* Developer Attribution */}
-        <DeveloperBadge variant="inline" className="pt-6 pb-2" />
+        <DeveloperBadge className="pt-6 pb-2" />
       </main>
     </div>
   );

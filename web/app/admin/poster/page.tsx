@@ -207,7 +207,7 @@ export default function ShopWallPosterPage() {
 
           {/* Footer Notice & Developer Attribution */}
           <div className="pt-3 border-t border-slate-200/80 space-y-2">
-            <DeveloperBadge variant="poster" />
+            <DeveloperBadge />
             <div className="text-[9px] text-slate-400 font-medium">
               ⚡ Powered by {shopName || 'Cyber Cafe'} Self-Service System • Prints ready in 2–5 minutes
             </div>

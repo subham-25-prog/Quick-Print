@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Zap, Lock, Save, Play } from '@/components/ui/Icons';
+import { startPolling } from '@/lib/polling';
 import { useShopName } from '@/lib/shop-sync';
 
 interface AdminHeaderProps {
@@ -35,30 +36,19 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
   React.useEffect(() => {
     let stopped = false;
-    const checkStatus = () => {
-      fetch('/api/admin/db-status')
-        .then((res) => res.json())
-        .then((data) => {
-          if (!stopped) setDbStatus(data);
-        })
-        .catch(() => {
-          if (!stopped) {
-            setDbStatus({
-              connected: false,
-              mode: 'LOCAL_MEMORY',
-              message: 'Offline',
-              agentOnline: false,
-            });
-          }
-        });
-    };
-
-    checkStatus();
-    const interval = setInterval(checkStatus, 4000);
-    return () => {
-      stopped = true;
-      clearInterval(interval);
-    };
+    const polling = startPolling({
+      intervalMs: 4000,
+      poll: async (signal) => {
+        const res = await fetch('/api/admin/db-status', { signal });
+        if (!res.ok) throw new Error('Could not refresh connection status');
+        const data = await res.json();
+        if (!stopped && !signal.aborted) setDbStatus(data);
+      },
+      onError: () => {
+        if (!stopped) setDbStatus({ connected: false, mode: 'UNAVAILABLE', message: 'Offline', agentOnline: false });
+      },
+    });
+    return () => { stopped = true; polling.stop(); };
   }, []);
 
   const handleStartAgent = (e: React.MouseEvent) => {
@@ -83,20 +73,20 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
           {/* Shop Logo & Title */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2.5">
             <Link
               href="/admin"
               prefetch={true}
-              className="flex items-center gap-2.5 group active:scale-95 transition-transform"
+              className="flex min-w-0 max-w-full items-center gap-2.5 group active:scale-95 transition-transform"
             >
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
+              <div className="w-8 h-8 shrink-0 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-indigo-700 flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
                 <Zap className="w-4 h-4 text-white" />
               </div>
               <div>
-                <span className="text-xs sm:text-sm font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors block">
+                <span className="text-xs sm:text-sm font-bold text-slate-900 leading-tight group-hover:text-indigo-600 transition-colors block [overflow-wrap:anywhere]">
                   {storeName}
                 </span>
               </div>

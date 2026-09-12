@@ -263,7 +263,7 @@ export default function AdminSettingsPage() {
 
       {/* Floating Action Toast Notification */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-200">
+        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:max-w-md z-50 animate-in slide-in-from-bottom-5 fade-in duration-200">
           <div
             className={`px-4 py-3 rounded-2xl shadow-2xl border text-xs font-bold flex items-center gap-3 backdrop-blur-md ${
               toast.type === 'success'
@@ -1176,7 +1176,7 @@ export default function AdminSettingsPage() {
             {/* Mobile Phone Field */}
             <div
               className={`p-3.5 rounded-2xl border transition-all ${
-                Boolean(form.form_fields?.showCustomerPhone)
+                form.form_fields?.showCustomerPhone
                   ? 'border-indigo-200 bg-indigo-50/20'
                   : 'border-slate-200 bg-slate-50/40 opacity-70'
               }`}
@@ -1185,7 +1185,7 @@ export default function AdminSettingsPage() {
                 <div className="flex items-center gap-3">
                   <div
                     className={`w-8 h-8 rounded-xl flex items-center justify-center ${
-                      Boolean(form.form_fields?.showCustomerPhone)
+                      form.form_fields?.showCustomerPhone
                         ? 'bg-indigo-600 text-white shadow-xs'
                         : 'bg-slate-200 text-slate-400'
                     }`}
@@ -1198,12 +1198,12 @@ export default function AdminSettingsPage() {
                       {Boolean(form.form_fields?.showCustomerPhone) && (
                         <span
                           className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            Boolean(form.form_fields?.requireCustomerPhone)
+                            form.form_fields?.requireCustomerPhone
                               ? 'bg-rose-50 text-rose-600 border border-rose-200'
                               : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                           }`}
                         >
-                          {Boolean(form.form_fields?.requireCustomerPhone) ? 'Mandatory *' : 'Optional'}
+                          {form.form_fields?.requireCustomerPhone ? 'Mandatory *' : 'Optional'}
                         </span>
                       )}
                     </div>
@@ -1217,12 +1217,12 @@ export default function AdminSettingsPage() {
                   type="button"
                   onClick={() => toggleFormField('showCustomerPhone', false)}
                   className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
-                    Boolean(form.form_fields?.showCustomerPhone)
+                    form.form_fields?.showCustomerPhone
                       ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
                       : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
                   }`}
                 >
-                  {Boolean(form.form_fields?.showCustomerPhone) ? 'Enabled' : 'Disabled'}
+                  {form.form_fields?.showCustomerPhone ? 'Enabled' : 'Disabled'}
                 </button>
               </div>
 
@@ -1234,7 +1234,7 @@ export default function AdminSettingsPage() {
                       type="button"
                       onClick={() => setFormFieldValue('requireCustomerPhone', true)}
                       className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        Boolean(form.form_fields?.requireCustomerPhone)
+                        form.form_fields?.requireCustomerPhone
                           ? 'bg-white text-indigo-700 shadow-xs'
                           : 'text-slate-500 hover:text-slate-800'
                       }`}
@@ -1382,7 +1382,7 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* Developer Attribution */}
-        <DeveloperBadge variant="inline" className="pt-6 pb-2" />
+        <DeveloperBadge className="pt-6 pb-2" />
       </main>
     </div>
   );

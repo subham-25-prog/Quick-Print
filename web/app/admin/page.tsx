@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { startPolling } from '@/lib/polling';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Order, OrderStatus, PricingConfig } from '@/types';
@@ -36,28 +37,28 @@ export default function AdminLiveOrdersPage() {
   const [agentOnline, setAgentOnline] = useState<boolean | null>(null);
   const [selectedOrderForHistory, setSelectedOrderForHistory] = useState<Order | null>(null);
 
+  const cashRequest = useRef(false);
+  const ordersRequest = useRef<AbortController | null>(null);
+
   // Set of IDs deleted locally so background polls never resurrect them
   const deletedOrderIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     let stopped = false;
-    const checkAgent = () => {
-      fetch('/api/admin/db-status')
-        .then((r) => r.json())
-        .then((d) => {
-          if (!stopped) setAgentOnline(Boolean(d.agentOnline));
-        })
-        .catch(() => {
-          if (!stopped) setAgentOnline(false);
-        });
-    };
-    checkAgent();
-    const interval = setInterval(checkAgent, 4000);
-    return () => {
-      stopped = true;
-      clearInterval(interval);
-    };
+    const polling = startPolling({
+      intervalMs: 4000,
+      poll: async (signal) => {
+        const response = await fetch('/api/admin/db-status', { signal });
+        if (!response.ok) throw new Error('Could not refresh agent status');
+        const data = await response.json();
+        if (!stopped && !signal.aborted) setAgentOnline(Boolean(data.agentOnline));
+      },
+      onError: () => { if (!stopped) setAgentOnline(false); },
+    });
+    return () => { stopped = true; polling.stop(); };
   }, []);
+
+  useEffect(() => () => { ordersRequest.current?.abort(); }, []);
 
   const handleStartAgent = () => {
     window.location.href = 'quickprint://start';
@@ -156,37 +157,16 @@ export default function AdminLiveOrdersPage() {
   };
 
   const handleAcceptCash = async (orderId: string) => {
-    const previousOrders = [...orders];
+    if (cashRequest.current) return;
+    cashRequest.current = true;
     setActionLoadingKey(`${orderId}_ACCEPT`);
-
-    // 1. Instant optimistic update - UI updates in 0ms without waiting for network
-    setOrders((prev) =>
-      prev.map((o) =>
-        o.id === orderId
-          ? { ...o, payment_status: 'PAID', order_status: 'PRINTING' as OrderStatus, payment_method: 'CASH' }
-          : o
-      )
-    );
-    if (selectedOrderForHistory && selectedOrderForHistory.id === orderId) {
-      setSelectedOrderForHistory((prev) =>
-        prev ? { ...prev, payment_status: 'PAID', order_status: 'PRINTING' as OrderStatus, payment_method: 'CASH' } : null
-      );
-    }
-
-    // 2. Broadcast instant verification to customer tab immediately
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
-      try {
-        const ch = new BroadcastChannel('quickprint_order_events');
-        ch.postMessage({ type: 'ORDER_VERIFIED', orderId });
-        ch.close();
-      } catch {}
-    }
 
     try {
       const res = await fetch('/api/admin/cash-action', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId, action: 'ACCEPT' }),
+        signal: AbortSignal.timeout(30000),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to verify cash payment');
@@ -200,13 +180,14 @@ export default function AdminLiveOrdersPage() {
         } catch {}
       }
 
-      showToast('Cash verified! Document sent to printer.', 'success');
+      setSelectedOrderForHistory(null);
+      showToast('Cash verified. Order queued for printing.', 'success');
       void fetchOrders();
     } catch (err: any) {
-      // Rollback on error
-      setOrders(previousOrders);
+
       showToast(err.message || 'Failed to verify cash', 'error');
     } finally {
+      cashRequest.current = false;
       setActionLoadingKey(null);
     }
   };
@@ -260,10 +241,16 @@ export default function AdminLiveOrdersPage() {
   }, []);
 
   const fetchOrders = useCallback(async (isManual = false) => {
+    if (ordersRequest.current) return;
+    const controller = new AbortController();
+    ordersRequest.current = controller;
+    const timeout = setTimeout(() => controller.abort(), 15000);
     if (isManual) setIsRefreshing(true);
     try {
-      const res = await fetch('/api/orders', { cache: 'no-store' });
+      const res = await fetch('/api/orders', { cache: 'no-store', signal: controller.signal });
       const data = await res.json();
+      if (controller.signal.aborted) return;
+      if (!res.ok || !Array.isArray(data.orders)) throw new Error(data.error || 'Could not refresh orders');
       if (Array.isArray(data.orders)) {
         // Strip out any locally purged orders so background polls never resurrect them
         const freshOrders = data.orders.filter((o: Order) => !deletedOrderIdsRef.current.has(o.id));
@@ -273,13 +260,15 @@ export default function AdminLiveOrdersPage() {
       console.error('Error fetching orders:', err);
       if (isManual) showToast('Failed to refresh live orders', 'error');
     } finally {
+      clearTimeout(timeout);
+      if (ordersRequest.current === controller) ordersRequest.current = null;
       setLoading(false);
       if (isManual) setIsRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchOrders();
+    if (!actionLoadingKey && !isClearing) void fetchOrders();
     const interval = setInterval(() => {
       // Background poll only if no mutation action is currently in-flight
       if (!actionLoadingKey && !isClearing) {
@@ -367,7 +356,7 @@ export default function AdminLiveOrdersPage() {
 
       {/* Floating Action Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-5 fade-in duration-200">
+        <div className="fixed bottom-6 left-4 right-4 sm:left-auto sm:max-w-md z-50 animate-in slide-in-from-bottom-5 fade-in duration-200">
           <div
             className={`px-4 py-3 rounded-2xl shadow-2xl border text-xs font-bold flex items-center gap-3 backdrop-blur-md ${
               toastMessage.type === 'success'
@@ -929,13 +918,13 @@ export default function AdminLiveOrdersPage() {
         </section>
 
         {/* Developer Attribution */}
-        <DeveloperBadge variant="inline" className="mt-2 pb-4" />
+        <DeveloperBadge className="mt-2 pb-4" />
       </main>
 
       {/* Clear History Confirmation Modal */}
       {showClearModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-3xl max-w-md w-full max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150">
             <div className="flex items-start gap-3">
               <div className="w-10 h-10 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 shrink-0">
                 <Trash2 className="w-5 h-5" />
