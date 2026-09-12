@@ -302,7 +302,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
         fileType: resultFileInfo.fileType || file.type,
         fileSizeBytes: resultFileInfo.fileSizeBytes || file.size,
         pageCount: resultFileInfo.pageCount || 1,
-        storagePath: resultFileInfo.storagePath || `shop-documents/orders/${file.name}`,
+        storagePath: resultFileInfo.storagePath || `orders/${file.name}`,
         signedUrl: resultFileInfo.signedUrl,
         previewUrl: resultFileInfo.signedUrl,
       };

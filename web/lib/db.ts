@@ -555,7 +555,7 @@ export async function cleanupOldOrders(retentionDays = 3) {
   if (error) throw error;
 
   for (const file of files || []) {
-    if (!file.storage_path.startsWith(`${shopId}/orders/`)) {
+    if (!file.storage_path.startsWith('orders/') && !file.storage_path.startsWith(`${shopId}/orders/`)) {
       throw new Error('Invalid retained file path');
     }
 

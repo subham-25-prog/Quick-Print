@@ -120,7 +120,7 @@ async function finalizeDocument({
     throw new HttpError(413, 'The converted document exceeds 100 MB.');
   }
 
-  const storagePath = `${shopId}/orders/${uploadId}.pdf`;
+  const storagePath = `orders/${uploadId}.pdf`;
 
   const previewToken = createOrderAccessToken(uploadId, 900);
   if (!previewToken) {
@@ -276,7 +276,7 @@ export async function POST(req: NextRequest) {
       await ensurePrivateBucket(db);
 
       const chunkBuffer = Buffer.from(await file.arrayBuffer());
-      const partPath = `${shopId}/orders/${clientUploadId}_part_${chunkIndex}.pdf`;
+      const partPath = `orders/${clientUploadId}_part_${chunkIndex}.pdf`;
 
       if (chunkIndex < totalChunks - 1) {
         const { error: partError } = await db.storage
@@ -298,7 +298,7 @@ export async function POST(req: NextRequest) {
       const partPaths: string[] = [];
       const partPromises = [];
       for (let i = 0; i < totalChunks - 1; i++) {
-        const p = `${shopId}/orders/${clientUploadId}_part_${i}.pdf`;
+        const p = `orders/${clientUploadId}_part_${i}.pdf`;
         partPaths.push(p);
         partPromises.push(db.storage.from('shop-documents').download(p));
       }
@@ -376,10 +376,9 @@ async function handlePrepareUpload(req: NextRequest, body: any) {
   const db = database();
   await ensurePrivateBucket(db);
 
-  const shopId = getCurrentShopId();
   const uploadId = randomUUID();
   const uploadToken = randomBytes(32).toString('hex');
-  const storagePath = `${shopId}/orders/${uploadId}.pdf`;
+  const storagePath = `orders/${uploadId}.pdf`;
 
   const { data: signData, error: signError } = await db.storage
     .from('shop-documents')
@@ -407,7 +406,7 @@ async function handleFinalizeUpload(_req: NextRequest, body: any) {
   }
 
   const shopId = getCurrentShopId();
-  if (!storagePath.startsWith(`${shopId}/orders/${uploadId}`)) {
+  if (!storagePath.startsWith(`orders/${uploadId}`) && !storagePath.startsWith(`${shopId}/orders/${uploadId}`)) {
     throw new HttpError(400, 'Invalid storage path.');
   }
 

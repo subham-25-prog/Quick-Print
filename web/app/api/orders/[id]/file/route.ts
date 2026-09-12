@@ -56,7 +56,7 @@ export async function GET(
       .maybeSingle();
 
     if (fileError) throw fileError;
-    if (!file || !file.storage_path.startsWith(`${shopId}/orders/`)) {
+    if (!file || (!file.storage_path.startsWith('orders/') && !file.storage_path.startsWith(`${shopId}/orders/`))) {
       throw new HttpError(404, 'Document has expired.');
     }
 
