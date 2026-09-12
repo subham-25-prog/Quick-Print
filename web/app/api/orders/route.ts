@@ -149,7 +149,7 @@ export async function POST(req: NextRequest) {
         request_hash: requestHash,
         provider: 'cash',
         merchant_id: 'cash',
-        environment: 'sandbox',
+        environment: isSandbox ? 'sandbox' : 'live',
         credential_fingerprint: 'cash',
         payment_reference: paymentReference,
         amount: price.totalAmount,
