@@ -14,7 +14,8 @@ echo.
 set "BAT_PATH=%~dp0start_agent.bat"
 
 reg add "HKCU\Software\Classes\quickprint" /ve /t REG_SZ /d "URL:QuickPrint Protocol" /f >nul 2>&1
-reg add "HKCU\Software\Classes\quickprint" /v "URL Protocol" /t REG_SZ /d "" /f >nul 2>&1
+reg add "HKCU\Software\Classes\quickprint" /v "URL Protocol" /f >nul 2>&1
+powershell.exe -NoProfile -Command "Set-ItemProperty -Path 'HKCU:\Software\Classes\quickprint' -Name 'URL Protocol' -Value ''" >nul 2>&1
 reg add "HKCU\Software\Classes\quickprint\shell\open\command" /ve /t REG_SZ /d "cmd.exe /c start \"\" \"%BAT_PATH%\"" /f >nul 2>&1
 
 if %errorlevel% equ 0 (
