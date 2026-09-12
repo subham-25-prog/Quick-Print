@@ -80,9 +80,27 @@ async function main() {
         console.error(JSON.stringify({ event: 'printer_unavailable' }));
       }
       backoffMs = config.pollIntervalMs;
-    } catch {
+    } catch (err: unknown) {
       // Axios errors may contain Authorization headers: never serialize them.
-      console.error(JSON.stringify({ event: 'agent_unavailable', retryInMs: backoffMs }));
+      const error = err as {
+        message?: string;
+        code?: string;
+        response?: { status?: number; data?: unknown };
+      };
+      const responseData =
+        typeof error?.response?.data === 'string'
+          ? error.response.data
+          : (error?.response?.data as { error?: string })?.error;
+      console.error(
+        JSON.stringify({
+          event: 'agent_unavailable',
+          retryInMs: backoffMs,
+          status: error?.response?.status,
+          code: error?.code,
+          message: error?.message,
+          error: responseData,
+        })
+      );
       backoffMs = Math.min(60000, backoffMs * 2);
     }
 
