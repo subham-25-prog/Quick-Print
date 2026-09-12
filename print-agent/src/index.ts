@@ -111,9 +111,9 @@ async function main() {
   process.exit(0);
 }
 
-main().catch(() => {
+main().catch((err) => {
   console.error(
-    'Agent could not start. Check configuration, printer selection and the state directory.'
+    `Agent could not start: ${err?.message || err}. Check configuration, printer selection and the state directory.`
   );
   process.exit(1);
 });
