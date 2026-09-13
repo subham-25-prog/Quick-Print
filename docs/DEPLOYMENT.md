@@ -4,6 +4,16 @@
 
 This release is a **candidate**, not an already activated live shop. Back up Supabase and export outstanding legacy transactions before upgrading. Use a separate staging Supabase project first. Stop all old agents; disable checkout while changing schema. Do not roll application code back to a legacy payment-bypass version against the new schema.
 
+## Security update: 13 September 2026
+
+For an existing installation, apply `supabase/migrations/20260913052027_secure_cash_actions.sql` before deploying the updated web code. It adds a service-role-only cash transaction and does not delete existing data. Fresh installations include it through `migration-order.json`.
+
+Set an explicit `PRINT_AGENT_SECRET` of at least 32 characters on both web and agent. Order-list access no longer accepts the hard-coded fallback. If that historical value was used in a deployed configuration, rotate it on both sides. No credentials are included in this update.
+
+The unused JSON direct-upload API is retired with HTTP 410; refresh any client using it. The current website continues using multipart and chunked uploads. In-progress chunk uploads from the old version must be restarted because their private chunk paths have changed.
+
+After deployment, verify a PDF/image upload, an enabled cash acceptance/rejection, a repeated acceptance and an online payment through the official provider. Local regression tests do not replace hardware/payment acceptance.
+
 ## Database
 
 For an empty Supabase project, run the files in `supabase/migration-order.json` in the listed order in SQL Editor. Run each file completely and verify success before the next:

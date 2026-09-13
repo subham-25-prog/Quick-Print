@@ -23,6 +23,7 @@ generated/
 print-agent/state/
 playwright-report/
 test-results/
+supabase/.temp/
 
 # Local upload / temp job directories
 uploads/*

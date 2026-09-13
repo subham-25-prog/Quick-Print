@@ -29,6 +29,12 @@ beforeAll(async()=>{
     INSERT INTO print_agents(agent_id,shop_id,device_name,printer_name,mode) VALUES('agent-one','${shop}','one','Printer','live'),('agent-two','${other}','two','Printer','live');`);
 });
 afterAll(async()=>db?.close());
+
+async function cashFixture(provider = 'cash') {
+  const file = (await db.query<{id:string}>(`INSERT INTO uploaded_files(shop_id,owner_hash,storage_path,file_name,file_size_bytes,page_count,sha256) VALUES($1,'owner',gen_random_uuid()::text,'cash.pdf',100,1,'hash') RETURNING id`, [shop])).rows[0].id;
+  const draft = JSON.stringify({total_amount:2,currency:'INR',paper_size:'A4',color_mode:'BW',print_sides:'SINGLE',copies:1,add_ons:{},per_page_rate:2,print_subtotal:2,addons_subtotal:0,pricing_snapshot:{}});
+  return (await db.query<{id:string}>(`INSERT INTO payments(shop_id,uploaded_file_id,owner_hash,provider,payment_reference,amount,currency,merchant_id,environment,credential_fingerprint,draft_order) VALUES($1,$2,'owner',$3,gen_random_uuid()::text,2,'INR',$3,'live',$3,$4::jsonb) RETURNING id`, [shop,file,provider,draft])).rows[0].id;
+}
 test('Storage restrictive policy defeats permissive legacy policies for customer documents',async()=>{
   await db.exec("INSERT INTO storage.objects VALUES(gen_random_uuid(),'shop-documents'); GRANT USAGE ON SCHEMA storage TO anon; GRANT SELECT ON storage.objects TO anon; CREATE POLICY legacy_all ON storage.objects FOR SELECT TO anon USING(true); SET ROLE anon;");
   expect((await db.query('SELECT * FROM storage.objects')).rows).toHaveLength(0);
@@ -135,4 +141,60 @@ test('delete_orders RPC cleans up unlinked cash payments',async()=>{
   const delRes=await db.query<{deleted_count:number}>("SELECT * FROM delete_orders($1, $2, 'SELECTED')",[shop,[cashP.id]]);
   expect(delRes.rows[0].deleted_count).toBe(1);
   expect((await db.query('SELECT * FROM payments WHERE id=$1',[cashP.id])).rows).toHaveLength(0);
+});
+
+test('cash RPC rejects online payments, wrong shops and malformed actions without changing state', async () => {
+  const online = await cashFixture('phonepe');
+  const cash = await cashFixture();
+  for (const args of [[shop,online,'ACCEPT'],[shop,online,'REJECT'],[other,cash,'ACCEPT'],[shop,cash,'typo'],[shop,cash,null]]) {
+    await expect(db.query('SELECT resolve_cash_payment($1,$2,$3)',args)).rejects.toThrow();
+  }
+  expect((await db.query<{status:string}>('SELECT status FROM payments WHERE id IN ($1,$2)',[online,cash])).rows.map(p=>p.status)).toEqual(['PENDING','PENDING']);
+});
+
+test('cash double acceptance is idempotent and preserves a submitted order', async () => {
+  const paymentId = await cashFixture();
+  const accept = () => db.query<{id:string}>('SELECT resolve_cash_payment($1,$2,$3) AS id',[shop,paymentId,'ACCEPT']);
+  const accepted = await Promise.all([accept(),accept()]);
+  const orderId = accepted[0].rows[0].id;
+  expect(accepted[1].rows[0].id).toBe(orderId);
+  const jobs = await db.query<{id:string}>('SELECT id FROM print_jobs WHERE order_id=$1',[orderId]);
+  expect(jobs.rows).toHaveLength(1);
+  // Reproduce an order that has already crossed the dispatch boundary.
+  await db.query("UPDATE orders SET order_status='PRINTING' WHERE id=$1",[orderId]);
+  await db.query("UPDATE orders SET order_status='SUBMITTED' WHERE id=$1",[orderId]);
+  expect((await db.query<{id:string}>('SELECT resolve_cash_payment($1,$2,$3) AS id',[shop,orderId,'ACCEPT'])).rows[0].id).toBe(orderId);
+  await expect(db.query('SELECT resolve_cash_payment($1,$2,$3)',[shop,orderId,'REJECT'])).rejects.toThrow();
+  expect((await db.query<{payment_method:string;order_status:string}>('SELECT payment_method,order_status FROM orders WHERE id=$1',[orderId])).rows[0]).toEqual({payment_method:'CASH',order_status:'SUBMITTED'});
+  expect((await db.query('SELECT id FROM print_jobs WHERE order_id=$1',[orderId])).rows).toEqual(jobs.rows);
+});
+
+test.each([['REJECT','ACCEPT'],['ACCEPT','REJECT']])('cash %s racing %s cannot reverse the winning decision', async (first,second) => {
+  const paymentId = await cashFixture();
+  const settled = await Promise.allSettled([first,second].map(action=>db.query('SELECT resolve_cash_payment($1,$2,$3)',[shop,paymentId,action])));
+  expect(settled.filter(r=>r.status==='fulfilled')).toHaveLength(1);
+  const winner = settled[0].status==='fulfilled' ? first : second;
+  const payment = (await db.query<{status:string;order_id:string|null}>('SELECT status,order_id FROM payments WHERE id=$1',[paymentId])).rows[0];
+  expect(payment.status).toBe(winner==='ACCEPT'?'SUCCESS':'CANCELLED');
+  expect(Boolean(payment.order_id)).toBe(winner==='ACCEPT');
+  if (winner==='REJECT') {
+    await db.query('SELECT resolve_cash_payment($1,$2,$3)',[shop,paymentId,'REJECT']);
+    expect((await db.query('SELECT id FROM orders WHERE payment_id=$1',[paymentId])).rows).toHaveLength(0);
+  }
+});
+
+test('cash rejection remains cancelled on retries and cannot later be accepted', async () => {
+  const paymentId = await cashFixture();
+  await db.query('SELECT resolve_cash_payment($1,$2,$3)',[shop,paymentId,'REJECT']);
+  await db.query('SELECT resolve_cash_payment($1,$2,$3)',[shop,paymentId,'REJECT']);
+  await expect(db.query('SELECT resolve_cash_payment($1,$2,$3)',[shop,paymentId,'ACCEPT'])).rejects.toThrow();
+  expect((await db.query<{status:string}>('SELECT status FROM payments WHERE id=$1',[paymentId])).rows[0].status).toBe('CANCELLED');
+});
+
+test('browser roles cannot execute the cash transaction', async () => {
+  for (const role of ['anon','authenticated']) {
+    const result = await db.query<{allowed:boolean}>('SELECT has_function_privilege($1,$2,$3) AS allowed',[role,'public.resolve_cash_payment(uuid,uuid,text)','EXECUTE']);
+    expect(result.rows[0].allowed).toBe(false);
+  }
+  expect((await db.query<{allowed:boolean}>("SELECT has_function_privilege('service_role','public.resolve_cash_payment(uuid,uuid,text)','EXECUTE') AS allowed")).rows[0].allowed).toBe(true);
 });

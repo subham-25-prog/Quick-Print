@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickPrint - New Shop Onboarding & Discovery Form (A4)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root {
+      --primary: #0f172a;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --success: #16a34a;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --border-dark: #334155;
+      --bg-alt: #f8fafc;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--text);
+      background-color: #e2e8f0;
+      font-size: 11px;
+      line-height: 1.35;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    /* Screen UI Header / Controls */
+    .screen-toolbar {
+      max-width: 210mm;
+      margin: 15px auto;
+      padding: 12px 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 10px;
+      z-index: 100;
+    }
+
+    .toolbar-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toolbar-desc {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn-ai {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(99, 102, 241, 0.35);
+    }
+    .btn-ai:hover {
+      background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: var(--primary);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    /* A4 Page Container */
+    .a4-page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto 20px auto;
+      padding: 10mm 12mm;
+      background: white;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    /* Header Section */
+    .form-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid var(--primary);
+      padding-bottom: 6px;
+      margin-bottom: 10px;
+    }
+
+    .brand-title {
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .brand-badge {
+      font-size: 8.5px;
+      font-weight: 700;
+      padding: 2px 6px;
+      background: #dbeafe;
+      color: var(--accent);
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .form-subtitle {
+      font-size: 10.5px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .header-meta {
+      text-align: right;
+      font-size: 9.5px;
+      color: var(--muted);
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .meta-line {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Form Section Layouts */
+    .section-block {
+      margin-bottom: 10px;
+    }
+
+    .section-title {
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--primary);
+      background: var(--bg-alt);
+      border-left: 3px solid var(--accent);
+      padding: 3px 8px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-title span.tag {
+      font-size: 8.5px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: none;
+    }
+
+    /* Grids */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px 12px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px 10px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 6px 10px;
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .field-label {
+      font-size: 9px;
+      font-weight: 700;
+      color: #334155;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    input[type="text"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="email"] {
+      width: 100%;
+      border: none;
+      border-bottom: 1px dashed var(--border-dark);
+      background: transparent;
+      font-family: inherit;
+      font-size: 11px;
+      color: #000;
+      padding: 2px 0;
+      outline: none;
+      transition: border-bottom-color 0.2s ease;
+    }
+
+    input:focus {
+      border-bottom-color: var(--accent) !important;
+      background: #eff6ff;
+    }
+
+    .options-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding-top: 3px;
+    }
+
+    .checkbox-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+
+    .checkbox-item input[type="checkbox"],
+    .checkbox-item input[type="radio"] {
+      cursor: pointer;
+      accent-color: var(--accent);
+      width: 12px;
+      height: 12px;
+    }
+
+    /* Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4px;
+      font-size: 10px;
+    }
+
+    .data-table th,
+    .data-table td {
+      border: 1px solid var(--border);
+      padding: 4px 6px;
+      text-align: left;
+    }
+
+    .data-table th {
+      background: #f1f5f9;
+      font-weight: 700;
+      font-size: 9px;
+      text-transform: uppercase;
+      color: #1e293b;
+    }
+
+    .data-table td.center,
+    .data-table th.center {
+      text-align: center;
+    }
+
+    .data-table td input[type="number"] {
+      border-bottom: none;
+      padding: 0;
+      height: 18px;
+    }
+
+    /* Notice Box */
+    .alert-callout {
+      border: 1px solid #bfdbfe;
+      background: #eff6ff;
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 9px;
+      color: #1e40af;
+      margin-bottom: 8px;
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+    }
+
+    /* Sign-off Block */
+    .sign-block {
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 12px;
+      background: var(--bg-alt);
+      margin-top: auto;
+    }
+
+    .footer-bar {
+      margin-top: 6px;
+      padding-top: 4px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      font-size: 8.5px;
+      color: var(--muted);
+    }
+
+    /* Modal Styling */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 680px;
+      max-height: 90vh;
+      overflow-y: auto;
+      padding: 24px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .code-preview {
+      background: #0f172a;
+      color: #38bdf8;
+      font-family: Consolas, Monaco, "Courier New", monospace;
+      font-size: 11px;
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      max-height: 250px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+    }
+
+    /* Printable Optimizations */
+    @media print {
+      body {
+        background: white;
+        margin: 0;
+        padding: 0;
+      }
+
+      .screen-toolbar,
+      .modal-overlay {
+        display: none !important;
+      }
+
+      .a4-page {
+        width: 100%;
+        min-height: auto;
+        margin: 0;
+        padding: 6mm 8mm;
+        box-shadow: none;
+        border: none;
+      }
+
+      .page-break {
+        page-break-before: always;
+        break-before: page;
+      }
+
+      input[type="text"],
+      input[type="number"],
+      input[type="tel"],
+      input[type="email"] {
+        border-bottom: 1px solid #64748b !important;
+      }
+
+      .section-title {
+        background: #f1f5f9 !important;
+        border-left: 3px solid #0f172a !important;
+      }
+
+      .data-table th {
+        background: #e2e8f0 !important;
+      }
+
+      .sign-block {
+        background: white !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Screen Toolbar -->
+  <div class="screen-toolbar">
+    <div>
+      <div class="toolbar-title">
+        <span>⚡ QuickPrint Shop Discovery Form</span>
+      </div>
+      <div class="toolbar-desc">Fill in details, print for counter visit, or export directly to share with Antigravity AI.</div>
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-ai" onclick="openExportModal()" title="Copy prompt payload to paste directly to AI">
+        <span>🤖</span>
+        <span>Share with AI / Export</span>
+      </button>
+      <button class="btn btn-secondary" onclick="downloadJSON()" title="Download as shop-intake.json">
+        <span>💾</span>
+        <span>Download JSON</span>
+      </button>
+      <button class="btn btn-primary" onclick="window.print()" title="Print on standard A4 paper or save clean PDF">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="6 9 6 2 18 2 18 9"></polyline>
+          <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+          <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+        <span>Print / Save PDF (A4)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- PAGE 1 OF 2 -->
+  <div class="a4-page">
+    <div>
+      <!-- Form Header -->
+      <div class="form-header">
+        <div>
+          <div class="brand-title">
+            QUICKPRINT
+            <span class="brand-badge">PARTNER ONBOARDING</span>
+          </div>
+          <div class="form-subtitle">Independent Print Shop Discovery & Technical Setup Form</div>
+        </div>
+        <div class="header-meta">
+          <div class="meta-line"><strong>Form No:</strong> <input type="text" id="form_no" style="width: 75px; font-weight: bold;" value="QP-ONB-01"></div>
+          <div class="meta-line"><strong>Date:</strong> <input type="text" id="intake_date" style="width: 85px;" value="2026-09-13"></div>
+          <div class="meta-line"><strong>Installer:</strong> <input type="text" id="installer_name" style="width: 90px;" placeholder="Your Name"></div>
+        </div>
+      </div>
+
+      <!-- Section 1: Shop & Contact Details -->
+      <div class="section-block">
+        <div class="section-title">
+          1. Shop & Contact Information
+          <span class="tag">Basic Branding & Domain Setup</span>
+        </div>
+        <div class="grid-2">
+          <div class="field-group">
+            <label class="field-label">Shop Commercial / Display Name *</label>
+            <input type="text" id="shop_name" placeholder="e.g. Cyber Cafe / Star Xerox" value="Cyber Cafe">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Preferred Slug / Subdomain *</label>
+            <input type="text" id="shop_slug" placeholder="e.g. cyber-cafe  (.yourdomain.com)" value="cyber-cafe">
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 6px;">
+          <div class="field-group">
+            <label class="field-label">Owner / Manager Name *</label>
+            <input type="text" id="owner_name" placeholder="Full name" value="Shubhamoy Karmakar">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Primary Mobile / WhatsApp *</label>
+            <input type="tel" id="shop_phone" placeholder="10-digit mobile" value="9144457475">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Production Website URL (HTTPS)</label>
+            <input type="text" id="shop_url" placeholder="https://..." value="https://quick-print-two.vercel.app">
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 6px;">
+          <div class="field-group">
+            <label class="field-label">Full Physical Address & Landmark *</label>
+            <input type="text" id="shop_address" placeholder="Shop No, Building, Campus / College Gate, Area" value="JISCE Campus">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Announcement Banner for Customers</label>
+            <input type="text" id="announcementText" placeholder="e.g. ⚡ Express Xerox • Prints ready in 5–10 mins at counter" value="⚡ Express Self-Service Xerox • Prints ready in 5–10 mins at the counter">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Hardware & PC Infrastructure -->
+      <div class="section-block">
+        <div class="section-title">
+          2. Hardware & Print Agent PC Environment
+          <span class="tag">Must be Windows 10/11</span>
+        </div>
+        <div class="alert-callout">
+          <div>💡</div>
+          <div>
+            <strong>Important:</strong> The Print Agent runs as a background service on the shop's PC. The PC must remain signed in and connected to the internet during shop working hours.
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div class="field-group">
+            <label class="field-label">Operating System *</label>
+            <div class="options-row">
+              <label class="checkbox-item"><input type="radio" name="os" value="Windows 11" checked> Windows 11</label>
+              <label class="checkbox-item"><input type="radio" name="os" value="Windows 10"> Windows 10</label>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Internet Connection *</label>
+            <div class="options-row">
+              <label class="checkbox-item"><input type="radio" name="internet" value="Wi-Fi" checked> Wi-Fi</label>
+              <label class="checkbox-item"><input type="radio" name="internet" value="LAN"> LAN Cable</label>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Print Simulation Mode</label>
+            <div class="options-row">
+              <label class="checkbox-item"><input type="checkbox" id="simulate_print"> SIMULATE_PRINT (Test mode)</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 6px;">
+          <div class="field-group">
+            <label class="field-label">Printer Exact Brand & Model *</label>
+            <input type="text" id="printer_model" placeholder="e.g. HP LaserJet 1020 / Canon imageRUNNER 2525" value="HP LaserJet 1020">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Exact Windows Printer Device Name (PRINTER_NAME) *</label>
+            <input type="text" id="printer_name" placeholder="Name as shown in Windows 'Printers & Scanners'" value="HP LaserJet 1020">
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 6px;">
+          <div class="field-group">
+            <label class="field-label">Color Printing *</label>
+            <div class="options-row">
+              <label class="checkbox-item"><input type="checkbox" id="allowColorPrinting" checked> Allow Color Printing</label>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Double-Sided Printing *</label>
+            <div class="options-row">
+              <label class="checkbox-item"><input type="checkbox" id="allowDoubleSided" checked> Allow Both Sides</label>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Duplex Hardware Mode *</label>
+            <div class="options-row">
+              <label class="checkbox-item"><input type="radio" name="duplex_mode" value="auto" checked> Auto Duplex</label>
+              <label class="checkbox-item"><input type="radio" name="duplex_mode" value="manual"> Manual Flip</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="field-group" style="margin-top: 6px;">
+          <label class="field-label">Supported Paper Trays / Paper Sizes in Stock:</label>
+          <div class="options-row">
+            <label class="checkbox-item"><input type="checkbox" id="paper_a4" checked> <strong>A4</strong> (Standard)</label>
+            <label class="checkbox-item"><input type="checkbox" id="paper_legal" checked> <strong>Legal</strong> (Stamp paper)</label>
+            <label class="checkbox-item"><input type="checkbox" id="paper_a3" checked> <strong>A3</strong> (Large drawings)</label>
+            <label class="checkbox-item"><input type="checkbox" id="paper_photo" checked> <strong>Glossy / Photo</strong> (4×6 / A4)</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Payment Gateway & Settlement -->
+      <div class="section-block">
+        <div class="section-title">
+          3. Payment Gateway & Merchant Settlement
+          <span class="tag">Online Auto-Verification</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="field-group">
+            <label class="field-label">PhonePe Payment Gateway Status *</label>
+            <div class="options-row">
+              <label class="checkbox-item"><input type="radio" name="pg_status" value="active"> Already Approved</label>
+              <label class="checkbox-item"><input type="radio" name="pg_status" value="applying" checked> Applying</label>
+              <label class="checkbox-item"><input type="radio" name="pg_status" value="cash_only"> Cash Only</label>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">PhonePe Merchant ID (MID)</label>
+            <input type="text" id="phonepe_mid" placeholder="MERCHANTUAT / Live MID" value="">
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 6px;">
+          <div class="field-group">
+            <label class="field-label">Shop Display UPI ID *</label>
+            <input type="text" id="shop_upi_id" placeholder="e.g. shopname@okaxis" value="shubhamoy27@okaxis">
+          </div>
+          <div class="field-group">
+            <label class="field-label">UPI Beneficiary Legal Name *</label>
+            <input type="text" id="shop_upi_name" placeholder="Name registered in bank" value="shubhamoy karmakar">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Settlement Bank Account</label>
+            <input type="text" id="bank_account" placeholder="Bank Name & Last 4 Digits">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bar">
+      <span>QuickPrint Independent Installation Framework</span>
+      <span>Confidential • Sheet 1 of 2</span>
+      <span>Generated for Antigravity AI Auto-Configuration</span>
+    </div>
+  </div>
+
+  <!-- PAGE 2 OF 2 -->
+  <div class="a4-page page-break">
+    <div>
+      <!-- Header 2 -->
+      <div class="form-header">
+        <div>
+          <div class="brand-title">
+            QUICKPRINT
+            <span class="brand-badge">RATE CARD & SERVICE MATRIX</span>
+          </div>
+          <div class="form-subtitle">Commercial Terms, Add-on Catalog & Counter Rules</div>
+        </div>
+        <div class="header-meta">
+          <div><strong>Config Target:</strong> <code>shop.config.json</code></div>
+          <div><strong>Currency:</strong> INR (₹)</div>
+        </div>
+      </div>
+
+      <!-- Section 4: Print Pricing Matrix -->
+      <div class="section-block">
+        <div class="section-title">
+          4. Per-Page Print Rates (In INR ₹)
+          <span class="tag">Directly maps to shop.config.json</span>
+        </div>
+
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Paper Type</th>
+              <th class="center">Enabled</th>
+              <th>B&W Single</th>
+              <th>B&W Double</th>
+              <th>Color Single</th>
+              <th>Color Double</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>A4 Paper</strong> (Standard 70-80 GSM)</td>
+              <td class="center"><input type="checkbox" id="row_a4_en" checked></td>
+              <td>₹ <input type="number" step="0.5" id="a4_bw_per_page" style="width: 50px;" value="2.5"></td>
+              <td>₹ <input type="number" step="0.5" id="a4_bw_double_per_page" style="width: 50px;" value="3"></td>
+              <td>₹ <input type="number" step="0.5" id="a4_color_per_page" style="width: 50px;" value="10"></td>
+              <td>₹ <input type="number" step="0.5" id="a4_color_double_per_page" style="width: 50px;" value="18"></td>
+            </tr>
+            <tr>
+              <td><strong>Legal Paper</strong> (Court / Deed)</td>
+              <td class="center"><input type="checkbox" id="row_legal_en" checked></td>
+              <td>₹ <input type="number" step="0.5" id="legal_bw_per_page" style="width: 50px;" value="3"></td>
+              <td>₹ <input type="number" step="0.5" id="legal_bw_double_per_page" style="width: 50px;" value="5"></td>
+              <td>₹ <input type="number" step="0.5" id="legal_color_per_page" style="width: 50px;" value="12"></td>
+              <td>₹ <input type="number" step="0.5" id="legal_color_double_per_page" style="width: 50px;" value="22"></td>
+            </tr>
+            <tr>
+              <td><strong>A3 Paper</strong> (Drawings / Plans)</td>
+              <td class="center"><input type="checkbox" id="row_a3_en" checked></td>
+              <td>₹ <input type="number" step="0.5" id="a3_bw_per_page" style="width: 50px;" value="5"></td>
+              <td>₹ <input type="number" step="0.5" id="a3_bw_double_per_page" style="width: 50px;" value="8"></td>
+              <td>₹ <input type="number" step="0.5" id="a3_color_per_page" style="width: 50px;" value="20"></td>
+              <td>₹ <input type="number" step="0.5" id="a3_color_double_per_page" style="width: 50px;" value="35"></td>
+            </tr>
+            <tr>
+              <td><strong>Photo / Glossy Paper</strong> (A4)</td>
+              <td class="center"><input type="checkbox" id="row_photo_en" checked></td>
+              <td>₹ <input type="number" step="0.5" id="photo_bw_per_page" style="width: 50px;" value="15"></td>
+              <td>₹ <input type="number" step="0.5" id="photo_bw_double_per_page" style="width: 50px;" value="25"></td>
+              <td>₹ <input type="number" step="0.5" id="photo_color_per_page" style="width: 50px;" value="25"></td>
+              <td>₹ <input type="number" step="0.5" id="photo_color_double_per_page" style="width: 50px;" value="45"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Section 5: Add-on Services -->
+      <div class="section-block">
+        <div class="section-title">
+          5. Add-on Services & Finishing Charges
+          <span class="tag">Optional Counter Finishing</span>
+        </div>
+
+        <div class="grid-4">
+          <div class="field-group">
+            <label class="field-label">Corner Stapling</label>
+            <div class="options-row" style="margin-bottom: 2px;">
+              <label class="checkbox-item"><input type="checkbox" id="addon_stapling_en"> Enable</label>
+            </div>
+            <div>₹ <input type="number" id="addon_stapling" value="5" style="width: 50px;"> / doc</div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Spiral Binding</label>
+            <div class="options-row" style="margin-bottom: 2px;">
+              <label class="checkbox-item"><input type="checkbox" id="addon_spiral_en"> Enable</label>
+            </div>
+            <div>₹ <input type="number" id="addon_spiral_binding" value="30" style="width: 50px;"> / book</div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Plastic Lamination</label>
+            <div class="options-row" style="margin-bottom: 2px;">
+              <label class="checkbox-item"><input type="checkbox" id="addon_lamination_en"> Enable</label>
+            </div>
+            <div>₹ <input type="number" id="addon_lamination" value="20" style="width: 50px;"> / sheet</div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Hard / Soft Binding</label>
+            <div class="options-row" style="margin-bottom: 2px;">
+              <label class="checkbox-item"><input type="checkbox" id="addon_hard_en"> Hard</label>
+              <label class="checkbox-item"><input type="checkbox" id="addon_soft_en"> Soft</label>
+            </div>
+            <div>Hard: ₹ <input type="number" id="addon_hard_binding" value="120" style="width: 40px;"> / Soft: ₹ <input type="number" id="addon_soft_binding" value="40" style="width: 40px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 6: Checkout Form & Operating Policies -->
+      <div class="section-block">
+        <div class="section-title">
+          6. Order Rules & Checkout Form Policy
+          <span class="tag">Form Field Settings</span>
+        </div>
+
+        <div class="grid-2">
+          <div class="field-group">
+            <label class="field-label">Customer Information Fields</label>
+            <div class="options-row">
+              <label class="checkbox-item"><input type="checkbox" id="requireCustomerName" checked> Require Name</label>
+              <label class="checkbox-item"><input type="checkbox" id="requireCustomerPhone"> Require Mobile</label>
+              <label class="checkbox-item"><input type="checkbox" id="enableNotes" checked> Allow Notes</label>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Allowed Payment Options</label>
+            <div class="options-row">
+              <label class="checkbox-item"><input type="checkbox" id="allowUpiPayment" checked> Online UPI</label>
+              <label class="checkbox-item"><input type="checkbox" id="allowCashPayment" checked> Cash at Counter</label>
+              <label class="checkbox-item"><input type="checkbox" id="autoApproveUpiOrders"> Auto-Approve Cash</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid-3" style="margin-top: 6px;">
+          <div class="field-group">
+            <label class="field-label">Minimum Order Value</label>
+            <div>₹ <input type="number" id="minOrderAmount" value="0" style="width: 60px;"></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Urgent / Rush Order Fee</label>
+            <div>₹ <input type="number" id="urgentFee" value="0" style="width: 60px;"></div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Shop Operating Hours</label>
+            <input type="text" id="operating_hours" placeholder="e.g. 9:00 AM – 9:00 PM" value="9:00 AM – 9:00 PM">
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 7: Acceptance & Installation Agreement -->
+      <div class="section-block">
+        <div class="section-title">
+          7. Sign-off & Handover Checklist
+          <span class="tag">Pre-launch Verification</span>
+        </div>
+
+        <div style="font-size: 9.5px; margin-bottom: 6px; color: #334155;">
+          The shop owner confirms that all rates and device credentials have been reviewed. The shop PC will keep the Windows agent active for live dispatch. Physical print test and sandbox payment acceptance must be demonstrated prior to live deployment.
+        </div>
+
+        <div class="sign-block">
+          <div class="grid-2">
+            <div class="field-group">
+              <label class="field-label">Shop Owner / Authorized Signatory</label>
+              <div style="height: 35px; border-bottom: 1px solid var(--border-dark); margin-top: 4px;"></div>
+              <div style="display: flex; justify-content: space-between; font-size: 8.5px; margin-top: 3px; color: var(--muted);">
+                <span>Signature & Shop Stamp</span>
+                <span>Date: ____ / ____ / 2026</span>
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">QuickPrint Certified Installer / Rep</label>
+              <div style="height: 35px; border-bottom: 1px solid var(--border-dark); margin-top: 4px;"></div>
+              <div style="display: flex; justify-content: space-between; font-size: 8.5px; margin-top: 3px; color: var(--muted);">
+                <span>Representative Signature</span>
+                <span>Installation ID: QP-INSTALL-01</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-bar">
+      <span>QuickPrint System Installation Framework</span>
+      <span>Confidential • Sheet 2 of 2</span>
+      <span>Target Go-Live Date: ____ / ____ / 2026</span>
+    </div>
+  </div>
+
+  <!-- EXPORT / SHARE MODAL -->
+  <div class="modal-overlay" id="exportModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>🤖 Share with Antigravity AI to Auto-Configure</span>
+        </div>
+        <button class="btn btn-secondary" onclick="closeExportModal()">✕ Close</button>
+      </div>
+
+      <p style="font-size: 12px; color: var(--muted);">
+        Simply copy the message below and paste it directly into your chat with Antigravity. The AI will immediately apply this configuration to <code>shop.config.json</code> and <code>print-agent/.env</code>!
+      </p>
+
+      <div class="code-preview" id="promptPreview"></div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+        <div style="font-size: 11px; color: #059669; font-weight: 600;" id="copyStatusText"></div>
+        <div style="display: flex; gap: 8px;">
+          <button class="btn btn-secondary" onclick="downloadJSON()">💾 Download JSON</button>
+          <button class="btn btn-ai" id="copyPromptBtn" onclick="copyPromptToClipboard()">
+            <span>📋</span>
+            <span>Copy Message for AI</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function getFormData() {
+      const getVal = (id) => document.getElementById(id)?.value?.trim() || '';
+      const getNum = (id) => Number(document.getElementById(id)?.value) || 0;
+      const getCheck = (id) => !!document.getElementById(id)?.checked;
+      const getRadio = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value || '';
+
+      return {
+        shop_name: getVal('shop_name'),
+        slug: getVal('shop_slug'),
+        owner_name: getVal('owner_name'),
+        shop_phone: getVal('shop_phone'),
+        shop_address: getVal('shop_address'),
+        shop_url: getVal('shop_url'),
+        currency: 'INR',
+
+        // Hardware / Technical
+        os: getRadio('os'),
+        internet: getRadio('internet'),
+        printer_model: getVal('printer_model'),
+        printer_name: getVal('printer_name'),
+        simulate_print: getCheck('simulate_print'),
+        duplex_mode: getRadio('duplex_mode'),
+
+        // Payment
+        shop_upi_id: getVal('shop_upi_id'),
+        shop_upi_name: getVal('shop_upi_name'),
+        phonepe_mid: getVal('phonepe_mid'),
+        pg_status: getRadio('pg_status'),
+
+        // Pricing
+        a4_bw_per_page: getNum('a4_bw_per_page'),
+        a4_bw_double_per_page: getNum('a4_bw_double_per_page'),
+        a4_color_per_page: getNum('a4_color_per_page'),
+        a4_color_double_per_page: getNum('a4_color_double_per_page'),
+
+        legal_bw_per_page: getNum('legal_bw_per_page'),
+        legal_bw_double_per_page: getNum('legal_bw_double_per_page'),
+        legal_color_per_page: getNum('legal_color_per_page'),
+        legal_color_double_per_page: getNum('legal_color_double_per_page'),
+
+        a3_bw_per_page: getNum('a3_bw_per_page'),
+        a3_bw_double_per_page: getNum('a3_bw_double_per_page'),
+        a3_color_per_page: getNum('a3_color_per_page'),
+        a3_color_double_per_page: getNum('a3_color_double_per_page'),
+
+        photo_paper_per_page: getNum('photo_bw_per_page'),
+        photo_bw_per_page: getNum('photo_bw_per_page'),
+        photo_bw_double_per_page: getNum('photo_bw_double_per_page'),
+        photo_color_per_page: getNum('photo_color_per_page'),
+        photo_color_double_per_page: getNum('photo_color_double_per_page'),
+
+        // Add-ons
+        addon_stapling: getNum('addon_stapling'),
+        addon_spiral_binding: getNum('addon_spiral_binding'),
+        addon_lamination: getNum('addon_lamination'),
+        addon_hard_binding: getNum('addon_hard_binding'),
+        addon_soft_binding: getNum('addon_soft_binding'),
+
+        enabled_papers: {
+          a4: getCheck('paper_a4') && getCheck('row_a4_en'),
+          legal: getCheck('paper_legal') && getCheck('row_legal_en'),
+          a3: getCheck('paper_a3') && getCheck('row_a3_en'),
+          photo: getCheck('paper_photo') && getCheck('row_photo_en')
+        },
+
+        enabled_addons: {
+          stapling: getCheck('addon_stapling_en'),
+          spiralBinding: getCheck('addon_spiral_en'),
+          lamination: getCheck('addon_lamination_en'),
+          hardBinding: getCheck('addon_hard_en'),
+          softBinding: getCheck('addon_soft_en')
+        },
+
+        form_fields: {
+          announcementText: getVal('announcementText'),
+          showCustomerName: true,
+          requireCustomerName: getCheck('requireCustomerName'),
+          showCustomerPhone: getCheck('requireCustomerPhone'),
+          requireCustomerPhone: getCheck('requireCustomerPhone'),
+          allowCashPayment: getCheck('allowCashPayment'),
+          allowUpiPayment: getCheck('allowUpiPayment'),
+          allowColorPrinting: getCheck('allowColorPrinting'),
+          allowDoubleSided: getCheck('allowDoubleSided'),
+          enableNotes: getCheck('enableNotes'),
+          autoApproveUpiOrders: getCheck('autoApproveUpiOrders'),
+          minOrderAmount: getNum('minOrderAmount'),
+          urgentFee: getNum('urgentFee')
+        }
+      };
+    }
+
+    function generateAIPrompt() {
+      const data = getFormData();
+      return `Please apply this new shop intake configuration to the QuickPrint project:
+
+\`\`\`json
+${JSON.stringify(data, null, 2)}
+\`\`\`
+
+Instructions for Antigravity:
+1. Save this configuration to \`shop.config.json\` or execute \`node scripts/apply-shop-intake.mjs\`.
+2. Update \`print-agent/.env\` with:
+   - PRINTER_NAME="${data.printer_name}"
+   - SIMULATE_PRINT=${data.simulate_print}
+3. Confirm that the shop configuration and print agent are ready for this shop.`;
+    }
+
+    function openExportModal() {
+      const prompt = generateAIPrompt();
+      document.getElementById('promptPreview').innerText = prompt;
+      document.getElementById('copyStatusText').innerText = '';
+      document.getElementById('exportModal').style.display = 'flex';
+    }
+
+    function closeExportModal() {
+      document.getElementById('exportModal').style.display = 'none';
+    }
+
+    function copyPromptToClipboard() {
+      const prompt = generateAIPrompt();
+      navigator.clipboard.writeText(prompt).then(() => {
+        const btn = document.getElementById('copyPromptBtn');
+        const status = document.getElementById('copyStatusText');
+        status.innerText = '✅ Copied to clipboard! Just paste it in your chat.';
+        btn.innerHTML = '<span>✅ Copied!</span>';
+        setTimeout(() => {
+          btn.innerHTML = '<span>📋</span><span>Copy Message for AI</span>';
+        }, 3000);
+      }).catch(() => {
+        alert('Could not auto-copy. Please manually select and copy the text box.');
+      });
+    }
+
+    function downloadJSON() {
+      const data = getFormData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${data.slug || 'shop'}-intake.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

@@ -14,8 +14,8 @@ import { createOrderAccessToken } from '@/lib/order-access';
 function isAuthorized(req: NextRequest): boolean {
   if (isAdminRequest(req)) return true;
   const authHeader = req.headers.get('authorization')?.replace(/^Bearer /i, '') || '';
-  const agentSecret = process.env.PRINT_AGENT_SECRET || 'pYk-d8ajyGIcuqLqETqVrVWg7KOmiIuf8RR3hQze1c8';
-  if (authHeader && agentSecret && equalSecret(authHeader, agentSecret)) {
+  const agentSecret = process.env.PRINT_AGENT_SECRET || '';
+  if (authHeader && agentSecret.length >= 32 && equalSecret(authHeader, agentSecret)) {
     return true;
   }
   return false;

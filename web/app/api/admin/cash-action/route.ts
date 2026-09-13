@@ -8,117 +8,29 @@ import { uuid } from '@/lib/validation';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  if (!isAdminRequest(req)) {
-    return adminUnauthorizedResponse();
-  }
-
+  if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
     requireSameOrigin(req);
     const body = await readJson(req);
-    const orderId = uuid(body.orderId);
-    const action = body.action === 'REJECT' ? 'REJECT' : 'ACCEPT';
-
-    const db = database();
-    const shopId = getCurrentShopId();
-
-    // Query orders and payments in parallel for instant resolution
-    const [orderRes, paymentDirectRes] = await Promise.all([
-      db
-        .from('orders')
-        .select('id, payment_id, shop_id, uploaded_file_id')
-        .eq('id', orderId)
-        .eq('shop_id', shopId)
-        .maybeSingle(),
-      db
-        .from('payments')
-        .select('*')
-        .eq('id', orderId)
-        .eq('shop_id', shopId)
-        .maybeSingle(),
-    ]);
-
-    const existingOrder = orderRes.data;
-    let payment = paymentDirectRes.data;
-
-    // If orderId was an order row ID rather than payment ID, look up payment by order's payment_id
-    if (!payment && existingOrder?.payment_id) {
-      const { data: linkedPayment } = await db
-        .from('payments')
-        .select('*')
-        .eq('id', existingOrder.payment_id)
-        .eq('shop_id', shopId)
-        .maybeSingle();
-      payment = linkedPayment;
+    const reference = uuid(body.orderId);
+    if (body.action !== 'ACCEPT' && body.action !== 'REJECT') {
+      throw new HttpError(400, 'Choose ACCEPT or REJECT.');
     }
-
-    if (!payment) {
-      throw new HttpError(404, 'Payment record not found.');
+    // Resolve, lock and validate the cash payment inside one transaction.
+    // Never fall back to deleting orders or manually finalizing online payments.
+    const { data, error } = await database().rpc('resolve_cash_payment', {
+      p_shop_id: getCurrentShopId(), p_reference: reference, p_action: body.action,
+    });
+    if (error) {
+      console.error('Cash action failed:', error.code);
+      throw new HttpError(409, 'Cash action could not be completed. Refresh the order status before retrying.');
     }
-
-    if (action === 'ACCEPT') {
-      // If a draft order row already existed in orders table, remove it so finalize_payment can run cleanly
-      if (existingOrder) {
-        await db.from('orders').delete().eq('id', existingOrder.id).eq('shop_id', shopId);
-      }
-
-      const amountMinor = Math.round(Number(payment.amount) * 100);
-      const transactionId = `CASH_${Date.now().toString(36).toUpperCase()}`;
-
-      // Call finalize_payment - the PostgreSQL SECURITY DEFINER RPC already verified on Supabase!
-      const { data: createdOrderId, error: rpcError } = await db.rpc('finalize_payment', {
-        p_shop_id: shopId,
-        p_payment_id: payment.id,
-        p_provider: payment.provider || 'cash',
-        p_merchant_id: payment.merchant_id || 'cash',
-        p_reference: payment.payment_reference,
-        p_transaction_id: transactionId,
-        p_amount_minor: amountMinor,
-        p_currency: payment.currency || 'INR',
-        p_environment: payment.environment || 'sandbox',
-        p_credential_fingerprint: payment.credential_fingerprint || 'cash',
-      });
-
-      if (rpcError) {
-        console.error('finalize_payment RPC error:', rpcError);
-        throw new HttpError(409, `Payment finalization failed: ${rpcError.message}`);
-      }
-
-      if (createdOrderId) {
-        await db
-          .from('orders')
-          .update({ payment_method: 'CASH' })
-          .eq('id', createdOrderId)
-          .eq('shop_id', shopId);
-      }
-
-      return NextResponse.json({
-        success: true,
-        orderId: createdOrderId,
-        message: 'Cash payment verified! Document sent to printer.',
-      });
+    if (body.action === 'ACCEPT' && !data) {
+      throw new HttpError(409, 'This payment needs review. No new print job was created.');
     }
-
-    if (action === 'REJECT') {
-      if (existingOrder) {
-        await db.from('orders').delete().eq('id', existingOrder.id).eq('shop_id', shopId);
-      }
-
-      await db
-        .from('payments')
-        .update({
-          status: 'CANCELLED',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', payment.id)
-        .eq('shop_id', shopId);
-
-      return NextResponse.json({
-        success: true,
-        message: 'Order rejected.',
-      });
-    }
-
-    throw new HttpError(400, 'Invalid action');
+    return NextResponse.json({ success: true, orderId: data,
+      message: body.action === 'ACCEPT' ? 'Cash payment accepted. Print job queued.' : 'Cash payment rejected.',
+    });
   } catch (error) {
     return apiError(error);
   }

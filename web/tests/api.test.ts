@@ -46,6 +46,31 @@ test('anonymous dashboard and invalid agent are denied before database access',a
   expect((await jobs(new NextRequest('https://shop.test/api/agent/jobs'))).status).toBe(401);
   expect(mocks.from).not.toHaveBeenCalled();
 });
+
+test.each(['', 'short'])('order listing fails closed with an invalid configured agent secret: %s', async secret => {
+  vi.stubEnv('PRINT_AGENT_SECRET', secret);
+  for (const supplied of ['pYk-d8ajyGIcuqLqETqVrVWg7KOmiIuf8RR3hQze1c8', 'short']) {
+    expect((await GET(new NextRequest('https://shop.test/api/orders', {
+      headers: { authorization: `Bearer ${supplied}` },
+    }))).status).toBe(401);
+  }
+});
+
+test('explicitly configured agent secret authorizes order listing', async () => {
+  vi.stubEnv('PRINT_AGENT_SECRET', 'a'.repeat(40));
+  expect((await GET(new NextRequest('https://shop.test/api/orders', {
+    headers: { authorization: `Bearer ${'a'.repeat(40)}` },
+  }))).status).toBe(200);
+});
+
+test.each(['prepare', 'finalize'])('retired direct upload %s cannot access storage or database', async action => {
+  const res = await upload(new NextRequest('https://shop.test/api/upload', {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({action, uploadId: id, uploadToken: 'b'.repeat(64), storagePath: `orders/${id}.pdf`, fileName: 'victim.pdf'}),
+  }));
+  expect(res.status).toBe(410);
+  expect(mocks.from).not.toHaveBeenCalled();
+});
 test('database rate-limiter failure cannot fall back to accepting checkout',async()=>{
   mocks.rate.mockRejectedValueOnce(new Error('offline'));expect((await POST(checkout())).status).toBe(503);expect(mocks.insert).not.toHaveBeenCalled();
 });
