@@ -12,6 +12,8 @@ interface PaymentModalProps {
   onConfirmPayment: (method: 'UPI' | 'CASH') => Promise<void>;
   submitting: boolean;
   pricing?: PricingConfig;
+  onlineEnabled?: boolean;
+  cashEnabled?: boolean;
   error?: string;
 }
 
@@ -22,10 +24,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onConfirmPayment,
   submitting,
   pricing,
+  onlineEnabled,
+  cashEnabled,
   error,
 }) => {
-  const allowOnline = pricing?.form_fields?.allowUpiPayment !== false;
-  const allowCash = Boolean(pricing?.form_fields?.allowCashPayment);
+  const allowOnline = onlineEnabled !== undefined
+    ? onlineEnabled
+    : pricing?.form_fields?.allowUpiPayment !== false;
+  const allowCash = cashEnabled !== undefined
+    ? cashEnabled
+    : Boolean(pricing?.form_fields?.allowCashPayment);
 
   if (!isOpen) return null;
 

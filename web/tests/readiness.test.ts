@@ -21,3 +21,17 @@ test('only configured and enabled payments make checkout available', async () =>
   mocks.pricing.mockResolvedValue({ form_fields: { allowUpiPayment: false } });
   expect(await (await GET()).json()).toMatchObject({ checkoutEnabled: false });
 });
+test('cash payment enables checkout even if online payment is disabled or unavailable', async () => {
+  // Cash enabled, online disabled
+  mocks.pricing.mockResolvedValue({ form_fields: { allowUpiPayment: false, allowCashPayment: true } });
+  expect(await (await GET()).json()).toMatchObject({ checkoutEnabled: true, cashEnabled: true, onlineEnabled: false });
+
+  // Cash enabled, online provider fails
+  mocks.pricing.mockResolvedValue({ form_fields: { allowUpiPayment: true, allowCashPayment: true } });
+  mocks.provider.mockRejectedValue(new Error('Provider down'));
+  expect(await (await GET()).json()).toMatchObject({ checkoutEnabled: true, cashEnabled: true, onlineEnabled: false });
+
+  // Cash disabled, online disabled
+  mocks.pricing.mockResolvedValue({ form_fields: { allowUpiPayment: false, allowCashPayment: false } });
+  expect(await (await GET()).json()).toMatchObject({ checkoutEnabled: false, cashEnabled: false, onlineEnabled: false });
+});

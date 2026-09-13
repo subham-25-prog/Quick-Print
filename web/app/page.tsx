@@ -71,6 +71,8 @@ export default function CustomerHomePage() {
   const [checkoutError,setCheckoutError]=useState('');
   const [pricingReady,setPricingReady]=useState(false);
   const [checkoutEnabled,setCheckoutEnabled]=useState(false);
+  const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState<boolean | undefined>(undefined);
+  const [cashPaymentEnabled, setCashPaymentEnabled] = useState<boolean | undefined>(undefined);
   const [paymentErrorNotice, setPaymentErrorNotice] = useState<string | null>(null);
 
   // Fetch shop pricing on mount & listen for live admin updates
@@ -141,6 +143,8 @@ export default function CustomerHomePage() {
           const data = await res.json();
           if (disposed) return;
           setCheckoutEnabled(data.checkoutEnabled === true);
+          setOnlinePaymentEnabled(typeof data.onlineEnabled === 'boolean' ? data.onlineEnabled : undefined);
+          setCashPaymentEnabled(typeof data.cashEnabled === 'boolean' ? data.cashEnabled : undefined);
           if (data.pricing && typeof data.pricing === 'object' && !Array.isArray(data.pricing)) {
             applyPricingConfig(data.pricing);
             setPricingReady(true);
@@ -493,6 +497,8 @@ export default function CustomerHomePage() {
         onConfirmPayment={handleConfirmOrder}
         submitting={submitting || !pricingReady || !checkoutEnabled || !priceBreakdown}
         pricing={pricing}
+        onlineEnabled={onlinePaymentEnabled}
+        cashEnabled={cashPaymentEnabled}
       />}
 
       {/* Adobe Acrobat Advanced Print Settings & Preview Modal */}

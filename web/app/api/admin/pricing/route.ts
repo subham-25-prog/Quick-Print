@@ -11,15 +11,19 @@ export const revalidate = 0;
 export async function GET() {
   try {
     const pricing = await getActivePricing();
-    let checkoutEnabled = false;
-    try {
-      await paymentProvider();
-      checkoutEnabled = pricing.form_fields?.allowUpiPayment !== false;
-    } catch {
-      // Readiness never substitutes for verification when a payment is made.
+    let onlineEnabled = false;
+    if (pricing.form_fields?.allowUpiPayment !== false) {
+      try {
+        await paymentProvider();
+        onlineEnabled = true;
+      } catch {
+        // Readiness never substitutes for verification when a payment is made.
+      }
     }
+    const cashEnabled = Boolean(pricing.form_fields?.allowCashPayment);
+    const checkoutEnabled = onlineEnabled || cashEnabled;
     return NextResponse.json(
-      { pricing, checkoutEnabled },
+      { pricing, checkoutEnabled, onlineEnabled, cashEnabled },
       {
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0, proxy-revalidate',
