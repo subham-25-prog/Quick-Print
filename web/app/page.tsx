@@ -9,6 +9,7 @@ import { FileUploader, UploadedFileState } from '@/components/customer/FileUploa
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
 import { calculateOrderPrice } from '@/lib/pricing';
+import { computeEffectivePageCount } from '@/lib/page-range';
 import { formatCurrency } from '@/lib/utils';
 import { defaultPricingConfig } from '@/lib/config';
 import { useInitialPricing } from '@/lib/initial-pricing';
@@ -211,7 +212,9 @@ export default function CustomerHomePage() {
   }, []);
 
   // Calculate live order pricing
-  const effectivePages = uploadedFile ? uploadedFile.pageCount : 1;
+  const effectivePages = uploadedFile
+    ? computeEffectivePageCount(uploadedFile.pageCount, advancedConfig)
+    : 1;
   const priceBreakdown = (() => {
     try { return calculateOrderPrice(
     effectivePages,
@@ -221,6 +224,7 @@ export default function CustomerHomePage() {
       printSides,
       copies,
       addOns,
+      advancedConfig,
     },
     pricing
   ); } catch { return null; }
@@ -265,6 +269,7 @@ export default function CustomerHomePage() {
         body: JSON.stringify({
           uploadId:uploadedFile.uploadId,uploadToken:uploadedFile.uploadToken,
           idempotencyKey:uploadedFile.checkoutKey,paperSize,colorMode,printSides,copies,addOns,
+          advancedConfig,
           customerName,customerPhone,customerNotes,paymentMethod:method,
         }),
       });

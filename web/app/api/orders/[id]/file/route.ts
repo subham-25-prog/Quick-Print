@@ -6,6 +6,8 @@ import { agentIdentity } from '@/lib/security';
 import { getCurrentShopId } from '@/lib/shop';
 import { apiError, HttpError } from '@/lib/http';
 import { uuid } from '@/lib/validation';
+import { transformPdf } from '@/lib/pdf-transform';
+import { AdvancedPrintConfig } from '@/types';
 
 export async function GET(
   req: NextRequest,
@@ -68,8 +70,22 @@ export async function GET(
       throw new HttpError(404, 'Document unavailable.');
     }
 
-    const buffer = await fileData.arrayBuffer();
-    return new NextResponse(buffer, {
+    let advancedConfig = order.advanced_config as AdvancedPrintConfig | undefined;
+    if (!advancedConfig && order.payment_id) {
+      const { data: pay } = await db
+        .from('payments')
+        .select('draft_order')
+        .eq('id', order.payment_id)
+        .maybeSingle();
+      if (pay?.draft_order && typeof pay.draft_order === 'object') {
+        advancedConfig = (pay.draft_order as Record<string, unknown>).advanced_config as AdvancedPrintConfig | undefined;
+      }
+    }
+
+    const rawBuffer = Buffer.from(await fileData.arrayBuffer());
+    const processedBuffer = await transformPdf(rawBuffer, advancedConfig);
+
+    return new NextResponse(new Uint8Array(processedBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'inline; filename="document.pdf"',

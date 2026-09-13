@@ -16,5 +16,6 @@ test('extension and MIME must both be allowed',()=>{
 test('tampered quantities and unsupported print settings rejected',()=>{
   for(const copies of [-1,0,0.5,Infinity,101,'2']) expect(()=>printOptions({copies},defaultPricingConfig)).toThrow();
   expect(()=>printOptions({paperSize:'bad'},defaultPricingConfig)).toThrow();
-  expect(()=>printOptions({advancedConfig:{watermark:'DRAFT'}},defaultPricingConfig)).toThrow();
+  expect(()=>printOptions({advancedConfig:{watermark:'INVALID'}},defaultPricingConfig)).toThrow();
+  expect(printOptions({advancedConfig:{watermark:'DRAFT'}},defaultPricingConfig).advancedConfig?.watermark).toBe('DRAFT');
 });

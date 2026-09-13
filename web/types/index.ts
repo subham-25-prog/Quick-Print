@@ -151,6 +151,7 @@ export interface OrderItemOptions {
   printSides: PrintSides;
   copies: number;
   addOns: AddOnOptions;
+  advancedConfig?: AdvancedPrintConfig;
 }
 
 export interface PriceBreakdown {

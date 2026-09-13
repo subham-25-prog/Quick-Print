@@ -1,4 +1,4 @@
-import { PricingConfig, OrderItemOptions } from '@/types';
+import { PricingConfig, OrderItemOptions, AdvancedPrintConfig } from '@/types';
 import { HttpError } from './http';
 
 export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -100,27 +100,60 @@ export function printOptions(
     }
   }
 
-  // Check advancedConfig defaults
-  const advanced = body.advancedConfig as Record<string, unknown> | undefined;
-  const defaultAdvanced: Record<string, unknown> = {
-    pageRangeMode: 'ALL',
-    customPageRange: '',
-    pagesPerSheet: '1',
-    pageScaling: 'FIT',
-    customScalePercent: 100,
-    orientation: 'AUTO',
-    printQuality: 'STANDARD',
-    watermark: 'NONE',
-  };
+  // Validate and sanitize advancedConfig
+  let validAdvanced: AdvancedPrintConfig | undefined;
+  if (body.advancedConfig !== undefined) {
+    const adv = body.advancedConfig as Record<string, unknown>;
+    if (!adv || typeof adv !== 'object' || Array.isArray(adv)) {
+      throw new HttpError(400, 'Invalid advanced printing configuration.');
+    }
 
-  if (
-    advanced !== undefined &&
-    (!advanced ||
-      typeof advanced !== 'object' ||
-      Array.isArray(advanced) ||
-      Object.entries(advanced).some(([k, v]) => defaultAdvanced[k] !== v))
-  ) {
-    throw new HttpError(400, 'Advanced printing options are not supported by this installation.');
+    const pageRangeMode = adv.pageRangeMode ?? 'ALL';
+    if (!['ALL', 'RANGE', 'ODD', 'EVEN'].includes(String(pageRangeMode))) {
+      throw new HttpError(400, 'Invalid page range mode.');
+    }
+
+    const customPageRange = typeof adv.customPageRange === 'string' ? adv.customPageRange.slice(0, 100) : '';
+    const pagesPerSheet = adv.pagesPerSheet ?? '1';
+    if (!['1', '2', '4', 'booklet'].includes(String(pagesPerSheet))) {
+      throw new HttpError(400, 'Invalid pages per sheet.');
+    }
+
+    const pageScaling = adv.pageScaling ?? 'FIT';
+    if (!['FIT', 'ACTUAL', 'SHRINK', 'CUSTOM'].includes(String(pageScaling))) {
+      throw new HttpError(400, 'Invalid page scaling.');
+    }
+
+    const customScalePercent = Number(adv.customScalePercent ?? 100);
+    if (!Number.isFinite(customScalePercent) || customScalePercent < 10 || customScalePercent > 500) {
+      throw new HttpError(400, 'Invalid scale percentage.');
+    }
+
+    const orientation = adv.orientation ?? 'AUTO';
+    if (!['AUTO', 'PORTRAIT', 'LANDSCAPE'].includes(String(orientation))) {
+      throw new HttpError(400, 'Invalid orientation.');
+    }
+
+    const printQuality = adv.printQuality ?? 'STANDARD';
+    if (!['FAST_DRAFT', 'STANDARD', 'HIGH_QUALITY'].includes(String(printQuality))) {
+      throw new HttpError(400, 'Invalid print quality.');
+    }
+
+    const watermark = adv.watermark ?? 'NONE';
+    if (!['NONE', 'CONFIDENTIAL', 'DRAFT', 'SAMPLE'].includes(String(watermark))) {
+      throw new HttpError(400, 'Invalid watermark.');
+    }
+
+    validAdvanced = {
+      pageRangeMode: pageRangeMode as AdvancedPrintConfig['pageRangeMode'],
+      customPageRange,
+      pagesPerSheet: pagesPerSheet as AdvancedPrintConfig['pagesPerSheet'],
+      pageScaling: pageScaling as AdvancedPrintConfig['pageScaling'],
+      customScalePercent,
+      orientation: orientation as AdvancedPrintConfig['orientation'],
+      printQuality: printQuality as AdvancedPrintConfig['printQuality'],
+      watermark: watermark as AdvancedPrintConfig['watermark'],
+    };
   }
 
   return {
@@ -129,6 +162,7 @@ export function printOptions(
     printSides: printSidesStr as 'SINGLE' | 'DOUBLE',
     copies: Number(copies),
     addOns,
+    advancedConfig: validAdvanced,
   } as OrderItemOptions;
 }
 

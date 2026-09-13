@@ -7,6 +7,7 @@ import { apiError, HttpError, readJson, requireSameOrigin } from '@/lib/http';
 import { rateLimit, hash, equalSecret } from '@/lib/security';
 import { uuid, textField, printOptions } from '@/lib/validation';
 import { calculateOrderPrice } from '@/lib/pricing';
+import { computeEffectivePageCount } from '@/lib/pdf-transform';
 import { paymentProvider } from '@/lib/payments';
 import { openPayment } from '@/lib/payments/service';
 import { createOrderAccessToken } from '@/lib/order-access';
@@ -85,7 +86,8 @@ export async function POST(req: NextRequest) {
     }
 
     const options = printOptions(body, pricing);
-    const price = calculateOrderPrice(file.page_count, options, pricing);
+    const effectivePageCount = computeEffectivePageCount(file.page_count, options.advancedConfig);
+    const price = calculateOrderPrice(effectivePageCount, options, pricing);
 
     if (!Number.isFinite(price.totalAmount) || price.totalAmount < 1 || price.totalAmount > 100000) {
       throw new HttpError(400, 'The payment total must be between ₹1 and ₹100,000.');
@@ -127,8 +129,9 @@ export async function POST(req: NextRequest) {
         color_mode: options.colorMode,
         print_sides: options.printSides,
         copies: options.copies,
+        page_count: effectivePageCount,
         add_ons: options.addOns,
-        advanced_config: (options as unknown as Record<string, unknown>).advancedConfig,
+        advanced_config: options.advancedConfig,
         per_page_rate: price.effectiveRatePerPage,
         print_subtotal: price.printSubtotal,
         addons_subtotal: price.addOnsSubtotal,
@@ -223,8 +226,9 @@ export async function POST(req: NextRequest) {
         color_mode: options.colorMode,
         print_sides: options.printSides,
         copies: options.copies,
+        page_count: effectivePageCount,
         add_ons: options.addOns,
-        advanced_config: (options as unknown as Record<string, unknown>).advancedConfig,
+        advanced_config: options.advancedConfig,
         per_page_rate: price.effectiveRatePerPage,
         print_subtotal: price.printSubtotal,
         addons_subtotal: price.addOnsSubtotal,
