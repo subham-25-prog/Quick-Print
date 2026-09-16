@@ -4,6 +4,7 @@ import { useState,useEffect,useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
+import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { FileUploader, UploadedFileState } from '@/components/customer/FileUploader';
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
@@ -70,7 +71,6 @@ export default function CustomerHomePage() {
   const checkoutRequest = useRef(false);
   const [checkoutError,setCheckoutError]=useState('');
   const [pricingReady,setPricingReady]=useState(false);
-  const [pricingFailed,setPricingFailed]=useState(false);
   const [checkoutEnabled,setCheckoutEnabled]=useState(false);
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState<boolean | undefined>(undefined);
   const [cashPaymentEnabled, setCashPaymentEnabled] = useState<boolean | undefined>(undefined);
@@ -148,12 +148,12 @@ export default function CustomerHomePage() {
           setCashPaymentEnabled(typeof data.cashEnabled === 'boolean' ? data.cashEnabled : undefined);
           if (data.pricing && typeof data.pricing === 'object' && !Array.isArray(data.pricing)) {
             applyPricingConfig(data.pricing);
-            setPricingReady(true);setPricingFailed(false);
-          } else { setPricingFailed(true);setPricingReady(false); setCheckoutEnabled(false); }
-        } else {setPricingFailed(true);setPricingReady(false);setCheckoutEnabled(false);}
+            setPricingReady(true);
+          } else { setPricingReady(false); setCheckoutEnabled(false); }
+        } else {setPricingReady(false);setCheckoutEnabled(false);}
       } catch (err) {
         if (disposed) return;
-        setPricingFailed(true);setPricingReady(false);
+        setPricingReady(false);
         setCheckoutEnabled(false);
         console.error('Failed to load fresh shop pricing:', err);
       } finally {
@@ -241,21 +241,20 @@ export default function CustomerHomePage() {
   const handleOpenPayment = () => {
     if (!checkoutEnabled || !pricingReady || !priceBreakdown) return;
     if (!uploadedFile) {
-      setCheckoutError('Please upload a document to proceed.');
+      alert('Please upload a document to proceed.');
       return;
     }
 
     if (isNameRequired && !customerName.trim()) {
-      setCheckoutError('Please enter your full name for order identification.');
+      alert('Please enter your full name for order identification.');
       return;
     }
 
-    if ((isPhoneRequired || customerPhone.trim()) && !/^\+?[0-9 ]{10,15}$/.test(customerPhone.trim())) {
-      setCheckoutError('Enter a valid mobile number (10–15 digits, with an optional +).');
+    if (isPhoneRequired && !customerPhone.trim()) {
+      alert('Please enter your WhatsApp / mobile number for order pickup notifications.');
       return;
     }
 
-    setCheckoutError('');
     setIsPaymentModalOpen(true);
   };
 
@@ -319,17 +318,7 @@ export default function CustomerHomePage() {
       {/* 1. Header */}
       <Header shopName={pricing.shop_name} />
 
-      <main className="max-w-3xl mx-auto w-full px-4 sm:px-6 pt-8 pb-8 space-y-5">
-        <div className="pb-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-indigo-600">Print at your local shop</p>
-          <h2 className="mt-2 text-3xl sm:text-4xl font-bold tracking-tight text-slate-900">Your documents. Ready to print.</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">Upload a file, choose your print options, then review and pay.</p>
-          <ol aria-label="Order steps" className="mt-5 flex flex-wrap gap-3 text-xs font-semibold text-slate-600">
-            <li className="rounded-full bg-indigo-50 px-3 py-2 text-indigo-700">1 · Upload</li>
-            <li className="rounded-full bg-white px-3 py-2">2 · Configure</li>
-            <li className="rounded-full bg-white px-3 py-2">3 · Review & pay</li>
-          </ol>
-        </div>
+      <main className="max-w-xl mx-auto w-full px-4 pt-4 pb-4 space-y-4">
         {!priceBreakdown && <p role="alert" className="rounded-xl bg-amber-50 p-4 text-amber-900">Pricing is unavailable for this selection. Choose another print option or contact the shopkeeper.</p>}
         {paymentErrorNotice && (
           <div role="alert" className="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl flex items-center justify-between text-sm shadow-xs animate-fadeIn">
@@ -351,7 +340,7 @@ export default function CustomerHomePage() {
             </button>
           </div>
         )}
-        {!pricingReady&&<p role="status" className="p-3 bg-amber-50 text-amber-900 rounded-xl text-sm">{pricingFailed ? 'Unable to check shop availability. Check your connection; we will retry automatically.' : 'Checking shop availability…'}</p>}
+        {!pricingReady&&<p role="status" className="p-3 bg-amber-50 text-amber-900 rounded-xl text-sm">Checking shop availability…</p>}
         {checkoutError&&<p role="alert" className="p-3 bg-rose-50 text-rose-800 rounded-xl text-sm">{checkoutError}</p>}
         {/* Card 1: 1. Upload Document */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-3">
@@ -366,11 +355,7 @@ export default function CustomerHomePage() {
 
           <FileUploader
             uploadedFile={uploadedFile}
-            onFileUploaded={(file) => {
-              setUploadedFile(file);
-              setCheckoutError('');
-              setAdvancedConfig(previous => ({ ...previous, pageRangeMode: 'ALL', customPageRange: '' }));
-            }}
+            onFileUploaded={setUploadedFile}
           />
         </section>
 
@@ -423,7 +408,7 @@ export default function CustomerHomePage() {
                   </label>
                   <div className="relative">
                     <input
-                      type="text" autoComplete="name" aria-label="Your Full Name" maxLength={100} required={isNameRequired}
+                      type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="e.g. Rahul Sharma"
@@ -441,7 +426,7 @@ export default function CustomerHomePage() {
                   </label>
                   <div className="relative">
                     <input
-                      type="tel" autoComplete="tel" aria-label="WhatsApp / Mobile Number" maxLength={20} required={isPhoneRequired}
+                      type="tel"
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       placeholder="e.g. 9876543210"
@@ -459,10 +444,10 @@ export default function CustomerHomePage() {
                   </label>
                   <div className="relative">
                     <textarea
-                      rows={2} aria-label="Special Instructions / Notes" maxLength={1000}
+                      rows={2}
                       value={customerNotes}
                       onChange={(e) => setCustomerNotes(e.target.value)}
-                      placeholder="Any collection or finishing instructions"
+                      placeholder="Pickup notes (all uploaded pages will print)"
                       className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
                     />
                     <MessageSquare className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -473,18 +458,8 @@ export default function CustomerHomePage() {
           </section>
         )}
 
-        {uploadedFile && priceBreakdown && (
-          <section aria-label="Order summary" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6">
-            <h2 className="text-sm font-bold">Order summary</h2>
-            <p className="mt-2 break-all text-sm text-slate-600">{uploadedFile.fileName}</p>
-            <dl className="mt-4 space-y-3 text-sm">
-              <div className="flex justify-between gap-4"><dt className="text-slate-600">{effectivePages} pages × {copies} {copies === 1 ? 'copy' : 'copies'}</dt><dd>{formatCurrency(priceBreakdown.printSubtotal)}</dd></div>
-              {priceBreakdown.addOnsBreakdown.map((addon, index) => <div key={index} className="flex justify-between gap-4"><dt className="text-slate-600">{addon.name}</dt><dd>{formatCurrency(addon.total)}</dd></div>)}
-              <div className="flex justify-between border-t border-slate-100 pt-3 font-bold"><dt>Total</dt><dd>{formatCurrency(priceBreakdown.totalAmount)}</dd></div>
-            </dl>
-            <p className="mt-3 text-xs leading-5 text-slate-500">Review the layout before paying. The final price is confirmed at checkout.</p>
-          </section>
-        )}
+        {/* Developer Attribution Card */}
+        <DeveloperBadge className="mt-4" />
       </main>
 
       {/* Sticky Bottom Order Summary & Proceed Button Bar */}
@@ -496,7 +471,7 @@ export default function CustomerHomePage() {
               TOTAL AMOUNT
             </div>
             <div className="text-2xl font-extrabold text-emerald-600 leading-tight [overflow-wrap:anywhere]">
-              {!uploadedFile ? '—' : priceBreakdown ? formatCurrency(priceBreakdown.totalAmount) : 'Unavailable'}
+              {priceBreakdown ? formatCurrency(priceBreakdown.totalAmount) : 'Unavailable'}
             </div>
           </div>
 
@@ -504,7 +479,7 @@ export default function CustomerHomePage() {
             type="button"
             onClick={() => {
               if (!uploadedFile) {
-                setCheckoutError('Please upload a document to preview.');
+                alert('Please upload a document to preview.');
                 return;
               }
               setIsAdobeModalOpen(true);
