@@ -415,7 +415,7 @@ export default function CustomerHomePage() {
         {!pricingReady&&<p role="status" className="p-3 bg-amber-50 text-amber-900 rounded-xl text-sm">Checking shop availability…</p>}
         {checkoutError&&<p role="alert" className="p-3 bg-rose-50 text-rose-800 rounded-xl text-sm">{checkoutError}</p>}
         {/* Card 1: 1. Upload Document */}
-        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-3">
+        <section className="animate-fade-in-up bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-3 transition-all duration-200 hover:border-slate-300">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-900">
               1. Upload Document{allowMultiple ? 's' : ''}
@@ -442,7 +442,7 @@ export default function CustomerHomePage() {
         </section>
 
         {/* Card 2: 2. Print Configuration */}
-        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
+        <section className="animate-fade-in-up bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4 transition-all duration-200 hover:border-slate-300 [animation-delay:60ms]">
           <h2 className="text-sm font-bold text-slate-900">
             2. Print Configuration
           </h2>
@@ -463,7 +463,7 @@ export default function CustomerHomePage() {
 
         {/* Card 3: 3. Finishing & Add-ons (Shown only if enabled by shopkeeper) */}
         {hasAnyAddons && (
-          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
+          <section className="animate-fade-in-up bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4 transition-all duration-200 hover:border-slate-300 [animation-delay:120ms]">
             <h2 className="text-sm font-bold text-slate-900">
               3. Finishing & Add-ons
             </h2>
@@ -478,7 +478,7 @@ export default function CustomerHomePage() {
 
         {/* Customer Details */}
         {showCustomerInfoSection && (
-          <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-3.5">
+          <section className="animate-fade-in-up bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-3.5 transition-all duration-200 hover:border-slate-300 [animation-delay:180ms]">
             <h2 className="text-sm font-bold text-slate-900">
               {hasAnyAddons ? '4. Customer Identification' : '3. Customer Identification'}
             </h2>
@@ -546,14 +546,14 @@ export default function CustomerHomePage() {
       </main>
 
       {/* Sticky Bottom Order Summary & Proceed Button Bar */}
-      <div className="sticky bottom-0 mt-auto bg-white/95 backdrop-blur-md border-t border-slate-200 p-4 shadow-xl z-40">
+      <div className="sticky bottom-0 mt-auto bg-white/90 backdrop-blur-xl border-t border-slate-200/80 p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.06)] z-40">
         {pricingReady && !checkoutEnabled && <p role="status" className="max-w-xl mx-auto mb-2 text-sm text-amber-900">Online ordering is not available yet. Please contact the shopkeeper.</p>}
         <div className="max-w-xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               TOTAL AMOUNT
             </div>
-            <div className="text-2xl font-extrabold text-emerald-600 leading-tight [overflow-wrap:anywhere]">
+            <div className="text-2xl font-extrabold text-emerald-600 leading-tight [overflow-wrap:anywhere] transition-all duration-200">
               {priceBreakdown ? formatCurrency(priceBreakdown.totalAmount) : 'Unavailable'}
             </div>
           </div>
@@ -574,7 +574,7 @@ export default function CustomerHomePage() {
               }
             }}
             disabled={!pricingReady || (hasBatch ? batchFiles.length === 0 : !uploadedFile) || isProcessingBatch || submitting || !priceBreakdown}
-            className="py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-shimmer py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] text-white font-bold text-sm shadow-md hover:shadow-lg hover:shadow-emerald-600/20 transition-all duration-200 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
           >
             <span>{isProcessingBatch ? 'Preparing...' : 'Preview'}</span>
             <span>→</span>

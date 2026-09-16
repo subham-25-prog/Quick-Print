@@ -258,14 +258,14 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-150 ${
+            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-200 card-hover-lift ${
               isDragging
-                ? 'border-indigo-500 bg-indigo-50/60'
-                : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-400'
+                ? 'border-indigo-500 bg-indigo-50/70 scale-[1.01] shadow-lg shadow-indigo-500/10'
+                : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
             }`}
           >
             <div className="flex flex-col items-center">
-              <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5">
+              <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5 transition-transform group-hover:scale-105">
                 <FileText className="w-5 h-5 text-slate-400" />
               </div>
               <h4 className="text-sm font-bold text-slate-800 mb-0.5">
@@ -290,11 +290,11 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                 return (
                   <div
                     key={item.id}
-                    className="p-3 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-2xs flex flex-wrap items-center justify-between gap-3 transition-colors"
+                    className="animate-fade-in-scale p-3 rounded-2xl border border-slate-200/90 bg-white hover:border-indigo-200 shadow-2xs flex flex-wrap items-center justify-between gap-3 transition-all duration-200 card-hover-lift"
                   >
                     {/* Left: Icon, Name, Details */}
                     <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-8 h-9 rounded-lg border border-indigo-200 bg-indigo-50/50 flex items-center justify-center text-indigo-600 shrink-0">
+                      <div className="w-8 h-9 rounded-lg border border-indigo-200 bg-indigo-50/50 flex items-center justify-center text-indigo-600 shrink-0 shadow-2xs">
                         {isImg ? (
                           <ImageIcon className="w-4 h-4" />
                         ) : (
@@ -323,7 +323,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                           type="button"
                           onClick={() => updateItemCopies(item.id, -1)}
                           disabled={item.copies <= 1}
-                          className="w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs flex items-center justify-center transition-colors cursor-pointer"
+                          className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer"
                           title="Decrease copies"
                         >
                           <Minus className="w-3 h-3" />
@@ -334,7 +334,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                         <button
                           type="button"
                           onClick={() => updateItemCopies(item.id, 1)}
-                          className="w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center transition-colors cursor-pointer"
+                          className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer"
                           title="Increase copies"
                         >
                           <Plus className="w-3 h-3" />
@@ -344,7 +344,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                       <button
                         type="button"
                         onClick={() => removeBatchItem(item.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all cursor-pointer"
                         title="Remove file"
                       >
                         <X className="w-4 h-4" />
@@ -360,7 +360,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="py-2.5 px-3.5 rounded-xl border border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                className="py-2.5 px-3.5 rounded-xl border border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] hover:shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add More Files</span>
@@ -418,10 +418,10 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => !uploading && fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all duration-150 ${
+          className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all duration-200 card-hover-lift ${
             isDragging
-              ? 'border-indigo-500 bg-indigo-50/60'
-              : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-400'
+              ? 'border-indigo-500 bg-indigo-50/70 scale-[1.01] shadow-lg shadow-indigo-500/10'
+              : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
           }`}
         >
           {uploading ? (
@@ -448,10 +448,10 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                 </button>
               </div>
 
-              {/* Real-time Progress Bar */}
-              <div className="w-full bg-slate-200/80 rounded-full h-2 overflow-hidden mb-2">
+              {/* Real-time Gradient Progress Bar */}
+              <div className="w-full bg-slate-200/80 rounded-full h-2 overflow-hidden mb-2 shadow-inner">
                 <div
-                  className="bg-indigo-600 h-full rounded-full transition-all duration-150 ease-out"
+                  className="bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 h-full rounded-full transition-all duration-200 ease-out shadow-xs"
                   style={{ width: `${Math.max(uploadProgress, 6)}%` }}
                 />
               </div>
@@ -469,7 +469,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5">
+              <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5 transition-transform group-hover:scale-105">
                 <FileText className="w-5 h-5 text-slate-400" />
               </div>
               <h4 className="text-sm font-bold text-slate-800 mb-0.5">
@@ -482,7 +482,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           )}
         </div>
       ) : (
-        <div className="p-3.5 rounded-xl border border-emerald-300 bg-emerald-50/30 flex items-center justify-between gap-3">
+        <div className="animate-fade-in-scale p-3.5 rounded-xl border border-emerald-300 bg-emerald-50/40 flex items-center justify-between gap-3 shadow-xs card-hover-lift">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-8 h-9 rounded-lg border border-emerald-400 bg-white flex items-center justify-center text-emerald-600 shrink-0 shadow-xs">
               <FileText className="w-4 h-4" />

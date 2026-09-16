@@ -76,13 +76,13 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
             <button
               type="button"
               onClick={() => onPaperSizeChange('A4')}
-              className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer ${
+              className={`p-3 rounded-2xl border text-center transition-all duration-200 card-hover-lift flex flex-col items-center justify-center relative cursor-pointer ${
                 paperSize === 'A4'
                   ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5">
+              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5 shadow-2xs">
                 <FileText className="w-3.5 h-3.5" />
               </div>
               <div className="font-bold text-xs">A4 Standard</div>
@@ -100,13 +100,13 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
             <button
               type="button"
               onClick={() => onPaperSizeChange('A3')}
-              className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer ${
+              className={`p-3 rounded-2xl border text-center transition-all duration-200 card-hover-lift flex flex-col items-center justify-center relative cursor-pointer ${
                 paperSize === 'A3'
                   ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5">
+              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5 shadow-2xs">
                 <FileText className="w-3.5 h-3.5" />
               </div>
               <div className="font-bold text-xs">A3 Poster</div>
@@ -124,13 +124,13 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
             <button
               type="button"
               onClick={() => onPaperSizeChange('LEGAL')}
-              className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer ${
+              className={`p-3 rounded-2xl border text-center transition-all duration-200 card-hover-lift flex flex-col items-center justify-center relative cursor-pointer ${
                 paperSize === 'LEGAL'
                   ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5">
+              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5 shadow-2xs">
                 <FileText className="w-3.5 h-3.5" />
               </div>
               <div className="font-bold text-xs">Legal / Stamp</div>
@@ -148,13 +148,13 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
             <button
               type="button"
               onClick={() => onPaperSizeChange('PHOTO')}
-              className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer ${
+              className={`p-3 rounded-2xl border text-center transition-all duration-200 card-hover-lift flex flex-col items-center justify-center relative cursor-pointer ${
                 paperSize === 'PHOTO'
                   ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5">
+              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5 shadow-2xs">
                 <ImageIcon className="w-3.5 h-3.5" />
               </div>
               <div className="font-bold text-xs">Photo Glossy</div>
@@ -173,13 +173,13 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
               key={paper.id}
               type="button"
               onClick={() => onPaperSizeChange(paper.id)}
-              className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center relative cursor-pointer ${
+              className={`p-3 rounded-2xl border text-center transition-all duration-200 card-hover-lift flex flex-col items-center justify-center relative cursor-pointer ${
                 paperSize === paper.id
                   ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-6 h-7 border border-cyan-300 rounded-xs flex items-center justify-center text-cyan-600 mb-1.5 bg-cyan-50">
+              <div className="w-6 h-7 border border-cyan-300 rounded-xs flex items-center justify-center text-cyan-600 mb-1.5 bg-cyan-50 shadow-2xs">
                 <FileText className="w-3.5 h-3.5" />
               </div>
               <div className="font-bold text-xs text-slate-900">{paper.name}</div>
@@ -204,13 +204,13 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
             <button
               type="button"
               onClick={() => onColorModeChange('BW')}
-              className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
+              className={`p-3 rounded-2xl border text-center transition-all duration-200 card-hover-lift flex flex-col items-center justify-center cursor-pointer ${
                 colorMode === 'BW'
                   ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-4 h-4 rounded-full bg-slate-900 mb-1.5" />
+              <div className="w-4 h-4 rounded-full bg-slate-900 mb-1.5 shadow-xs" />
               <div className="font-bold text-xs text-slate-900">Black & White</div>
               <div className="text-[10px] text-slate-500 font-medium">Standard Xerox</div>
               <div className="text-[10px] text-indigo-600 font-bold mt-1">
@@ -221,7 +221,7 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
             <button
               type="button"
               onClick={() => onColorModeChange('COLOR')}
-              className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
+              className={`p-3 rounded-2xl border text-center transition-all duration-200 card-hover-lift flex flex-col items-center justify-center cursor-pointer ${
                 colorMode === 'COLOR'
                   ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -248,13 +248,13 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
             <button
               type="button"
               onClick={() => onPrintSidesChange('SINGLE')}
-              className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
+              className={`p-3 rounded-2xl border text-center transition-all duration-200 card-hover-lift flex flex-col items-center justify-center cursor-pointer ${
                 printSides === 'SINGLE'
                   ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-5 h-5 rounded-md bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center mb-1">
+              <div className="w-5 h-5 rounded-md bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center mb-1 shadow-2xs">
                 1
               </div>
               <div className="font-bold text-xs text-slate-900">Single Sided</div>
@@ -264,13 +264,13 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
             <button
               type="button"
               onClick={() => onPrintSidesChange('DOUBLE')}
-              className={`p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center cursor-pointer ${
+              className={`p-3 rounded-2xl border text-center transition-all duration-200 card-hover-lift flex flex-col items-center justify-center cursor-pointer ${
                 printSides === 'DOUBLE'
                   ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
                   : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-5 h-5 rounded-md bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center mb-1">
+              <div className="w-5 h-5 rounded-md bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center mb-1 shadow-2xs">
                 2
               </div>
               <div className="font-bold text-xs text-slate-900">Both Sides</div>
