@@ -20,19 +20,18 @@ interface FileUploaderProps {
 const DocumentPreviewBox: React.FC<{
   file?: File | Blob | null;
   name: string;
+  pageCount?: number;
   fallbackUrl?: string;
   className?: string;
-}> = ({ file, name, fallbackUrl, className = '' }) => {
+}> = ({ file, name, pageCount = 1, fallbackUrl, className = '' }) => {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
-  const [pdfRendered, setPdfRendered] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const isPdf =
     Boolean(file?.type === 'application/pdf') ||
     name.toLowerCase().endsWith('.pdf');
   const isImg = !isPdf;
 
-  // Handle image preview
+  // Generate object URL for image preview
   useEffect(() => {
     if (!isImg) return;
     if (file instanceof Blob) {
@@ -46,72 +45,9 @@ const DocumentPreviewBox: React.FC<{
     }
   }, [file, isImg, fallbackUrl]);
 
-  // Handle PDF first-page canvas rendering
-  useEffect(() => {
-    if (!isPdf) return;
-    let active = true;
-
-    const renderPdfThumbnail = async () => {
-      try {
-        let arrayBuffer: ArrayBuffer | undefined;
-
-        if (file instanceof Blob) {
-          arrayBuffer = await file.arrayBuffer();
-        } else if (fallbackUrl) {
-          const res = await fetch(fallbackUrl);
-          if (res.ok) {
-            arrayBuffer = await res.arrayBuffer();
-          }
-        }
-
-        if (!active || !arrayBuffer) return;
-
-        const [pdfjsMod] = await Promise.all([
-          import('pdfjs-dist/legacy/build/pdf.js'),
-          // @ts-expect-error worker entry does not have type declarations
-          import('pdfjs-dist/legacy/build/pdf.worker.entry.js'),
-        ]);
-        const pdfjs = pdfjsMod.default || pdfjsMod;
-
-        const loadingTask = pdfjs.getDocument({
-          data: new Uint8Array(arrayBuffer),
-          stopAtErrors: false,
-        });
-        const doc = await loadingTask.promise;
-        if (!active) return;
-
-        const page = await doc.getPage(1);
-        if (!active || !canvasRef.current) return;
-
-        const canvas = canvasRef.current;
-        const unscaledViewport = page.getViewport({ scale: 1.0 });
-        // Target canvas width around 140px for crisp retina display
-        const targetWidth = 140;
-        const scale = targetWidth / Math.max(1, unscaledViewport.width);
-        const viewport = page.getViewport({ scale });
-
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        await page.render({ canvasContext: ctx, viewport }).promise;
-        if (active) setPdfRendered(true);
-      } catch (err) {
-        console.warn('PDF thumbnail generation fallback:', err);
-      }
-    };
-
-    renderPdfThumbnail();
-
-    return () => {
-      active = false;
-    };
-  }, [file, isPdf, fallbackUrl]);
-
   return (
     <div
-      className={`w-12 h-14 sm:w-14 sm:h-16 rounded-xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden shrink-0 flex items-center justify-center relative select-none ${className}`}
+      className={`w-12 h-14 sm:w-13 sm:h-15 rounded-xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden shrink-0 flex flex-col justify-between relative select-none ${className}`}
       title={name}
     >
       {isImg ? (
@@ -122,34 +58,43 @@ const DocumentPreviewBox: React.FC<{
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center text-indigo-400 p-1">
+          <div className="flex flex-col items-center justify-center h-full text-indigo-400 p-1">
             <ImageIcon className="w-5 h-5" />
           </div>
         )
       ) : (
-        <>
-          <canvas
-            ref={canvasRef}
-            className={`w-full h-full object-cover ${pdfRendered ? 'block' : 'hidden'}`}
-          />
-          {!pdfRendered && (
-            <div className="flex flex-col items-center justify-center w-full h-full bg-rose-50/70 text-rose-500 p-1">
-              <FileText className="w-5 h-5 text-rose-500" />
+        /* Real Document Sheet Preview for PDF */
+        <div className="w-full h-full p-1.5 flex flex-col justify-between bg-gradient-to-b from-slate-50 to-white">
+          <div className="flex items-center justify-between border-b border-rose-100 pb-1">
+            <div className="w-2.5 h-2.5 rounded-xs bg-rose-500 flex items-center justify-center">
+              <span className="text-[6px] font-black text-white leading-none">P</span>
             </div>
-          )}
-        </>
+            <span className="text-[7px] font-bold text-slate-400 leading-none">
+              {pageCount}p
+            </span>
+          </div>
+
+          {/* Miniature Document Content Lines */}
+          <div className="space-y-1 my-auto px-0.5">
+            <div className="h-1 bg-slate-400/80 rounded-full w-4/5" />
+            <div className="h-0.5 bg-slate-200 rounded-full w-full" />
+            <div className="h-0.5 bg-slate-200 rounded-full w-5/6" />
+            <div className="h-0.5 bg-slate-200 rounded-full w-3/4" />
+          </div>
+
+          {/* PDF Format Tag */}
+          <div className="text-[7px] font-extrabold text-rose-600 tracking-wider text-center uppercase">
+            PDF
+          </div>
+        </div>
       )}
 
-      {/* Format badge in bottom corner */}
-      <span
-        className={`absolute bottom-0 inset-x-0 text-[8px] font-black text-center py-0.5 tracking-wider uppercase ${
-          isPdf
-            ? 'bg-rose-600/90 text-white'
-            : 'bg-indigo-600/90 text-white'
-        }`}
-      >
-        {isPdf ? 'PDF' : 'IMG'}
-      </span>
+      {/* Bottom format pill for image */}
+      {isImg && (
+        <span className="absolute bottom-0 inset-x-0 text-[7px] font-black text-center py-0.2 tracking-wider uppercase bg-indigo-600/90 text-white">
+          IMG
+        </span>
+      )}
     </div>
   );
 };
@@ -424,7 +369,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                   >
                     {/* Left: Small preview box where user can see uploaded image or PDF content */}
                     <div className="flex items-center gap-3 min-w-0 flex-1 select-none">
-                      <DocumentPreviewBox file={item.file} name={item.name} />
+                      <DocumentPreviewBox file={item.file} name={item.name} pageCount={item.pageCount} />
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-semibold text-slate-800 truncate" title={item.name}>
                           <span className="text-slate-400 font-normal mr-1">#{idx + 1}</span>
@@ -612,6 +557,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             <DocumentPreviewBox
               file={uploadedFile.file}
               name={uploadedFile.fileName}
+              pageCount={uploadedFile.pageCount}
               fallbackUrl={uploadedFile.signedUrl || uploadedFile.previewUrl}
             />
             <div className="min-w-0 flex-1">
