@@ -1,46 +1,13 @@
 import { PhonePeProvider } from './phonepe';
-import { CashfreeProvider } from './cashfree';
-import { PaymentProvider } from './provider';
 import { database } from '../db';
 import { getCurrentShopId } from '../shop';
 import { HttpError } from '../http';
 
-export { PhonePeProvider, CashfreeProvider };
-
-export function configuredProvider(): PaymentProvider {
-  const providerName = (process.env.PAYMENT_PROVIDER || '').trim();
-
-  if (providerName !== 'phonepe' && providerName !== 'cashfree') {
+export function configuredProvider(): PhonePeProvider {
+  if (process.env.PAYMENT_PROVIDER !== 'phonepe') {
     throw new HttpError(
       503,
       'Online payment is unavailable. Please contact the shopkeeper.'
-    );
-  }
-
-  const mode = process.env.PAYMENT_ENVIRONMENT?.trim();
-  if (mode !== 'live' && mode !== 'sandbox') {
-    throw new HttpError(503, 'Payment environment is not configured.');
-  }
-
-  if (providerName === 'cashfree') {
-    const requiredFields = [
-      'CASHFREE_APP_ID',
-      'CASHFREE_SECRET_KEY',
-    ] as const;
-
-    for (const field of requiredFields) {
-      if (!process.env[field]) {
-        throw new HttpError(503, 'Online payment setup is incomplete.');
-      }
-    }
-
-    const apiVersion = process.env.CASHFREE_API_VERSION?.trim() || '2023-08-01';
-
-    return new CashfreeProvider(
-      process.env.CASHFREE_APP_ID!.trim(),
-      mode,
-      process.env.CASHFREE_SECRET_KEY!.trim(),
-      apiVersion
     );
   }
 
@@ -58,6 +25,11 @@ export function configuredProvider(): PaymentProvider {
     }
   }
 
+  const mode = process.env.PAYMENT_ENVIRONMENT?.trim();
+  if (mode !== 'live' && mode !== 'sandbox') {
+    throw new HttpError(503, 'Payment environment is not configured.');
+  }
+
   const clientVersion = process.env.PHONEPE_CLIENT_VERSION?.trim() || '1';
 
   return new PhonePeProvider(
@@ -71,7 +43,7 @@ export function configuredProvider(): PaymentProvider {
   );
 }
 
-export async function paymentProvider(): Promise<PaymentProvider> {
+export async function paymentProvider(): Promise<PhonePeProvider> {
   const provider = configuredProvider();
   const db = database();
   const shopId = getCurrentShopId();

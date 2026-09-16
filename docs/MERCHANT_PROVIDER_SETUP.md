@@ -2,15 +2,6 @@
 
 Checked against official sources on 2026-09-07. Recheck commercial terms before every sale. One installation uses the shop's own approved credentials; QuickPrint does not collect money centrally or split settlement between shops.
 
-## Cashfree — implemented adapter
-
-Ask the shop owner to open their [Cashfree Merchant Dashboard](https://merchant.cashfree.com/) and confirm legal business name, merchant identifier (App ID), settlement bank, and Payment Gateway eligibility.
-
-1. Obtain App ID (`CASHFREE_APP_ID`) and Secret Key (`CASHFREE_SECRET_KEY`) from **Developers > API Keys**.
-2. The Cashfree adapter uses the Payment Links API (`/pg/links`) to issue secure hosted checkout sessions with full UPI intent, Cards, NetBanking, and Wallets.
-3. Webhook notifications are cryptographically verified using HMAC-SHA256 signature against `x-webhook-timestamp + rawBody`.
-4. Independent status polling calls `GET /pg/links/{link_id}`, `GET /pg/links/{link_id}/orders`, and `GET /pg/orders/{order_id}/payments` to reconcile transactions directly with Cashfree's server.
-
 ## PhonePe — implemented v2 adapter
 
 Ask the owner to open their PhonePe Business/Payment Gateway dashboard and confirm legal business name, merchant identifier, settlement bank and API/PG eligibility. An existing offline relationship may be reusable, but its QR or soundbox does not establish access to online PG credentials. PhonePe must confirm mapping and any additional onboarding/KYC/approval for that specific merchant. QuickPrint cannot grant eligibility.

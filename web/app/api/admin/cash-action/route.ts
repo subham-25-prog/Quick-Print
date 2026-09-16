@@ -22,14 +22,8 @@ export async function POST(req: NextRequest) {
       p_shop_id: getCurrentShopId(), p_reference: reference, p_action: body.action,
     });
     if (error) {
-      console.error('Cash action failed:', error);
-      if (error.code === 'PGRST202') {
-        throw new HttpError(
-          409,
-          'Database setup required: Please run migration 20260913052027_secure_cash_actions.sql in Supabase SQL Editor to enable cash verification.'
-        );
-      }
-      throw new HttpError(409, error.message || 'Cash action could not be completed. Refresh the order status before retrying.');
+      console.error('Cash action failed:', error.code);
+      throw new HttpError(409, 'Cash action could not be completed. Refresh the order status before retrying.');
     }
     if (body.action === 'ACCEPT' && !data) {
       throw new HttpError(409, 'This payment needs review. No new print job was created.');
