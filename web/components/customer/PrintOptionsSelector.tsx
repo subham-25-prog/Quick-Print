@@ -280,17 +280,12 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
         </div>
       ) : null}
 
-      {/* 4. Number of Copies */}
-      <div>
-        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-          Number of Copies
-        </label>
-        {hasMultipleFiles ? (
-          <div className="p-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 flex items-center justify-between text-xs">
-            <span className="text-slate-600 font-medium">Configured individually per document in Step 1</span>
-            <span className="font-bold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-md">Customized</span>
-          </div>
-        ) : (
+      {/* 4. Number of Copies (only shown when not customizing per file) */}
+      {!hasMultipleFiles && (
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+            Number of Copies
+          </label>
           <div className="flex items-center justify-between border border-slate-200 rounded-2xl bg-white p-1 shadow-2xs">
             <button
               type="button"
@@ -311,8 +306,8 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
               +
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };
