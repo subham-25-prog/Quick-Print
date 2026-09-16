@@ -1,31 +1,20 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText, AlertCircle, RefreshCw, X } from '@/components/ui/Icons';
+import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Plus, Minus } from '@/components/ui/Icons';
+import { BatchFileItem } from '@/types';
+import { detectFilePageCount, calculateBatchTotalPages } from '@/lib/batch-compiler';
+import { uploadDocumentFile, UploadedFileState, formatFileSize } from '@/lib/uploader';
 
-export interface UploadedFileState {
-  uploadId: string;
-  uploadToken: string;
-  checkoutKey: string;
-  file: File;
-  fileName: string;
-  fileType: string;
-  fileSizeBytes: number;
-  pageCount: number;
-  storagePath: string;
-  signedUrl?: string;
-  previewUrl?: string;
-}
+export type { UploadedFileState };
 
 interface FileUploaderProps {
   onFileUploaded: (fileData: UploadedFileState | null) => void;
   uploadedFile: UploadedFileState | null;
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  allowMultiple?: boolean;
+  batchFiles?: BatchFileItem[];
+  onBatchFilesChange?: (files: BatchFileItem[]) => void;
+  isProcessingBatch?: boolean;
 }
 
 function generateUUID(): string {
@@ -39,20 +28,14 @@ function generateUUID(): string {
   });
 }
 
-function generateToken(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
-    const tokenBytes = new Uint8Array(32);
-    crypto.getRandomValues(tokenBytes);
-    return Array.from(tokenBytes, (b) => b.toString(16).padStart(2, '0')).join('');
-  }
-  let result = '';
-  for (let i = 0; i < 64; i++) {
-    result += Math.floor(Math.random() * 16).toString(16);
-  }
-  return result;
-}
-
-export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uploadedFile }) => {
+export const FileUploader: React.FC<FileUploaderProps> = ({
+  onFileUploaded,
+  uploadedFile,
+  allowMultiple = false,
+  batchFiles = [],
+  onBatchFilesChange,
+  isProcessingBatch = false,
+}) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -72,10 +55,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     };
   }, []);
 
-  const processFile = async (file: File) => {
-    if (uploading || activeXhr.current) return;
-    setError(null);
-
+  const isValidFileType = (file: File) => {
     const isPdf =
       file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     const isImage =
@@ -83,8 +63,56 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
       file.name.toLowerCase().endsWith('.jpg') ||
       file.name.toLowerCase().endsWith('.jpeg') ||
       file.name.toLowerCase().endsWith('.png');
+    return isPdf || isImage;
+  };
 
-    if (!isPdf && !isImage) {
+  // Process files when multiple file mode is active
+  const processMultipleFiles = async (selectedFiles: FileList | File[]) => {
+    setError(null);
+    const filesArray = Array.from(selectedFiles);
+    if (!filesArray.length) return;
+
+    const validFiles: File[] = [];
+    for (const file of filesArray) {
+      if (!isValidFileType(file)) {
+        setError(`"${file.name}" is not supported. Please choose PDF or JPG/PNG files.`);
+        return;
+      }
+      if (file.size === 0) {
+        setError(`"${file.name}" is empty. Please choose a valid document.`);
+        return;
+      }
+      if (file.size > 100 * 1024 * 1024) {
+        setError(`"${file.name}" exceeds 100 MB limit.`);
+        return;
+      }
+      validFiles.push(file);
+    }
+
+    const newBatchItems: BatchFileItem[] = [];
+    for (const file of validFiles) {
+      const pageCount = await detectFilePageCount(file);
+      newBatchItems.push({
+        id: generateUUID(),
+        file,
+        name: file.name,
+        size: file.size,
+        pageCount,
+        copies: 1,
+      });
+    }
+
+    const updatedBatch = [...batchFiles, ...newBatchItems];
+    onBatchFilesChange?.(updatedBatch);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Handle single file upload (standard legacy mode)
+  const processSingleFile = async (file: File) => {
+    if (uploading || activeXhr.current) return;
+    setError(null);
+
+    if (!isValidFileType(file)) {
       setError('Please upload a PDF or image file (JPG, PNG)');
       return;
     }
@@ -106,211 +134,15 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     setCurrentFileSize(file.size);
 
     try {
-      let resultFileInfo: {
-        uploadId: string;
-        uploadToken: string;
-        fileName: string;
-        fileType: string;
-        fileSizeBytes: number;
-        pageCount: number;
-        storagePath: string;
-        signedUrl: string;
-      } | null = null;
-
-      // Files > 3 MB are sliced into 3 MB chunks to stay safely under Vercel's 4.5 MB request body limit.
-      // All chunks are sent to same-origin /api/upload (zero CORS, zero client-side Supabase keys).
-      const CHUNK_SIZE = 3 * 1024 * 1024; // 3 MB
-      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-
-      if (totalChunks > 1) {
-        const uploadId = generateUUID();
-        const uploadToken = generateToken();
-
-        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-          const start = chunkIndex * CHUNK_SIZE;
-          const end = Math.min(start + CHUNK_SIZE, file.size);
-          const chunkBlob = file.slice(start, end, file.type || 'application/pdf');
-
-          const chunkFormData = new FormData();
-          chunkFormData.append('file', chunkBlob, file.name);
-          chunkFormData.append('chunkIndex', String(chunkIndex));
-          chunkFormData.append('totalChunks', String(totalChunks));
-          chunkFormData.append('uploadId', uploadId);
-          chunkFormData.append('uploadToken', uploadToken);
-          chunkFormData.append('fileName', file.name);
-          chunkFormData.append('fileSizeBytes', String(file.size));
-
-          if (chunkIndex === totalChunks - 1) {
-            setUploadStage('processing');
-          }
-
-          const chunkResult = await new Promise<{
-            success: boolean;
-            chunkReceived?: number;
-            fileInfo?: {
-              uploadId: string;
-              uploadToken: string;
-              fileName: string;
-              fileType: string;
-              fileSizeBytes: number;
-              pageCount: number;
-              storagePath: string;
-              signedUrl: string;
-            };
-          }>((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            activeXhr.current = xhr;
-
-            xhr.upload.onprogress = (event) => {
-              if (event.lengthComputable) {
-                const chunkBase = (chunkIndex / totalChunks) * 88;
-                const chunkFraction = (event.loaded / event.total) * (88 / totalChunks);
-                const percent = Math.min(Math.round(chunkBase + chunkFraction), 88);
-                setUploadProgress(percent);
-                if (percent >= 85) {
-                  setUploadStage('processing');
-                }
-              }
-            };
-
-            xhr.onload = () => {
-              activeXhr.current = null;
-              if (xhr.status >= 200 && xhr.status < 300) {
-                try {
-                  const res = JSON.parse(xhr.responseText);
-                  resolve(res);
-                } catch {
-                  reject(new Error('Invalid response received from server.'));
-                }
-              } else {
-                try {
-                  const res = JSON.parse(xhr.responseText);
-                  reject(new Error(res.error || `Upload failed with status ${xhr.status}`));
-                } catch {
-                  reject(new Error(`Upload failed with status ${xhr.status}`));
-                }
-              }
-            };
-
-            xhr.onerror = () => {
-              activeXhr.current = null;
-              reject(new Error('Network connection failed during upload.'));
-            };
-
-            xhr.ontimeout = () => {
-              activeXhr.current = null;
-              reject(new Error('Upload timed out. Please try again.'));
-            };
-
-            xhr.onabort = () => {
-              activeXhr.current = null;
-              reject(new Error('Upload cancelled.'));
-            };
-
-            xhr.timeout = 180000; // 3 minutes per 3 MB chunk
-            xhr.open('POST', '/api/upload');
-            xhr.send(chunkFormData);
-          });
-
-          if (chunkIndex === totalChunks - 1) {
-            if (!chunkResult.fileInfo) {
-              throw new Error('Upload finalized but file information was not returned.');
-            }
-            setUploadProgress(100);
-            resultFileInfo = chunkResult.fileInfo;
-          }
-        }
-      } else {
-        // Standard path for <= 3 MB files: single-request multipart upload
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const result = await new Promise<{
-          success: boolean;
-          fileInfo: {
-            uploadId: string;
-            uploadToken: string;
-            fileName: string;
-            fileType: string;
-            fileSizeBytes: number;
-            pageCount: number;
-            storagePath: string;
-            signedUrl: string;
-          };
-        }>((resolve, reject) => {
-          const xhr = new XMLHttpRequest();
+      const uploadedData = await uploadDocumentFile(file, {
+        onProgress: (percent, stage) => {
+          setUploadProgress(percent);
+          setUploadStage(stage);
+        },
+        onXhrCreated: (xhr) => {
           activeXhr.current = xhr;
-
-          xhr.upload.onprogress = (event) => {
-            if (event.lengthComputable) {
-              const percent = Math.min(Math.round((event.loaded / event.total) * 92), 92);
-              setUploadProgress(percent);
-              if (percent >= 90) {
-                setUploadStage('processing');
-              }
-            }
-          };
-
-          xhr.onload = () => {
-            activeXhr.current = null;
-            setUploadProgress(100);
-            if (xhr.status >= 200 && xhr.status < 300) {
-              try {
-                const res = JSON.parse(xhr.responseText);
-                resolve(res);
-              } catch {
-                reject(new Error('Invalid response received from server.'));
-              }
-            } else {
-              try {
-                const res = JSON.parse(xhr.responseText);
-                reject(new Error(res.error || `Upload failed with status ${xhr.status}`));
-              } catch {
-                reject(new Error('Failed to upload document. Please try again.'));
-              }
-            }
-          };
-
-          xhr.onerror = () => {
-            activeXhr.current = null;
-            reject(new Error('Network connection failed during upload.'));
-          };
-
-          xhr.ontimeout = () => {
-            activeXhr.current = null;
-            reject(new Error('Upload timed out. Please try again.'));
-          };
-
-          xhr.onabort = () => {
-            activeXhr.current = null;
-            reject(new Error('Upload cancelled.'));
-          };
-
-          xhr.timeout = 180000;
-          xhr.open('POST', '/api/upload');
-          xhr.send(formData);
-        });
-
-        resultFileInfo = result.fileInfo;
-      }
-
-      if (!resultFileInfo) {
-        throw new Error('Upload failed to produce file information.');
-      }
-
-      const uploadedData: UploadedFileState = {
-        uploadId: resultFileInfo.uploadId,
-        uploadToken: resultFileInfo.uploadToken,
-        checkoutKey: crypto.randomUUID(),
-        file,
-        fileName: file.name,
-        fileType: resultFileInfo.fileType || file.type,
-        fileSizeBytes: resultFileInfo.fileSizeBytes || file.size,
-        pageCount: resultFileInfo.pageCount || 1,
-        storagePath: resultFileInfo.storagePath || `orders/${file.name}`,
-        signedUrl: resultFileInfo.signedUrl,
-        previewUrl: resultFileInfo.signedUrl,
-      };
+        },
+      });
 
       onFileUploaded(uploadedData);
     } catch (err) {
@@ -325,6 +157,15 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
       setUploading(false);
       setUploadProgress(0);
       setCurrentFileName('');
+    }
+  };
+
+  const handleFilesSelected = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    if (allowMultiple) {
+      processMultipleFiles(files);
+    } else {
+      processSingleFile(files[0]);
     }
   };
 
@@ -349,24 +190,204 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      processFile(e.dataTransfer.files[0]);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFilesSelected(e.dataTransfer.files);
     }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      processFile(e.target.files[0]);
+    if (e.target.files && e.target.files.length > 0) {
+      handleFilesSelected(e.target.files);
     }
   };
 
-  const handleRemove = () => {
+  const handleRemoveSingle = () => {
     onFileUploaded(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const updateItemCopies = (id: string, delta: number) => {
+    if (!onBatchFilesChange) return;
+    const updated = batchFiles.map((item) => {
+      if (item.id === id) {
+        const nextCopies = Math.min(99, Math.max(1, item.copies + delta));
+        return { ...item, copies: nextCopies };
+      }
+      return item;
+    });
+    onBatchFilesChange(updated);
+  };
+
+  const removeBatchItem = (id: string) => {
+    if (!onBatchFilesChange) return;
+    const updated = batchFiles.filter((item) => item.id !== id);
+    onBatchFilesChange(updated);
+  };
+
+  // --- MULTIPLE FILES MODE RENDER ---
+  if (allowMultiple) {
+    const totalPages = calculateBatchTotalPages(batchFiles);
+
+    return (
+      <div className="w-full space-y-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+          className="hidden"
+          id="quickprint-file-input"
+          onChange={handleFileChange}
+          multiple
+        />
+
+        {error && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+              <span>{error}</span>
+            </div>
+            <button onClick={() => setError(null)}>
+              <X className="w-4 h-4 text-rose-500" />
+            </button>
+          </div>
+        )}
+
+        {batchFiles.length === 0 ? (
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-150 ${
+              isDragging
+                ? 'border-indigo-500 bg-indigo-50/60'
+                : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-slate-400'
+            }`}
+          >
+            <div className="flex flex-col items-center">
+              <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5">
+                <FileText className="w-5 h-5 text-slate-400" />
+              </div>
+              <h4 className="text-sm font-bold text-slate-800 mb-0.5">
+                Tap or Drop Files Here
+              </h4>
+              <p className="text-[11px] text-slate-400">
+                Upload multiple documents/images & customize copies per file
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {/* Batch items list */}
+            <div className="space-y-2">
+              {batchFiles.map((item, idx) => {
+                const isImg =
+                  item.file.type.startsWith('image/') ||
+                  item.name.toLowerCase().endsWith('.jpg') ||
+                  item.name.toLowerCase().endsWith('.jpeg') ||
+                  item.name.toLowerCase().endsWith('.png');
+
+                return (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-2xs flex flex-wrap items-center justify-between gap-3 transition-colors"
+                  >
+                    {/* Left: Icon, Name, Details */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-8 h-9 rounded-lg border border-indigo-200 bg-indigo-50/50 flex items-center justify-center text-indigo-600 shrink-0">
+                        {isImg ? (
+                          <ImageIcon className="w-4 h-4" />
+                        ) : (
+                          <FileText className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-xs font-semibold text-slate-800 truncate" title={item.name}>
+                          <span className="text-slate-400 font-normal mr-1.5">#{idx + 1}</span>
+                          {item.name}
+                        </div>
+                        <div className="text-[11px] text-slate-500 font-medium mt-0.5 flex items-center gap-2">
+                          <span className="text-indigo-600 font-semibold">
+                            {item.pageCount} {item.pageCount === 1 ? 'page' : 'pages'}
+                          </span>
+                          <span className="text-slate-300">·</span>
+                          <span>{formatFileSize(item.size)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right: Per-File Copies Stepper & Remove */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50/80 p-0.5 shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => updateItemCopies(item.id, -1)}
+                          disabled={item.copies <= 1}
+                          className="w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs flex items-center justify-center transition-colors cursor-pointer"
+                          title="Decrease copies"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="px-2.5 text-xs font-bold text-slate-800 min-w-[54px] text-center">
+                          {item.copies} {item.copies === 1 ? 'copy' : 'copies'}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => updateItemCopies(item.id, 1)}
+                          className="w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center transition-colors cursor-pointer"
+                          title="Increase copies"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => removeBatchItem(item.id)}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                        title="Remove file"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Add More Files Button & Batch Summary */}
+            <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="py-2.5 px-3.5 rounded-xl border border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add More Files</span>
+              </button>
+
+              <div className="px-3.5 py-2 rounded-xl bg-slate-100/90 border border-slate-200 text-slate-700 text-xs font-medium flex items-center justify-between sm:justify-end gap-2">
+                <span className="text-slate-500">Batch Total:</span>
+                <span className="font-bold text-slate-900">
+                  {batchFiles.length} {batchFiles.length === 1 ? 'file' : 'files'} ·{' '}
+                  <span className="text-indigo-600">{totalPages} {totalPages === 1 ? 'page' : 'pages'}</span>
+                </span>
+              </div>
+            </div>
+
+            {isProcessingBatch && (
+              <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs flex items-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                <span>Preparing and compiling print batch document...</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // --- SINGLE FILE MODE RENDER ---
   return (
     <div className="w-full">
       <input
@@ -448,7 +469,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              {/* Document Outline Icon */}
               <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5">
                 <FileText className="w-5 h-5 text-slate-400" />
               </div>
@@ -485,7 +505,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
           </div>
 
           <button
-            onClick={handleRemove}
+            onClick={handleRemoveSingle}
             className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors shrink-0"
             title="Remove document"
           >

@@ -17,7 +17,8 @@ import {
   X,
   User,
   Phone,
-  MessageSquare
+  MessageSquare,
+  FileText
 } from '@/components/ui/Icons';
 
 export default function AdminSettingsPage() {
@@ -1298,6 +1299,52 @@ export default function AdminSettingsPage() {
                   }`}
                 >
                   {form.form_fields?.allowCustomerNotes !== false ? 'Enabled' : 'Disabled'}
+                </button>
+              </div>
+            </div>
+
+            {/* Multiple Files Upload Field */}
+            <div
+              className={`p-3.5 rounded-2xl border transition-all ${
+                form.form_fields?.allowMultipleFiles !== false
+                  ? 'border-indigo-200 bg-indigo-50/20'
+                  : 'border-slate-200 bg-slate-50/40 opacity-70'
+              }`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center ${
+                      form.form_fields?.allowMultipleFiles !== false
+                        ? 'bg-indigo-600 text-white shadow-xs'
+                        : 'bg-slate-200 text-slate-400'
+                    }`}
+                  >
+                    <FileText className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <span>Multiple Files Upload</span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        New
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500 font-medium">
+                      Allow customers to upload multiple documents/images and customize copies per file
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => toggleFormField('allowMultipleFiles', true)}
+                  className={`text-[11px] font-bold px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                    form.form_fields?.allowMultipleFiles !== false
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                  }`}
+                >
+                  {form.form_fields?.allowMultipleFiles !== false ? 'Enabled' : 'Disabled'}
                 </button>
               </div>
             </div>

@@ -15,6 +15,7 @@ interface PrintOptionsSelectorProps {
   copies: number;
   onCopiesChange: (val: number) => void;
   pricing: PricingConfig;
+  hasMultipleFiles?: boolean;
 }
 
 export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
@@ -27,6 +28,7 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
   copies,
   onCopiesChange,
   pricing,
+  hasMultipleFiles = false,
 }) => {
   const enabledPapers = pricing?.enabled_papers || { a4: true, a3: true, legal: true, photo: true };
   const customPapers = (pricing?.custom_papers || []).filter((p) => p.enabled);
@@ -283,26 +285,33 @@ export const PrintOptionsSelector: React.FC<PrintOptionsSelectorProps> = ({
         <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
           Number of Copies
         </label>
-        <div className="flex items-center justify-between border border-slate-200 rounded-2xl bg-white p-1 shadow-2xs">
-          <button
-            type="button"
-            onClick={() => onCopiesChange(Math.max(1, copies - 1))}
-            disabled={copies <= 1}
-            className="w-10 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 font-bold text-sm flex items-center justify-center transition-colors cursor-pointer"
-          >
-            -
-          </button>
-          <span className="font-bold text-sm text-slate-800">
-            {copies} {copies === 1 ? 'Copy' : 'Copies'}
-          </span>
-          <button
-            type="button"
-            onClick={() => onCopiesChange(Math.min(100, copies + 1))}
-            className="w-10 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center transition-colors cursor-pointer"
-          >
-            +
-          </button>
-        </div>
+        {hasMultipleFiles ? (
+          <div className="p-3 rounded-2xl border border-indigo-100 bg-indigo-50/50 flex items-center justify-between text-xs">
+            <span className="text-slate-600 font-medium">Configured individually per document in Step 1</span>
+            <span className="font-bold text-indigo-700 bg-indigo-100/80 px-2 py-0.5 rounded-md">Customized</span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between border border-slate-200 rounded-2xl bg-white p-1 shadow-2xs">
+            <button
+              type="button"
+              onClick={() => onCopiesChange(Math.max(1, copies - 1))}
+              disabled={copies <= 1}
+              className="w-10 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 font-bold text-sm flex items-center justify-center transition-colors cursor-pointer"
+            >
+              -
+            </button>
+            <span className="font-bold text-sm text-slate-800">
+              {copies} {copies === 1 ? 'Copy' : 'Copies'}
+            </span>
+            <button
+              type="button"
+              onClick={() => onCopiesChange(Math.min(100, copies + 1))}
+              className="w-10 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center transition-colors cursor-pointer"
+            >
+              +
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

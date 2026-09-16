@@ -21,7 +21,10 @@ import {
   PricingConfig,
   PaymentMethod,
   AdvancedPrintConfig,
+  BatchFileItem,
 } from '@/types';
+import { calculateBatchTotalPages, compileBatchPdf } from '@/lib/batch-compiler';
+import { uploadDocumentFile } from '@/lib/uploader';
 import { User, Phone, MessageSquare, XCircle } from '@/components/ui/Icons';
 
 const PaymentModal = dynamic(
@@ -42,6 +45,9 @@ export default function CustomerHomePage() {
 
   // Customer selections
   const [uploadedFile, setUploadedFile] = useState<UploadedFileState | null>(null);
+  const [batchFiles, setBatchFiles] = useState<BatchFileItem[]>([]);
+  const [isProcessingBatch, setIsProcessingBatch] = useState(false);
+  const lastCompiledBatchSig = useRef<string>('');
   const [paperSize, setPaperSize] = useState<PaperSize>('A4');
   const [colorMode, setColorMode] = useState<ColorMode>('BW');
   const [printSides, setPrintSides] = useState<PrintSides>('SINGLE');
@@ -211,24 +217,69 @@ export default function CustomerHomePage() {
     };
   }, []);
 
+  // Multiple files upload setting
+  const allowMultiple = pricing.form_fields?.allowMultipleFiles !== false;
+  const hasBatch = allowMultiple && batchFiles.length > 0;
+
   // Calculate live order pricing
-  const effectivePages = uploadedFile
-    ? computeEffectivePageCount(uploadedFile.pageCount, advancedConfig)
-    : 1;
+  const totalBatchPages = hasBatch
+    ? calculateBatchTotalPages(batchFiles)
+    : (uploadedFile?.pageCount || 1);
+  const effectivePages = hasBatch
+    ? computeEffectivePageCount(totalBatchPages, advancedConfig)
+    : (uploadedFile ? computeEffectivePageCount(uploadedFile.pageCount, advancedConfig) : 1);
+
+  // When hasBatch is true, each document's copies are already calculated into totalBatchPages
+  const effectiveCopies = hasBatch ? 1 : copies;
+
   const priceBreakdown = (() => {
-    try { return calculateOrderPrice(
-    effectivePages,
-    {
-      paperSize,
-      colorMode,
-      printSides,
-      copies,
-      addOns,
-      advancedConfig,
-    },
-    pricing
-  ); } catch { return null; }
+    try {
+      return calculateOrderPrice(
+        effectivePages,
+        {
+          paperSize,
+          colorMode,
+          printSides,
+          copies: effectiveCopies,
+          addOns,
+          advancedConfig,
+        },
+        pricing
+      );
+    } catch {
+      return null;
+    }
   })();
+
+  const getBatchSignature = (files: BatchFileItem[]) =>
+    files.map((f) => `${f.id}-${f.name}-${f.size}-${f.pageCount}-${f.copies}`).join('|');
+
+  const ensureBatchReady = async (): Promise<UploadedFileState | null> => {
+    if (!hasBatch) {
+      return uploadedFile;
+    }
+
+    const currentSig = getBatchSignature(batchFiles);
+    if (uploadedFile && lastCompiledBatchSig.current === currentSig) {
+      return uploadedFile;
+    }
+
+    setIsProcessingBatch(true);
+    setCheckoutError('');
+    try {
+      const { file: compiledFile } = await compileBatchPdf(batchFiles);
+      const uploaded = await uploadDocumentFile(compiledFile);
+      setUploadedFile(uploaded);
+      lastCompiledBatchSig.current = currentSig;
+      return uploaded;
+    } catch (err) {
+      console.error('Batch compilation or upload failed:', err);
+      setCheckoutError(err instanceof Error ? err.message : 'Failed to prepare batch documents for printing.');
+      return null;
+    } finally {
+      setIsProcessingBatch(false);
+    }
+  };
 
   // Customer form field configuration
   const showNameField = pricing.form_fields?.showCustomerName !== false;
@@ -238,9 +289,14 @@ export default function CustomerHomePage() {
   const showNotesField = pricing.form_fields?.allowCustomerNotes !== false;
   const showCustomerInfoSection = showNameField || showPhoneField || showNotesField;
 
-  const handleOpenPayment = () => {
+  const handleOpenPayment = async () => {
     if (!checkoutEnabled || !pricingReady || !priceBreakdown) return;
-    if (!uploadedFile) {
+
+    let targetFile = uploadedFile;
+    if (hasBatch) {
+      targetFile = await ensureBatchReady();
+      if (!targetFile) return;
+    } else if (!targetFile) {
       alert('Please upload a document to proceed.');
       return;
     }
@@ -259,18 +315,34 @@ export default function CustomerHomePage() {
   };
 
   const handleConfirmOrder = async (method: PaymentMethod) => {
-    if (!uploadedFile || checkoutRequest.current || submitting || !pricingReady || !checkoutEnabled || !priceBreakdown) return;
+    let targetFile = uploadedFile;
+    if (hasBatch) {
+      targetFile = await ensureBatchReady();
+      if (!targetFile) return;
+    }
+    if (!targetFile || checkoutRequest.current || submitting || !pricingReady || !checkoutEnabled || !priceBreakdown) return;
     checkoutRequest.current = true;
-    setSubmitting(true);setCheckoutError('');
+    setSubmitting(true);
+    setCheckoutError('');
     try {
       const res = await fetch('/api/orders', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         signal: AbortSignal.timeout(30000),
         body: JSON.stringify({
-          uploadId:uploadedFile.uploadId,uploadToken:uploadedFile.uploadToken,
-          idempotencyKey:uploadedFile.checkoutKey,paperSize,colorMode,printSides,copies,addOns,
+          uploadId: targetFile.uploadId,
+          uploadToken: targetFile.uploadToken,
+          idempotencyKey: targetFile.checkoutKey,
+          paperSize,
+          colorMode,
+          printSides,
+          copies: hasBatch ? 1 : copies,
+          addOns,
           advancedConfig,
-          customerName,customerPhone,customerNotes,paymentMethod:method,
+          customerName,
+          customerPhone,
+          customerNotes,
+          paymentMethod: method,
         }),
       });
       const data=await res.json();
@@ -346,7 +418,7 @@ export default function CustomerHomePage() {
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-900">
-              1. Upload Document
+              1. Upload Document{allowMultiple ? 's' : ''}
             </h2>
             <span className="text-[10px] font-bold text-slate-400 tracking-wider">
               PDF / JPG / PNG
@@ -356,6 +428,16 @@ export default function CustomerHomePage() {
           <FileUploader
             uploadedFile={uploadedFile}
             onFileUploaded={setUploadedFile}
+            allowMultiple={allowMultiple}
+            batchFiles={batchFiles}
+            onBatchFilesChange={(files) => {
+              setBatchFiles(files);
+              if (files.length === 0) {
+                setUploadedFile(null);
+                lastCompiledBatchSig.current = '';
+              }
+            }}
+            isProcessingBatch={isProcessingBatch}
           />
         </section>
 
@@ -375,6 +457,7 @@ export default function CustomerHomePage() {
             copies={copies}
             onCopiesChange={setCopies}
             pricing={pricing}
+            hasMultipleFiles={hasBatch && batchFiles.length > 1}
           />
         </section>
 
@@ -477,17 +560,23 @@ export default function CustomerHomePage() {
 
           <button
             type="button"
-            onClick={() => {
-              if (!uploadedFile) {
-                alert('Please upload a document to preview.');
-                return;
+            onClick={async () => {
+              if (hasBatch) {
+                const targetFile = await ensureBatchReady();
+                if (!targetFile) return;
+                setIsAdobeModalOpen(true);
+              } else {
+                if (!uploadedFile) {
+                  alert('Please upload a document to preview.');
+                  return;
+                }
+                setIsAdobeModalOpen(true);
               }
-              setIsAdobeModalOpen(true);
             }}
-            disabled={!pricingReady||!uploadedFile||submitting||!priceBreakdown}
+            disabled={!pricingReady || (hasBatch ? batchFiles.length === 0 : !uploadedFile) || isProcessingBatch || submitting || !priceBreakdown}
             className="py-3 px-6 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-bold text-sm shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <span>Preview</span>
+            <span>{isProcessingBatch ? 'Preparing...' : 'Preview'}</span>
             <span>→</span>
           </button>
         </div>
@@ -510,16 +599,16 @@ export default function CustomerHomePage() {
       {isAdobeModalOpen && <AdobePrintPreviewModal
         isOpen={isAdobeModalOpen}
         onClose={() => setIsAdobeModalOpen(false)}
-        fileName={uploadedFile?.fileName || 'Document_Preview.pdf'}
-        pageCount={uploadedFile?.pageCount || 1}
+        fileName={hasBatch ? `Batch_Order (${batchFiles.length} files).pdf` : (uploadedFile?.fileName || 'Document_Preview.pdf')}
+        pageCount={uploadedFile?.pageCount || totalBatchPages}
         fileSignedUrl={uploadedFile?.signedUrl}
         previewUrl={uploadedFile?.previewUrl}
-        fileType={uploadedFile?.fileType}
+        fileType={uploadedFile?.fileType || 'application/pdf'}
         uploadedFile={uploadedFile}
         paperSize={paperSize}
         colorMode={colorMode}
         printSides={printSides}
-        copies={copies}
+        copies={hasBatch ? 1 : copies}
         pricing={pricing}
         advancedConfig={advancedConfig}
         onSaveAdvancedConfig={setAdvancedConfig}

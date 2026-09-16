@@ -77,8 +77,19 @@ export interface FormFieldsConfig {
   allowColorPrinting?: boolean;
   allowDoubleSided?: boolean;
   allowCustomerNotes?: boolean;
+  allowMultipleFiles?: boolean;
   minOrderAmount?: number;
   urgentFee?: number;
+}
+
+export interface BatchFileItem {
+  id: string;
+  file: File;
+  name: string;
+  size: number;
+  pageCount: number;
+  copies: number;
+  previewUrl?: string;
 }
 
 export interface PricingConfig {

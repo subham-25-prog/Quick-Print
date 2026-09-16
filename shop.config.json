@@ -54,6 +54,7 @@
     "enableNotes": true,
     "autoApproveUpiOrders": false,
     "minOrderAmount": 0,
-    "urgentFee": 0
+    "urgentFee": 0,
+    "allowMultipleFiles": true
   }
 }
