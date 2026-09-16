@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Plus, Minus } from '@/components/ui/Icons';
+import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Plus, Minus, Eye } from '@/components/ui/Icons';
 import { BatchFileItem } from '@/types';
 import { detectFilePageCount, calculateBatchTotalPages } from '@/lib/batch-compiler';
 import { uploadDocumentFile, UploadedFileState, formatFileSize } from '@/lib/uploader';
@@ -16,6 +16,40 @@ interface FileUploaderProps {
   onBatchFilesChange?: (files: BatchFileItem[]) => void;
   isProcessingBatch?: boolean;
 }
+
+const FileThumbnail: React.FC<{ file: File; name: string; isImg: boolean; className?: string }> = ({
+  file,
+  name,
+  isImg,
+  className = '',
+}) => {
+  const [thumbUrl, setThumbUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isImg) return;
+    const url = URL.createObjectURL(file);
+    setThumbUrl(url);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [file, isImg]);
+
+  if (isImg && thumbUrl) {
+    return (
+      <img
+        src={thumbUrl}
+        alt={name}
+        className={`w-full h-full object-cover group-hover/preview:scale-105 transition-transform duration-200 ${className}`}
+      />
+    );
+  }
+
+  return isImg ? (
+    <ImageIcon className="w-4 h-4 text-indigo-600" />
+  ) : (
+    <FileText className="w-4 h-4 text-indigo-600" />
+  );
+};
 
 function generateUUID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -43,7 +77,32 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   const [currentFileName, setCurrentFileName] = useState('');
   const [currentFileSize, setCurrentFileSize] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [previewItem, setPreviewItem] = useState<{ url: string; name: string; isImage: boolean } | null>(null);
 
+  const handleOpenPreview = (file: File, name: string) => {
+    const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png)$/i.test(name);
+    const url = URL.createObjectURL(file);
+    setPreviewItem({ url, name, isImage });
+  };
+
+  const handleClosePreview = () => {
+    if (previewItem?.url) {
+      try {
+        URL.revokeObjectURL(previewItem.url);
+      } catch {}
+    }
+    setPreviewItem(null);
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && previewItem) {
+        handleClosePreview();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewItem]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeXhr = useRef<XMLHttpRequest | null>(null);
 
@@ -292,19 +351,23 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                     key={item.id}
                     className="animate-fade-in-scale p-3 rounded-2xl border border-slate-200/90 bg-white hover:border-indigo-200 shadow-2xs flex flex-wrap items-center justify-between gap-3 transition-all duration-200 card-hover-lift"
                   >
-                    {/* Left: Icon, Name, Details */}
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <div className="w-8 h-9 rounded-lg border border-indigo-200 bg-indigo-50/50 flex items-center justify-center text-indigo-600 shrink-0 shadow-2xs">
-                        {isImg ? (
-                          <ImageIcon className="w-4 h-4" />
-                        ) : (
-                          <FileText className="w-4 h-4" />
-                        )}
+                    {/* Left: Thumbnail, Name, Details (Clickable to preview image) */}
+                    <div
+                      onClick={() => handleOpenPreview(item.file, item.name)}
+                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group/preview select-none"
+                      title="Tap to preview image"
+                    >
+                      <div className="w-9 h-10 rounded-xl border border-indigo-200 bg-indigo-50/50 flex items-center justify-center text-indigo-600 shrink-0 shadow-2xs overflow-hidden relative group-hover/preview:border-indigo-400 transition-colors">
+                        <FileThumbnail file={item.file} name={item.name} isImg={isImg} />
+                        <div className="absolute inset-0 bg-indigo-950/20 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center">
+                          <Eye className="w-3.5 h-3.5 text-white drop-shadow-sm" />
+                        </div>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-xs font-semibold text-slate-800 truncate" title={item.name}>
-                          <span className="text-slate-400 font-normal mr-1.5">#{idx + 1}</span>
-                          {item.name}
+                        <div className="text-xs font-semibold text-slate-800 truncate group-hover/preview:text-indigo-600 transition-colors flex items-center gap-1.5" title={item.name}>
+                          <span className="text-slate-400 font-normal">#{idx + 1}</span>
+                          <span className="truncate">{item.name}</span>
+                          <Eye className="w-3 h-3 text-indigo-500 opacity-0 group-hover/preview:opacity-100 transition-opacity shrink-0" />
                         </div>
                         <div className="text-[11px] text-slate-500 font-medium mt-0.5 flex items-center gap-2">
                           <span className="text-indigo-600 font-semibold">
@@ -312,6 +375,9 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                           </span>
                           <span className="text-slate-300">·</span>
                           <span>{formatFileSize(item.size)}</span>
+                          {isImg && (
+                            <span className="text-[10px] text-indigo-500 font-semibold hidden sm:inline">(tap to view)</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -483,34 +549,111 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         </div>
       ) : (
         <div className="animate-fade-in-scale p-3.5 rounded-xl border border-emerald-300 bg-emerald-50/40 flex items-center justify-between gap-3 shadow-xs card-hover-lift">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-9 rounded-lg border border-emerald-400 bg-white flex items-center justify-center text-emerald-600 shrink-0 shadow-xs">
-              <FileText className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-xs sm:text-sm font-semibold text-slate-800 truncate">
-                {uploadedFile.fileName}
+          {(() => {
+            const isSingleImg =
+              uploadedFile.file.type.startsWith('image/') ||
+              uploadedFile.fileName.toLowerCase().endsWith('.jpg') ||
+              uploadedFile.fileName.toLowerCase().endsWith('.jpeg') ||
+              uploadedFile.fileName.toLowerCase().endsWith('.png');
+
+            return (
+              <div
+                onClick={() => handleOpenPreview(uploadedFile.file, uploadedFile.fileName)}
+                className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group/preview select-none"
+                title="Tap to preview"
+              >
+                <div className="w-9 h-10 rounded-xl border border-emerald-300 bg-white flex items-center justify-center text-emerald-600 shrink-0 shadow-2xs overflow-hidden relative group-hover/preview:border-emerald-500 transition-colors">
+                  <FileThumbnail file={uploadedFile.file} name={uploadedFile.fileName} isImg={isSingleImg} />
+                  <div className="absolute inset-0 bg-emerald-950/20 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center">
+                    <Eye className="w-3.5 h-3.5 text-white drop-shadow-sm" />
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs sm:text-sm font-semibold text-slate-800 truncate group-hover/preview:text-emerald-700 transition-colors flex items-center gap-1.5">
+                    <span className="truncate">{uploadedFile.fileName}</span>
+                    <Eye className="w-3 h-3 text-emerald-600 opacity-0 group-hover/preview:opacity-100 transition-opacity shrink-0" />
+                  </div>
+                  <div className="text-[11px] text-emerald-700 font-medium mt-0.5 flex items-center gap-2">
+                    <span>
+                      Detected: {uploadedFile.pageCount} {uploadedFile.pageCount === 1 ? 'page' : 'pages'}
+                    </span>
+                    {uploadedFile.fileSizeBytes > 0 && (
+                      <span className="text-slate-400">
+                        · {formatFileSize(uploadedFile.fileSizeBytes)}
+                      </span>
+                    )}
+                    {isSingleImg && (
+                      <span className="text-[10px] text-emerald-600 font-semibold hidden sm:inline">(tap to view)</span>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div className="text-[11px] text-emerald-700 font-medium mt-0.5 flex items-center gap-2">
-                <span>
-                  Detected: {uploadedFile.pageCount} {uploadedFile.pageCount === 1 ? 'page' : 'pages'}
-                </span>
-                {uploadedFile.fileSizeBytes > 0 && (
-                  <span className="text-slate-400">
-                    · {formatFileSize(uploadedFile.fileSizeBytes)}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
+            );
+          })()}
 
           <button
             onClick={handleRemoveSingle}
-            className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors shrink-0"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all shrink-0 cursor-pointer"
             title="Remove document"
           >
             <X className="w-4 h-4" />
           </button>
+        </div>
+      )}
+
+      {/* Image / Document Preview Lightbox Modal */}
+      {previewItem && (
+        <div
+          className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-fade-in-scale select-none"
+          onClick={handleClosePreview}
+        >
+          <div
+            className="w-full max-w-2xl mb-3 flex items-center justify-between text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="min-w-0 pr-4">
+              <h3 className="text-sm sm:text-base font-bold truncate">{previewItem.name}</h3>
+              <span className="text-xs text-slate-400">
+                {previewItem.isImage ? 'Image Preview' : 'Document Preview'}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <a
+                href={previewItem.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 transition-colors"
+              >
+                Open in tab ↗
+              </a>
+              <button
+                type="button"
+                onClick={handleClosePreview}
+                className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
+                title="Close preview"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <div
+            className="max-w-3xl max-h-[82vh] w-full flex items-center justify-center overflow-hidden rounded-2xl bg-black/40 border border-white/10 shadow-2xl p-2 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {previewItem.isImage ? (
+              <img
+                src={previewItem.url}
+                alt={previewItem.name}
+                className="max-h-[78vh] max-w-full object-contain rounded-xl select-none"
+              />
+            ) : (
+              <iframe
+                src={previewItem.url}
+                title={previewItem.name}
+                className="w-full h-[78vh] rounded-xl bg-white border-0"
+              />
+            )}
+          </div>
         </div>
       )}
     </div>
