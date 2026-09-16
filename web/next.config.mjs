@@ -8,6 +8,9 @@ const nextConfig = {
   outputFileTracingRoot: repositoryRoot,
   turbopack: {
     root: repositoryRoot,
+    resolveAlias: {
+      canvas: './lib/empty-module.js',
+    },
   },
   webpack: (config) => {
     config.resolve.alias = {

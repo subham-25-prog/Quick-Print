@@ -48,6 +48,7 @@ export default function CustomerHomePage() {
   const [batchFiles, setBatchFiles] = useState<BatchFileItem[]>([]);
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const lastCompiledBatchSig = useRef<string>('');
+  const [batchPreviewFile, setBatchPreviewFile] = useState<File | null>(null);
   const [paperSize, setPaperSize] = useState<PaperSize>('A4');
   const [colorMode, setColorMode] = useState<ColorMode>('BW');
   const [printSides, setPrintSides] = useState<PrintSides>('SINGLE');
@@ -70,6 +71,19 @@ export default function CustomerHomePage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
+
+  // Preload Adobe Preview Modal & PDF rendering engine when user uploads files
+  useEffect(() => {
+    if (uploadedFile || batchFiles.length > 0) {
+      import('@/components/customer/AdobePrintPreviewModal')
+        .then((mod) => {
+          if (typeof mod.getPdfJs === 'function') {
+            mod.getPdfJs().catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+  }, [uploadedFile, batchFiles.length]);
 
   // Payment modal & order submission
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -562,9 +576,35 @@ export default function CustomerHomePage() {
             type="button"
             onClick={async () => {
               if (hasBatch) {
-                const targetFile = await ensureBatchReady();
-                if (!targetFile) return;
-                setIsAdobeModalOpen(true);
+                if (batchFiles.length === 0) return;
+                // If single file in batch, use its File directly without any compilation overhead!
+                if (batchFiles.length === 1) {
+                  setBatchPreviewFile(batchFiles[0].file);
+                  setIsAdobeModalOpen(true);
+                  return;
+                }
+                // If already compiled or uploaded, open immediately!
+                const currentSig = getBatchSignature(batchFiles);
+                if (uploadedFile && lastCompiledBatchSig.current === currentSig) {
+                  setIsAdobeModalOpen(true);
+                  return;
+                }
+                if (batchPreviewFile) {
+                  setIsAdobeModalOpen(true);
+                  return;
+                }
+                // Compile in memory (super fast in RAM, NO server network upload!)
+                setIsProcessingBatch(true);
+                try {
+                  const { file: compiledFile } = await compileBatchPdf(batchFiles);
+                  setBatchPreviewFile(compiledFile);
+                  setIsAdobeModalOpen(true);
+                } catch (err) {
+                  console.error('Batch preview error:', err);
+                  alert('Unable to prepare preview.');
+                } finally {
+                  setIsProcessingBatch(false);
+                }
               } else {
                 if (!uploadedFile) {
                   alert('Please upload a document to preview.');
@@ -572,6 +612,20 @@ export default function CustomerHomePage() {
                 }
                 setIsAdobeModalOpen(true);
               }
+            }}
+            onMouseEnter={() => {
+              import('@/components/customer/AdobePrintPreviewModal')
+                .then((mod) => {
+                  if (typeof mod.getPdfJs === 'function') mod.getPdfJs().catch(() => {});
+                })
+                .catch(() => {});
+            }}
+            onTouchStart={() => {
+              import('@/components/customer/AdobePrintPreviewModal')
+                .then((mod) => {
+                  if (typeof mod.getPdfJs === 'function') mod.getPdfJs().catch(() => {});
+                })
+                .catch(() => {});
             }}
             disabled={!pricingReady || (hasBatch ? batchFiles.length === 0 : !uploadedFile) || isProcessingBatch || submitting || !priceBreakdown}
             className="btn-shimmer py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] text-white font-bold text-sm shadow-md hover:shadow-lg hover:shadow-emerald-600/20 transition-all duration-200 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
@@ -596,31 +650,49 @@ export default function CustomerHomePage() {
       />}
 
       {/* Adobe Acrobat Advanced Print Settings & Preview Modal */}
-      {isAdobeModalOpen && <AdobePrintPreviewModal
-        isOpen={isAdobeModalOpen}
-        onClose={() => setIsAdobeModalOpen(false)}
-        fileName={hasBatch ? `Batch_Order (${batchFiles.length} files).pdf` : (uploadedFile?.fileName || 'Document_Preview.pdf')}
-        pageCount={uploadedFile?.pageCount || totalBatchPages}
-        fileSignedUrl={uploadedFile?.signedUrl}
-        previewUrl={uploadedFile?.previewUrl}
-        fileType={uploadedFile?.fileType || 'application/pdf'}
-        uploadedFile={uploadedFile}
-        paperSize={paperSize}
-        colorMode={colorMode}
-        printSides={printSides}
-        copies={hasBatch ? 1 : copies}
-        pricing={pricing}
-        advancedConfig={advancedConfig}
-        onSaveAdvancedConfig={setAdvancedConfig}
-        onPaperSizeChange={setPaperSize}
-        onColorModeChange={setColorMode}
-        onPrintSidesChange={setPrintSides}
-        onCopiesChange={setCopies}
-        onProceedToOrder={() => {
-          setIsAdobeModalOpen(false);
-          handleOpenPayment();
-        }}
-      />}
+      {isAdobeModalOpen && (() => {
+        const activeModalUploadedFile: UploadedFileState | null = hasBatch
+          ? (uploadedFile || (batchPreviewFile ? {
+              uploadId: 'local-preview',
+              uploadToken: '',
+              checkoutKey: '',
+              file: batchPreviewFile,
+              fileName: batchFiles.length === 1 ? batchFiles[0].name : `Batch_Order (${batchFiles.length} files).pdf`,
+              fileType: batchFiles.length === 1 ? (batchFiles[0].file.type || 'application/pdf') : 'application/pdf',
+              fileSizeBytes: batchPreviewFile.size,
+              pageCount: totalBatchPages,
+              storagePath: '',
+            } : null))
+          : uploadedFile;
+
+        return (
+          <AdobePrintPreviewModal
+            isOpen={isAdobeModalOpen}
+            onClose={() => setIsAdobeModalOpen(false)}
+            fileName={hasBatch ? (batchFiles.length === 1 ? batchFiles[0].name : `Batch_Order (${batchFiles.length} files).pdf`) : (uploadedFile?.fileName || 'Document_Preview.pdf')}
+            pageCount={uploadedFile?.pageCount || totalBatchPages}
+            fileSignedUrl={uploadedFile?.signedUrl}
+            previewUrl={uploadedFile?.previewUrl}
+            fileType={hasBatch ? (batchFiles.length === 1 ? (batchFiles[0].file.type || 'application/pdf') : 'application/pdf') : (uploadedFile?.fileType || 'application/pdf')}
+            uploadedFile={activeModalUploadedFile}
+            paperSize={paperSize}
+            colorMode={colorMode}
+            printSides={printSides}
+            copies={hasBatch ? 1 : copies}
+            pricing={pricing}
+            advancedConfig={advancedConfig}
+            onSaveAdvancedConfig={setAdvancedConfig}
+            onPaperSizeChange={setPaperSize}
+            onColorModeChange={setColorMode}
+            onPrintSidesChange={setPrintSides}
+            onCopiesChange={setCopies}
+            onProceedToOrder={() => {
+              setIsAdobeModalOpen(false);
+              handleOpenPayment();
+            }}
+          />
+        );
+      })()}
     </div>
   );
 }

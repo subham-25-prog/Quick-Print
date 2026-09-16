@@ -40,6 +40,27 @@ interface AdobePrintPreviewModalProps {
   onProceedToOrder?: () => void;
 }
 
+// Cached PDF.js module promise so it's loaded only once across the whole app
+let cachedPdfJs: any = null;
+let cachedPdfJsPromise: Promise<any> | null = null;
+export function getPdfJs() {
+  if (cachedPdfJs) return Promise.resolve(cachedPdfJs);
+  if (!cachedPdfJsPromise) {
+    cachedPdfJsPromise = Promise.all([
+      import('pdfjs-dist/legacy/build/pdf.js'),
+      // @ts-expect-error worker entry does not have type declarations
+      import('pdfjs-dist/legacy/build/pdf.worker.entry.js'),
+    ]).then(([mod]) => {
+      cachedPdfJs = mod.default || mod;
+      return cachedPdfJs;
+    });
+  }
+  return cachedPdfJsPromise;
+}
+
+// Global cache for parsed PDF documents to ensure instant modal reopen
+const parsedDocCache = new Map<string, any>();
+
 export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   isOpen,
   onClose,
@@ -207,14 +228,25 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
     async function loadUploadedPdf() {
       try {
+        const docCacheKey =
+          uploadedFile?.uploadId ||
+          (uploadedFile?.file
+            ? `${uploadedFile.file.name}_${uploadedFile.file.size}_${uploadedFile.file.lastModified}`
+            : activePreviewUrl) ||
+          '';
+
+        if (docCacheKey && parsedDocCache.has(docCacheKey)) {
+          const cachedDoc = parsedDocCache.get(docCacheKey);
+          if (active) {
+            setPdfDoc(cachedDoc);
+            setPdfPageCount(cachedDoc.numPages);
+            setIsPdfLoading(false);
+          }
+          return;
+        }
+
         setIsPdfLoading(true);
-        // Load PDF.js and its worker entry so it runs cleanly in main thread
-        const [pdfjsMod] = await Promise.all([
-          import('pdfjs-dist/legacy/build/pdf.js'),
-          // @ts-expect-error worker entry does not have type declarations
-          import('pdfjs-dist/legacy/build/pdf.worker.entry.js'),
-        ]);
-        const pdfjs = pdfjsMod.default || pdfjsMod;
+        const pdfjs = await getPdfJs();
 
         let arrayBuffer: ArrayBuffer | undefined;
         if (uploadedFile?.file) {
@@ -243,6 +275,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           stopAtErrors: false,
         });
         const doc = await loadingTask.promise;
+
+        if (docCacheKey) {
+          parsedDocCache.set(docCacheKey, doc);
+        }
 
         if (active) {
           setPdfDoc(doc);
@@ -523,6 +559,16 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     [fileName, totalDocPages, modalPaperSize, isBw]
   );
 
+  // In-memory raster caches for 0ms instantaneous canvas rendering & page navigation
+  const pdfPageCache = useRef<Map<string, HTMLCanvasElement>>(new Map());
+  const imageElementCache = useRef<Map<string, HTMLImageElement>>(new Map());
+
+  // Invalidate page raster cache when document source, orientation, or layout changes
+  useEffect(() => {
+    pdfPageCache.current.clear();
+    imageElementCache.current.clear();
+  }, [uploadedFile, activePreviewUrl, isLandscape, pagesPerSheet]);
+
   // Helper to render uploaded image onto canvas slot
   const renderImageSlot = useCallback(
     (
@@ -533,11 +579,29 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       w: number,
       h: number
     ): Promise<void> => {
+      const cachedImg = imageElementCache.current.get(url);
+      if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
+        const imgAspect = cachedImg.width / cachedImg.height;
+        const slotAspect = w / h;
+        let drawW = w;
+        let drawH = h;
+        if (imgAspect > slotAspect) {
+          drawH = w / imgAspect;
+        } else {
+          drawW = h * imgAspect;
+        }
+        const drawX = x + (w - drawW) / 2;
+        const drawY = y + (h - drawH) / 2;
+        ctx.drawImage(cachedImg, drawX, drawY, drawW, drawH);
+        return Promise.resolve();
+      }
+
       return new Promise((resolve) => {
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.src = url;
         img.onload = () => {
+          imageElementCache.current.set(url, img);
           const imgAspect = img.width / img.height;
           const slotAspect = w / h;
           let drawW = w;
@@ -571,11 +635,22 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       w: number,
       h: number
     ) => {
+      const cacheKey = `${doc.fingerprint || 'doc'}_${pageNum}_${Math.round(w)}_${Math.round(h)}`;
+      const cached = pdfPageCache.current.get(cacheKey);
+      if (cached) {
+        const drawW = cached.width / 1.15;
+        const drawH = cached.height / 1.15;
+        const drawX = x + (w - drawW) / 2;
+        const drawY = y + (h - drawH) / 2;
+        ctx.drawImage(cached, drawX, drawY, drawW, drawH);
+        return;
+      }
+
       try {
         const page = await doc.getPage(pageNum);
         const unscaledViewport = page.getViewport({ scale: 1 });
         const scale = Math.min(w / unscaledViewport.width, h / unscaledViewport.height);
-        const pixelRatio = 1.5;
+        const pixelRatio = 1.15;
         const viewport = page.getViewport({ scale: scale * pixelRatio });
 
         const offCanvas = document.createElement('canvas');
@@ -588,6 +663,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           canvasContext: offCtx,
           viewport,
         }).promise;
+
+        pdfPageCache.current.set(cacheKey, offCanvas);
 
         const drawW = viewport.width / pixelRatio;
         const drawH = viewport.height / pixelRatio;
@@ -610,12 +687,12 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Fixed High-DPI canvas dimensions
-    const baseW = isLandscape ? 1600 : 1131;
-    const baseH = isLandscape ? 1131 : 1600;
+    // Crisp Retina-optimized canvas dimensions
+    const baseW = isLandscape ? 960 : 680;
+    const baseH = isLandscape ? 680 : 960;
 
-    canvas.width = baseW;
-    canvas.height = baseH;
+    if (canvas.width !== baseW) canvas.width = baseW;
+    if (canvas.height !== baseH) canvas.height = baseH;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, baseW, baseH);
