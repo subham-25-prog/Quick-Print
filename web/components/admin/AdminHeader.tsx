@@ -24,8 +24,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 }) => {
   const pathname = usePathname();
   const router = useRouter();
-  const [locking, setLocking] = React.useState(false);
-  const [lockError, setLockError] = React.useState('');
   const storeName = useShopName(shopName);
   const [dbStatus, setDbStatus] = React.useState<{
     connected: boolean;
@@ -67,14 +65,10 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   ];
 
   const handleLockPortal = async () => {
-    if (locking) return;
-    setLocking(true); setLockError('');
     try {
-      const response = await fetch('/api/admin/auth', { method: 'DELETE', signal: AbortSignal.timeout(15000) });
-      if (!response.ok) throw new Error('Could not lock the portal.');
-      router.replace('/admin/login');
-    } catch { setLockError('Could not lock the portal. Check your connection and retry.'); }
-    finally { setLocking(false); }
+      await fetch('/api/admin/auth', { method: 'DELETE' });
+    } catch {}
+    router.replace('/admin/login');
   };
 
   return (
@@ -151,7 +145,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                   <Link
                     key={item.href}
                     href={item.href}
-                    aria-current={isActive ? 'page' : undefined}
                     prefetch={true}
                     className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all duration-75 whitespace-nowrap active:scale-95 ${
                       isActive
@@ -185,7 +178,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             <button
               type="button"
               onClick={handleLockPortal}
-              title="Lock Admin Portal" aria-label="Lock Admin Portal" disabled={locking}
+              title="Lock Admin Portal"
               className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 transition-all active:scale-95 flex items-center gap-1 text-xs font-bold cursor-pointer"
             >
               <Lock className="w-3.5 h-3.5" />
@@ -193,7 +186,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             </button>
           </div>
         </div>
-        {lockError && <p role="alert" className="max-w-6xl mx-auto px-4 pb-3 text-sm text-rose-700">{lockError}</p>}
       </header>
     </>
   );

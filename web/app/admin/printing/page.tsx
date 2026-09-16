@@ -5,6 +5,7 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PricingConfig } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
 import { useInitialPricing } from '@/lib/initial-pricing';
+import { DeveloperBadge } from '@/components/DeveloperBadge';
 import {
 Printer,
 CheckCircle2,
@@ -481,6 +482,7 @@ export default function AdminPrintingSettingsPage() {
         </div>
 
         {/* Developer Attribution */}
+        <DeveloperBadge className="pt-6 pb-2" />
       </main>
     </div>
   );
