@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Plus, Minus, Eye } from '@/components/ui/Icons';
 import { BatchFileItem } from '@/types';
 import { detectFilePageCount, calculateBatchTotalPages } from '@/lib/batch-compiler';
@@ -26,11 +27,16 @@ const FileThumbnail: React.FC<{ file: File; name: string; isImg: boolean; classN
   const [thumbUrl, setThumbUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isImg) return;
-    const url = URL.createObjectURL(file);
-    setThumbUrl(url);
+    if (!isImg || !(file instanceof Blob)) return;
+    let active = true;
+    let url = '';
+    try {
+      url = URL.createObjectURL(file);
+      if (active) setThumbUrl(url);
+    } catch {}
     return () => {
-      URL.revokeObjectURL(url);
+      active = false;
+      if (url) URL.revokeObjectURL(url);
     };
   }, [file, isImg]);
 
@@ -70,6 +76,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   onBatchFilesChange,
   isProcessingBatch = false,
 }) => {
+  const [isMounted, setIsMounted] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -77,16 +84,46 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   const [currentFileName, setCurrentFileName] = useState('');
   const [currentFileSize, setCurrentFileSize] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
-  const [previewItem, setPreviewItem] = useState<{ url: string; name: string; isImage: boolean } | null>(null);
+  const [previewItem, setPreviewItem] = useState<{
+    url: string;
+    name: string;
+    isImage: boolean;
+    isGeneratedBlob: boolean;
+  } | null>(null);
 
-  const handleOpenPreview = (file: File, name: string) => {
-    const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png)$/i.test(name);
-    const url = URL.createObjectURL(file);
-    setPreviewItem({ url, name, isImage });
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  const handleOpenPreview = (file?: File | Blob | null, name?: string, fallbackUrl?: string) => {
+    try {
+      const fileName = name || (file as File)?.name || 'Preview';
+      const isImage =
+        Boolean(file?.type && file.type.startsWith('image/')) ||
+        /\.(jpe?g|png|webp|gif|bmp|svg|jfif|heic)$/i.test(fileName) ||
+        (!file?.type?.includes('pdf') && !fileName.toLowerCase().endsWith('.pdf'));
+
+      let url = fallbackUrl || '';
+      let isGenerated = false;
+
+      if (file instanceof Blob) {
+        url = URL.createObjectURL(file);
+        isGenerated = true;
+      }
+
+      if (!url) {
+        console.warn('No preview URL or File available for preview');
+        return;
+      }
+
+      setPreviewItem({ url, name: fileName, isImage, isGeneratedBlob: isGenerated });
+    } catch (err) {
+      console.error('Error opening preview:', err);
+    }
   };
 
   const handleClosePreview = () => {
-    if (previewItem?.url) {
+    if (previewItem?.isGeneratedBlob && previewItem?.url) {
       try {
         URL.revokeObjectURL(previewItem.url);
       } catch {}
@@ -351,36 +388,40 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                     key={item.id}
                     className="animate-fade-in-scale p-3 rounded-2xl border border-slate-200/90 bg-white hover:border-indigo-200 shadow-2xs flex flex-wrap items-center justify-between gap-3 transition-all duration-200 card-hover-lift"
                   >
-                    {/* Left: Thumbnail, Name, Details (Clickable to preview image) */}
-                    <div
-                      onClick={() => handleOpenPreview(item.file, item.name)}
-                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group/preview select-none"
+                    {/* Left: Thumbnail, Name, Details (Clickable button to preview image) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenPreview(item.file, item.name);
+                      }}
+                      className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer group/preview select-none bg-transparent border-0 p-0 focus:outline-hidden"
                       title="Tap to preview image"
                     >
-                      <div className="w-9 h-10 rounded-xl border border-indigo-200 bg-indigo-50/50 flex items-center justify-center text-indigo-600 shrink-0 shadow-2xs overflow-hidden relative group-hover/preview:border-indigo-400 transition-colors">
+                      <div className="w-10 h-11 rounded-xl border border-indigo-200 bg-indigo-50/50 flex items-center justify-center text-indigo-600 shrink-0 shadow-2xs overflow-hidden relative group-hover/preview:border-indigo-400 group-hover/preview:ring-2 group-hover/preview:ring-indigo-300/40 transition-all">
                         <FileThumbnail file={item.file} name={item.name} isImg={isImg} />
                         <div className="absolute inset-0 bg-indigo-950/20 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center">
-                          <Eye className="w-3.5 h-3.5 text-white drop-shadow-sm" />
+                          <Eye className="w-4 h-4 text-white drop-shadow-sm" />
                         </div>
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="text-xs font-semibold text-slate-800 truncate group-hover/preview:text-indigo-600 transition-colors flex items-center gap-1.5" title={item.name}>
                           <span className="text-slate-400 font-normal">#{idx + 1}</span>
                           <span className="truncate">{item.name}</span>
-                          <Eye className="w-3 h-3 text-indigo-500 opacity-0 group-hover/preview:opacity-100 transition-opacity shrink-0" />
+                          <Eye className="w-3 h-3 text-indigo-500 opacity-60 group-hover/preview:opacity-100 transition-opacity shrink-0" />
                         </div>
-                        <div className="text-[11px] text-slate-500 font-medium mt-0.5 flex items-center gap-2">
+                        <div className="text-[11px] text-slate-500 font-medium mt-0.5 flex items-center gap-2 flex-wrap">
                           <span className="text-indigo-600 font-semibold">
                             {item.pageCount} {item.pageCount === 1 ? 'page' : 'pages'}
                           </span>
                           <span className="text-slate-300">·</span>
                           <span>{formatFileSize(item.size)}</span>
-                          {isImg && (
-                            <span className="text-[10px] text-indigo-500 font-semibold hidden sm:inline">(tap to view)</span>
-                          )}
+                          <span className="text-[10px] text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100 inline-flex items-center gap-1">
+                            <Eye className="w-2.5 h-2.5" /> Tap to view
+                          </span>
                         </div>
                       </div>
-                    </div>
+                    </button>
 
                     {/* Right: Per-File Copies Stepper & Remove */}
                     <div className="flex items-center gap-2 shrink-0">
@@ -551,29 +592,32 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         <div className="animate-fade-in-scale p-3.5 rounded-xl border border-emerald-300 bg-emerald-50/40 flex items-center justify-between gap-3 shadow-xs card-hover-lift">
           {(() => {
             const isSingleImg =
-              uploadedFile.file.type.startsWith('image/') ||
-              uploadedFile.fileName.toLowerCase().endsWith('.jpg') ||
-              uploadedFile.fileName.toLowerCase().endsWith('.jpeg') ||
-              uploadedFile.fileName.toLowerCase().endsWith('.png');
+              (uploadedFile.file?.type && uploadedFile.file.type.startsWith('image/')) ||
+              /\.(jpe?g|png|webp|gif|bmp|svg|jfif|heic)$/i.test(uploadedFile.fileName) ||
+              (!uploadedFile.fileType?.includes('pdf') && !uploadedFile.fileName.toLowerCase().endsWith('.pdf'));
 
             return (
-              <div
-                onClick={() => handleOpenPreview(uploadedFile.file, uploadedFile.fileName)}
-                className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group/preview select-none"
-                title="Tap to preview"
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleOpenPreview(uploadedFile.file, uploadedFile.fileName, uploadedFile.signedUrl || uploadedFile.previewUrl);
+                }}
+                className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer group/preview select-none bg-transparent border-0 p-0 focus:outline-hidden"
+                title="Tap to preview document"
               >
-                <div className="w-9 h-10 rounded-xl border border-emerald-300 bg-white flex items-center justify-center text-emerald-600 shrink-0 shadow-2xs overflow-hidden relative group-hover/preview:border-emerald-500 transition-colors">
+                <div className="w-10 h-11 rounded-xl border border-emerald-300 bg-white flex items-center justify-center text-emerald-600 shrink-0 shadow-2xs overflow-hidden relative group-hover/preview:border-emerald-500 group-hover/preview:ring-2 group-hover/preview:ring-emerald-300/40 transition-all">
                   <FileThumbnail file={uploadedFile.file} name={uploadedFile.fileName} isImg={isSingleImg} />
                   <div className="absolute inset-0 bg-emerald-950/20 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center">
-                    <Eye className="w-3.5 h-3.5 text-white drop-shadow-sm" />
+                    <Eye className="w-4 h-4 text-white drop-shadow-sm" />
                   </div>
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-xs sm:text-sm font-semibold text-slate-800 truncate group-hover/preview:text-emerald-700 transition-colors flex items-center gap-1.5">
                     <span className="truncate">{uploadedFile.fileName}</span>
-                    <Eye className="w-3 h-3 text-emerald-600 opacity-0 group-hover/preview:opacity-100 transition-opacity shrink-0" />
+                    <Eye className="w-3.5 h-3.5 text-emerald-600 opacity-60 group-hover/preview:opacity-100 transition-opacity shrink-0" />
                   </div>
-                  <div className="text-[11px] text-emerald-700 font-medium mt-0.5 flex items-center gap-2">
+                  <div className="text-[11px] text-emerald-700 font-medium mt-0.5 flex items-center gap-2 flex-wrap">
                     <span>
                       Detected: {uploadedFile.pageCount} {uploadedFile.pageCount === 1 ? 'page' : 'pages'}
                     </span>
@@ -582,12 +626,12 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                         · {formatFileSize(uploadedFile.fileSizeBytes)}
                       </span>
                     )}
-                    {isSingleImg && (
-                      <span className="text-[10px] text-emerald-600 font-semibold hidden sm:inline">(tap to view)</span>
-                    )}
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-100/70 px-1.5 py-0.5 rounded-md border border-emerald-200 inline-flex items-center gap-1">
+                      <Eye className="w-2.5 h-2.5" /> Tap to view
+                    </span>
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })()}
 
@@ -601,18 +645,20 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         </div>
       )}
 
-      {/* Image / Document Preview Lightbox Modal */}
-      {previewItem && (
+      {/* Image / Document Preview Lightbox Modal rendered via Portal onto document.body */}
+      {isMounted && previewItem && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-fade-in-scale select-none"
+          className="fixed inset-0 z-[9999] bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-3 sm:p-6 animate-fade-in-scale select-none"
           onClick={handleClosePreview}
+          role="dialog"
+          aria-modal="true"
         >
           <div
-            className="w-full max-w-2xl mb-3 flex items-center justify-between text-white"
+            className="w-full max-w-3xl mb-3 flex items-center justify-between text-white"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="min-w-0 pr-4">
-              <h3 className="text-sm sm:text-base font-bold truncate">{previewItem.name}</h3>
+              <h3 className="text-sm sm:text-base font-bold truncate text-white">{previewItem.name}</h3>
               <span className="text-xs text-slate-400">
                 {previewItem.isImage ? 'Image Preview' : 'Document Preview'}
               </span>
@@ -622,14 +668,14 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                 href={previewItem.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 transition-colors"
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white border border-slate-700 transition-colors shadow-xs"
               >
                 Open in tab ↗
               </a>
               <button
                 type="button"
                 onClick={handleClosePreview}
-                className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
+                className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
                 title="Close preview"
               >
                 <X className="w-5 h-5" />
@@ -637,24 +683,25 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             </div>
           </div>
           <div
-            className="max-w-3xl max-h-[82vh] w-full flex items-center justify-center overflow-hidden rounded-2xl bg-black/40 border border-white/10 shadow-2xl p-2 relative"
+            className="max-w-3xl max-h-[82vh] w-full flex items-center justify-center overflow-hidden rounded-2xl bg-black/60 border border-white/15 shadow-2xl p-2 sm:p-3 relative"
             onClick={(e) => e.stopPropagation()}
           >
             {previewItem.isImage ? (
               <img
                 src={previewItem.url}
                 alt={previewItem.name}
-                className="max-h-[78vh] max-w-full object-contain rounded-xl select-none"
+                className="max-h-[76vh] max-w-full object-contain rounded-xl select-none mx-auto shadow-lg"
               />
             ) : (
               <iframe
                 src={previewItem.url}
                 title={previewItem.name}
-                className="w-full h-[78vh] rounded-xl bg-white border-0"
+                className="w-full h-[76vh] rounded-xl bg-white border-0"
               />
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
