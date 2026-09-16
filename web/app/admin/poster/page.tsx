@@ -6,7 +6,6 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { shopConfig } from '@/lib/config';
 import { useInitialPricing } from '@/lib/initial-pricing';
 import { useShopName, cleanShopName } from '@/lib/shop-sync';
-import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Printer,Download } from '@/components/ui/Icons';
 
 export default function ShopWallPosterPage() {
@@ -207,7 +206,6 @@ export default function ShopWallPosterPage() {
 
           {/* Footer Notice & Developer Attribution */}
           <div className="pt-3 border-t border-slate-200/80 space-y-2">
-            <DeveloperBadge />
             <div className="text-[9px] text-slate-400 font-medium">
               ⚡ Powered by {shopName || 'Cyber Cafe'} Self-Service System • Prints ready in 2–5 minutes
             </div>
@@ -216,7 +214,6 @@ export default function ShopWallPosterPage() {
 
         {/* Screen Developer Card (Hidden on Print) */}
         <div className="print:hidden">
-          <DeveloperBadge />
         </div>
       </main>
     </div>

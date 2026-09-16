@@ -15,7 +15,6 @@ import {
   Sparkles,
 } from '@/components/ui/Icons';
 import { LivePrintVisualizer } from '@/components/customer/LivePrintVisualizer';
-import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { startPolling } from '@/lib/polling';
 import { useShopName } from '@/lib/shop-sync';
 
@@ -127,9 +126,10 @@ export default function OrderStatusPage() {
 
   const isPrinted =
     data?.order?.order_status === 'PRINTED' ||
-    data?.order?.order_status === 'SUBMITTED' ||
-    data?.job?.status === 'PRINTED' ||
-    data?.job?.status === 'SUBMITTED';
+    data?.job?.status === 'PRINTED';
+
+  const isSubmitted = data?.order?.order_status === 'SUBMITTED' || data?.job?.status === 'SUBMITTED';
+  const needsAttention = ['FAILED', 'REVIEW', 'CANCELLED', 'REJECTED'].includes(data?.job?.status || data?.order?.order_status || '');
 
   const isHardwarePrinting =
     !isPrinted &&
@@ -140,6 +140,8 @@ export default function OrderStatusPage() {
     : data?.job?.status ||
       (isPrinted
         ? 'PRINTED'
+        : isSubmitted
+        ? 'SUBMITTED'
         : isHardwarePrinting
         ? 'PRINTING'
         : 'PENDING');
@@ -177,8 +179,12 @@ export default function OrderStatusPage() {
                 ? 'Awaiting Cash Verification at Counter'
                 : isPrinted
                 ? 'Document Printed & Ready at Counter'
+                : isSubmitted
+                ? 'Sent to printer — check with the counter'
+                : needsAttention
+                ? 'Please contact the shopkeeper'
                 : isHardwarePrinting
-                ? 'Printing on Counter Hardware...'
+                ? 'Sending document to printer...'
                 : data?.agentOnline
                 ? 'Shop Printer Connected & Live'
                 : 'Shop Agent Offline (Order Queued)'}
@@ -357,7 +363,6 @@ export default function OrderStatusPage() {
         </Link>
 
         {/* Developer Attribution Card */}
-        <DeveloperBadge className="mt-3" />
       </main>
     </div>
   );

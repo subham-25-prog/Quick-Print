@@ -32,3 +32,26 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Shared interaction standards across customer and shopkeeper screens. */
+@layer base {
+  :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid #4f46e5;
+    outline-offset: 3px;
+  }
+  button:disabled { cursor: not-allowed; }
+  input, select, textarea { scroll-margin-top: 6rem; }
+}
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

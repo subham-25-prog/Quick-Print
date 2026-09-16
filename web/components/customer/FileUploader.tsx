@@ -79,13 +79,18 @@ export const FileUploader: React.FC<FileUploaderProps> = ({ onFileUploaded, uplo
     const isPdf =
       file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     const isImage =
-      file.type.startsWith('image/') ||
+      ['image/jpeg', 'image/png'].includes(file.type) ||
       file.name.toLowerCase().endsWith('.jpg') ||
       file.name.toLowerCase().endsWith('.jpeg') ||
       file.name.toLowerCase().endsWith('.png');
 
     if (!isPdf && !isImage) {
       setError('Please upload a PDF or image file (JPG, PNG)');
+      return;
+    }
+
+    if (file.size === 0) {
+      setError('This file is empty. Choose a document with content.');
       return;
     }
 

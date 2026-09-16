@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useShopName } from '@/lib/shop-sync';
-import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Lock, AlertCircle, ArrowRight } from '@/components/ui/Icons';
 
 export default function AdminLoginPage() {
@@ -118,7 +117,6 @@ export default function AdminLoginPage() {
           </div>
 
           <div className="pt-2 border-t border-slate-800/80">
-            <DeveloperBadge dark />
           </div>
         </div>
       </div>

@@ -28,6 +28,32 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   cashEnabled,
   error,
 }) => {
+  const dialogRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    dialogRef.current?.focus();
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, [isOpen]);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape' && !submitting) { event.preventDefault(); onClose(); }
+    if (event.key !== 'Tab') return;
+    const elements = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), [tabindex="0"]') ?? []);
+    const first = elements[0], last = elements[elements.length - 1];
+    if (!first) { event.preventDefault(); return; }
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+      event.preventDefault(); last.focus();
+    } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialogRef.current)) {
+      event.preventDefault(); first.focus();
+    }
+  };
+
   const allowOnline = onlineEnabled !== undefined
     ? onlineEnabled
     : pricing?.form_fields?.allowUpiPayment !== false;
@@ -39,10 +65,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 space-y-4 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="payment-title" aria-busy={submitting} tabIndex={-1} onKeyDown={handleKeyDown} className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 space-y-4 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto">
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
-            <h3 className="text-base font-bold text-slate-900">Secure payment</h3>
+            <h3 id="payment-title" className="text-base font-bold text-slate-900">Secure payment</h3>
             <p className="text-[11px] text-slate-400 font-medium">Your order is created after payment verification.</p>
           </div>
           <button
@@ -75,11 +101,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               </span>
               <span>
                 <span className="block text-sm font-black text-slate-900">Pay Online</span>
-                <span className="block text-[11px] text-slate-500 font-medium mt-0.5">UPI • Google Pay • PhonePe • Paytm</span>
+                <span className="block text-[11px] text-slate-500 font-medium mt-0.5">Choose an available method at secure checkout</span>
               </span>
             </span>
             <span className="mt-3 block w-full py-3 rounded-xl bg-indigo-600 text-center text-white font-bold text-xs">
-              {submitting ? 'Opening payment app…' : `Pay ${formatCurrency(amount)} online`}
+              {submitting ? 'Preparing checkout…' : `Pay ${formatCurrency(amount)} online`}
             </span>
           </button>
         )}

@@ -6,7 +6,6 @@ import { PricingConfig, CustomAddon, CustomPaperType } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
 import { useInitialPricing } from '@/lib/initial-pricing';
 import { publishShopNameUpdate } from '@/lib/shop-sync';
-import { DeveloperBadge } from '@/components/DeveloperBadge';
 import {
   Save,
   CheckCircle2,
@@ -1382,7 +1381,6 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* Developer Attribution */}
-        <DeveloperBadge className="pt-6 pb-2" />
       </main>
     </div>
   );
