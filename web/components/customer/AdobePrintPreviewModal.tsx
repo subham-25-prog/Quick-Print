@@ -136,6 +136,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   // Canvas ref
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // In-memory raster caches for 0ms instantaneous canvas rendering & page navigation
+  const pdfPageCache = useRef<Map<string, HTMLCanvasElement>>(new Map());
+  const imageElementCache = useRef<Map<string, HTMLImageElement>>(new Map());
+
   const totalDocPages = pdfPageCount > 0 ? pdfPageCount : pageCount > 0 ? pageCount : 1;
 
   // Sync state with incoming props when modal opens
@@ -188,29 +192,42 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       try {
         const url = URL.createObjectURL(uploadedFile.file);
         setLocalObjectUrl(url);
-        return () => URL.revokeObjectURL(url);
+        return () => {
+          URL.revokeObjectURL(url);
+          setLocalObjectUrl(null);
+        };
       } catch (e) {
         console.error('Failed to create object URL:', e);
       }
+    } else {
+      setLocalObjectUrl(null);
     }
-  }, [uploadedFile]);
+  }, [uploadedFile?.file]);
 
   const activePreviewUrl =
-    localObjectUrl || previewUrl || fileSignedUrl || uploadedFile?.previewUrl || uploadedFile?.signedUrl;
+    localObjectUrl || (uploadedFile?.file ? undefined : (previewUrl || fileSignedUrl || uploadedFile?.previewUrl || uploadedFile?.signedUrl));
   const isBw = modalColorMode === 'BW';
 
   const isImgFile = useMemo(() => {
+    const name = (fileName || uploadedFile?.fileName || uploadedFile?.file?.name || '').toLowerCase();
+    const type = (fileType || uploadedFile?.fileType || uploadedFile?.file?.type || '').toLowerCase();
+
+    // If it is explicitly a PDF, NEVER treat as an image
+    if (type === 'application/pdf' || type.includes('pdf') || name.endsWith('.pdf')) {
+      return false;
+    }
+
     return (
-      fileType?.startsWith('image/') ||
-      uploadedFile?.fileType?.startsWith('image/') ||
-      /\.(jpg|jpeg|png|webp)$/i.test(fileName)
+      type.startsWith('image/') ||
+      /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i.test(name)
     );
-  }, [fileType, uploadedFile?.fileType, fileName]);
+  }, [fileType, uploadedFile?.fileType, uploadedFile?.file, fileName, uploadedFile?.fileName]);
 
   const isPdfFile = useMemo(() => {
     if (isImgFile) return false;
-    const name = (fileName || uploadedFile?.fileName || '').toLowerCase();
-    const type = (fileType || uploadedFile?.fileType || '').toLowerCase();
+    const name = (fileName || uploadedFile?.fileName || uploadedFile?.file?.name || '').toLowerCase();
+    const type = (fileType || uploadedFile?.fileType || uploadedFile?.file?.type || '').toLowerCase();
+
     return (
       type === 'application/pdf' ||
       type.includes('pdf') ||
@@ -218,6 +235,15 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       (!isImgFile && (!!uploadedFile || !!activePreviewUrl))
     );
   }, [isImgFile, fileType, uploadedFile, fileName, activePreviewUrl]);
+
+  // Clear PDF rendering state and raster caches whenever document changes or modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    setPdfDoc(null);
+    setIsPdfLoading(isPdfFile);
+    pdfPageCache.current.clear();
+    imageElementCache.current.clear();
+  }, [isOpen, uploadedFile?.file, uploadedFile?.uploadId, fileName, isPdfFile]);
 
   // --- Load actual uploaded PDF document ---
   useEffect(() => {
@@ -228,12 +254,11 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
     async function loadUploadedPdf() {
       try {
-        const docCacheKey =
-          uploadedFile?.uploadId ||
-          (uploadedFile?.file
-            ? `${uploadedFile.file.name}_${uploadedFile.file.size}_${uploadedFile.file.lastModified}`
-            : activePreviewUrl) ||
-          '';
+        const docCacheKey = uploadedFile?.file
+          ? `${uploadedFile.file.name}_${uploadedFile.file.size}_${uploadedFile.file.lastModified}`
+          : (uploadedFile?.uploadId && !uploadedFile.uploadId.startsWith('local-')
+              ? uploadedFile.uploadId
+              : activePreviewUrl) || '';
 
         if (docCacheKey && parsedDocCache.has(docCacheKey)) {
           const cachedDoc = parsedDocCache.get(docCacheKey);
@@ -559,15 +584,11 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     [fileName, totalDocPages, modalPaperSize, isBw]
   );
 
-  // In-memory raster caches for 0ms instantaneous canvas rendering & page navigation
-  const pdfPageCache = useRef<Map<string, HTMLCanvasElement>>(new Map());
-  const imageElementCache = useRef<Map<string, HTMLImageElement>>(new Map());
-
-  // Invalidate page raster cache when document source, orientation, or layout changes
+  // Invalidate page raster cache when layout or paper changes
   useEffect(() => {
     pdfPageCache.current.clear();
     imageElementCache.current.clear();
-  }, [uploadedFile, activePreviewUrl, isLandscape, pagesPerSheet]);
+  }, [isLandscape, pagesPerSheet, modalPaperSize]);
 
   // Helper to render uploaded image onto canvas slot
   const renderImageSlot = useCallback(

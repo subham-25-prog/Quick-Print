@@ -446,10 +446,9 @@ export default function CustomerHomePage() {
             batchFiles={batchFiles}
             onBatchFilesChange={(files) => {
               setBatchFiles(files);
-              if (files.length === 0) {
-                setUploadedFile(null);
-                lastCompiledBatchSig.current = '';
-              }
+              setBatchPreviewFile(null);
+              setUploadedFile(null);
+              lastCompiledBatchSig.current = '';
             }}
             isProcessingBatch={isProcessingBatch}
           />
@@ -583,13 +582,9 @@ export default function CustomerHomePage() {
                   setIsAdobeModalOpen(true);
                   return;
                 }
-                // If already compiled or uploaded, open immediately!
+                // If already compiled matching current files signature, open immediately!
                 const currentSig = getBatchSignature(batchFiles);
-                if (uploadedFile && lastCompiledBatchSig.current === currentSig) {
-                  setIsAdobeModalOpen(true);
-                  return;
-                }
-                if (batchPreviewFile) {
+                if (batchPreviewFile && lastCompiledBatchSig.current === currentSig) {
                   setIsAdobeModalOpen(true);
                   return;
                 }
@@ -598,6 +593,7 @@ export default function CustomerHomePage() {
                 try {
                   const { file: compiledFile } = await compileBatchPdf(batchFiles);
                   setBatchPreviewFile(compiledFile);
+                  lastCompiledBatchSig.current = currentSig;
                   setIsAdobeModalOpen(true);
                 } catch (err) {
                   console.error('Batch preview error:', err);
@@ -651,29 +647,66 @@ export default function CustomerHomePage() {
 
       {/* Adobe Acrobat Advanced Print Settings & Preview Modal */}
       {isAdobeModalOpen && (() => {
-        const activeModalUploadedFile: UploadedFileState | null = hasBatch
-          ? (uploadedFile || (batchPreviewFile ? {
-              uploadId: 'local-preview',
+        let activeModalUploadedFile: UploadedFileState | null = null;
+        let activeFileName = 'Document_Preview.pdf';
+        let activeFileType = 'application/pdf';
+        let activePageCount = 1;
+        let activePreviewUrl: string | undefined = undefined;
+
+        if (hasBatch) {
+          if (batchFiles.length === 1) {
+            const first = batchFiles[0];
+            const isFirstPdf = first.name.toLowerCase().endsWith('.pdf') || first.file.type === 'application/pdf';
+            activeFileName = first.name;
+            activeFileType = first.file.type || (isFirstPdf ? 'application/pdf' : 'image/jpeg');
+            activePageCount = first.pageCount;
+            activeModalUploadedFile = {
+              uploadId: `batch-single-${first.id}-${first.name}-${first.size}`,
               uploadToken: '',
               checkoutKey: '',
-              file: batchPreviewFile,
-              fileName: batchFiles.length === 1 ? batchFiles[0].name : `Batch_Order (${batchFiles.length} files).pdf`,
-              fileType: batchFiles.length === 1 ? (batchFiles[0].file.type || 'application/pdf') : 'application/pdf',
-              fileSizeBytes: batchPreviewFile.size,
-              pageCount: totalBatchPages,
+              file: first.file,
+              fileName: first.name,
+              fileType: activeFileType,
+              fileSizeBytes: first.size,
+              pageCount: first.pageCount,
               storagePath: '',
-            } : null))
-          : uploadedFile;
+            };
+          } else {
+            const currentSig = lastCompiledBatchSig.current || getBatchSignature(batchFiles);
+            activeFileName = `Batch_Order (${batchFiles.length} files).pdf`;
+            activeFileType = 'application/pdf';
+            activePageCount = totalBatchPages;
+            if (batchPreviewFile) {
+              activeModalUploadedFile = {
+                uploadId: `batch-multi-${currentSig}`,
+                uploadToken: '',
+                checkoutKey: '',
+                file: batchPreviewFile,
+                fileName: activeFileName,
+                fileType: 'application/pdf',
+                fileSizeBytes: batchPreviewFile.size,
+                pageCount: totalBatchPages,
+                storagePath: '',
+              };
+            }
+          }
+        } else if (uploadedFile) {
+          activeModalUploadedFile = uploadedFile;
+          activeFileName = uploadedFile.fileName;
+          activeFileType = uploadedFile.fileType;
+          activePageCount = uploadedFile.pageCount;
+          activePreviewUrl = uploadedFile.previewUrl || uploadedFile.signedUrl;
+        }
 
         return (
           <AdobePrintPreviewModal
             isOpen={isAdobeModalOpen}
             onClose={() => setIsAdobeModalOpen(false)}
-            fileName={hasBatch ? (batchFiles.length === 1 ? batchFiles[0].name : `Batch_Order (${batchFiles.length} files).pdf`) : (uploadedFile?.fileName || 'Document_Preview.pdf')}
-            pageCount={uploadedFile?.pageCount || totalBatchPages}
-            fileSignedUrl={uploadedFile?.signedUrl}
-            previewUrl={uploadedFile?.previewUrl}
-            fileType={hasBatch ? (batchFiles.length === 1 ? (batchFiles[0].file.type || 'application/pdf') : 'application/pdf') : (uploadedFile?.fileType || 'application/pdf')}
+            fileName={activeFileName}
+            pageCount={activePageCount}
+            fileSignedUrl={activePreviewUrl}
+            previewUrl={activePreviewUrl}
+            fileType={activeFileType}
             uploadedFile={activeModalUploadedFile}
             paperSize={paperSize}
             colorMode={colorMode}
