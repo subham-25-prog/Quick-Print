@@ -15,6 +15,7 @@ import {
   X,
   FileText,
   Sliders,
+  Edit,
 } from '@/components/ui/Icons';
 
 interface AdobePrintPreviewModalProps {
@@ -1212,9 +1213,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           <button
             type="button"
             onClick={() => setMobileTab('preview')}
-            className="md:hidden px-3.5 py-2 rounded-lg bg-[#2b2d30] hover:bg-[#35363a] text-slate-300 text-xs font-medium border border-slate-700/60"
+            className="md:hidden px-3.5 py-2 rounded-lg bg-[#2b2d30] hover:bg-[#35363a] text-slate-200 text-xs font-semibold border border-slate-700/60 flex items-center gap-1.5"
           >
-            ← View
+            <FileText className="w-3.5 h-3.5 text-[#8ab4f8]" />
+            <span>Preview</span>
           </button>
 
           <div className="flex items-center gap-2.5 ml-auto">
@@ -1228,7 +1230,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <button
               type="button"
               onClick={handlePrintApply}
-              className="px-5 sm:px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40 transition-all cursor-pointer flex items-center gap-1.5"
+              className="md:hidden px-5 sm:px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40 transition-all cursor-pointer flex items-center gap-1.5"
             >
               <span>Confirm &amp; Pay</span>
               <span>→</span>
@@ -1379,26 +1381,36 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           </button>
         </div>
 
-        {/* Mobile Bottom Quick-Action Bar in Preview View */}
-        <div className="md:hidden w-full px-3 pt-1.5 pb-2.5 flex flex-wrap items-center justify-between gap-2.5 z-20 shrink-0 bg-[#202124]/90 backdrop-blur-md border-t border-[#3c4043]/60">
+        {/* Bottom Quick-Action Bar in Preview Canvas: Edit on left side, Confirm & Pay on right bottom */}
+        <div className="w-full px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 z-20 shrink-0 bg-[#202124]/95 backdrop-blur-md border-t border-[#3c4043]/70 shadow-lg">
+          {/* Left Side: Edit Button */}
           <button
             type="button"
-            onClick={() => setMobileTab('settings')}
-            className="flex-1 py-2.5 px-3 rounded-xl bg-[#2b2d30] border border-slate-700/80 text-slate-200 text-xs font-semibold flex items-center justify-between shadow-xs active:scale-98"
+            onClick={() => {
+              if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                setMobileTab('settings');
+              } else {
+                const sidebar = document.querySelector('aside');
+                sidebar?.scrollIntoView({ behavior: 'smooth' });
+                const firstInput = sidebar?.querySelector<HTMLInputElement | HTMLSelectElement>('input, select, button');
+                firstInput?.focus();
+              }
+            }}
+            className="py-2 sm:py-2.5 px-4 sm:px-5 rounded-xl bg-[#2b2d30] hover:bg-[#383a3e] active:bg-[#202124] border border-slate-600/70 text-slate-100 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer active:scale-95"
+            title="Edit Print Settings"
           >
-            <div className="flex items-center gap-1.5">
-              <Sliders className="w-3.5 h-3.5 text-[#8ab4f8]" />
-              <span className="truncate max-w-[125px]">
-                {modalPaperSize} • {isBw ? 'B&W' : 'Color'} • {modalCopies}x
-              </span>
-            </div>
-            <span className="text-[#8ab4f8] text-[11px] font-bold shrink-0">Edit →</span>
+            <Edit className="w-4 h-4 text-[#8ab4f8]" />
+            <span>Edit</span>
+            <span className="hidden sm:inline-block text-[11px] text-slate-400 font-normal border-l border-slate-600/80 pl-2 ml-0.5">
+              {modalPaperSize} • {isBw ? 'B&W' : 'Color'} • {modalCopies}x
+            </span>
           </button>
 
+          {/* Right Bottom: Confirm & Pay Button */}
           <button
             type="button"
             onClick={handlePrintApply}
-            className="py-2.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-sm font-extrabold shadow-lg shadow-emerald-950/70 ring-2 ring-emerald-400/60 hover:ring-emerald-300 transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+            className="py-2 sm:py-2.5 px-5 sm:px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm font-extrabold shadow-lg shadow-emerald-950/60 ring-2 ring-emerald-400/50 hover:ring-emerald-300 transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ml-auto"
           >
             <span>Confirm &amp; Pay</span>
             <span className="text-base leading-none">→</span>

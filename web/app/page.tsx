@@ -234,17 +234,22 @@ export default function CustomerHomePage() {
   // Multiple files upload setting
   const allowMultiple = pricing.form_fields?.allowMultipleFiles !== false;
   const hasBatch = allowMultiple && batchFiles.length > 0;
+  const isMultiFileBatch = hasBatch && batchFiles.length > 1;
 
   // Calculate live order pricing
-  const totalBatchPages = hasBatch
+  const totalDocPages = isMultiFileBatch
     ? calculateBatchTotalPages(batchFiles)
+    : hasBatch && batchFiles.length === 1
+    ? batchFiles[0].pageCount
     : (uploadedFile?.pageCount || 1);
-  const effectivePages = hasBatch
-    ? computeEffectivePageCount(totalBatchPages, advancedConfig)
-    : (uploadedFile ? computeEffectivePageCount(uploadedFile.pageCount, advancedConfig) : 1);
 
-  // When hasBatch is true, each document's copies are already calculated into totalBatchPages
-  const effectiveCopies = hasBatch ? 1 : copies;
+  const effectivePages = computeEffectivePageCount(totalDocPages, advancedConfig);
+
+  // When multiple files are in a batch, each document's copies are pre-compiled into totalDocPages.
+  // For a single file (batch or single upload), order copies reflects the selected copies.
+  const effectiveCopies = isMultiFileBatch
+    ? 1
+    : Math.max(1, hasBatch && batchFiles.length === 1 ? (batchFiles[0].copies || copies) : copies);
 
   const priceBreakdown = (() => {
     try {
@@ -271,6 +276,28 @@ export default function CustomerHomePage() {
   const ensureBatchReady = async (): Promise<UploadedFileState | null> => {
     if (!hasBatch) {
       return uploadedFile;
+    }
+
+    if (batchFiles.length === 1) {
+      const first = batchFiles[0];
+      const singleSig = `single-${first.id}-${first.size}-${first.name}`;
+      if (uploadedFile && lastCompiledBatchSig.current === singleSig) {
+        return uploadedFile;
+      }
+      setIsProcessingBatch(true);
+      setCheckoutError('');
+      try {
+        const uploaded = await uploadDocumentFile(first.file);
+        setUploadedFile(uploaded);
+        lastCompiledBatchSig.current = singleSig;
+        return uploaded;
+      } catch (err) {
+        console.error('File upload failed:', err);
+        setCheckoutError(err instanceof Error ? err.message : 'Failed to prepare document for printing.');
+        return null;
+      } finally {
+        setIsProcessingBatch(false);
+      }
     }
 
     const currentSig = getBatchSignature(batchFiles);
@@ -350,7 +377,7 @@ export default function CustomerHomePage() {
           paperSize,
           colorMode,
           printSides,
-          copies: hasBatch ? 1 : copies,
+          copies: isMultiFileBatch ? 1 : effectiveCopies,
           addOns,
           advancedConfig,
           customerName,
@@ -449,6 +476,9 @@ export default function CustomerHomePage() {
               setBatchPreviewFile(null);
               setUploadedFile(null);
               lastCompiledBatchSig.current = '';
+              if (files.length === 1 && files[0].copies) {
+                setCopies(files[0].copies);
+              }
             }}
             isProcessingBatch={isProcessingBatch}
           />
@@ -468,7 +498,12 @@ export default function CustomerHomePage() {
             printSides={printSides}
             onPrintSidesChange={setPrintSides}
             copies={copies}
-            onCopiesChange={setCopies}
+            onCopiesChange={(newCopies) => {
+              setCopies(newCopies);
+              if (batchFiles.length === 1) {
+                setBatchFiles([{ ...batchFiles[0], copies: newCopies }]);
+              }
+            }}
             pricing={pricing}
             hasMultipleFiles={hasBatch && batchFiles.length > 1}
           />
@@ -675,7 +710,7 @@ export default function CustomerHomePage() {
             const currentSig = lastCompiledBatchSig.current || getBatchSignature(batchFiles);
             activeFileName = `Batch_Order (${batchFiles.length} files).pdf`;
             activeFileType = 'application/pdf';
-            activePageCount = totalBatchPages;
+            activePageCount = isMultiFileBatch ? totalDocPages : batchFiles[0].pageCount;
             if (batchPreviewFile) {
               activeModalUploadedFile = {
                 uploadId: `batch-multi-${currentSig}`,
@@ -685,7 +720,7 @@ export default function CustomerHomePage() {
                 fileName: activeFileName,
                 fileType: 'application/pdf',
                 fileSizeBytes: batchPreviewFile.size,
-                pageCount: totalBatchPages,
+                pageCount: isMultiFileBatch ? totalDocPages : batchFiles[0].pageCount,
                 storagePath: '',
               };
             }
@@ -711,14 +746,19 @@ export default function CustomerHomePage() {
             paperSize={paperSize}
             colorMode={colorMode}
             printSides={printSides}
-            copies={hasBatch ? 1 : copies}
+            copies={isMultiFileBatch ? 1 : effectiveCopies}
             pricing={pricing}
             advancedConfig={advancedConfig}
             onSaveAdvancedConfig={setAdvancedConfig}
             onPaperSizeChange={setPaperSize}
             onColorModeChange={setColorMode}
             onPrintSidesChange={setPrintSides}
-            onCopiesChange={setCopies}
+            onCopiesChange={(newCopies) => {
+              setCopies(newCopies);
+              if (batchFiles.length === 1) {
+                setBatchFiles([{ ...batchFiles[0], copies: newCopies }]);
+              }
+            }}
             onProceedToOrder={() => {
               setIsAdobeModalOpen(false);
               handleOpenPayment();
