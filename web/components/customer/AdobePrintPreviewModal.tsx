@@ -1208,7 +1208,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         </div>
 
         {/* Footer Actions (Sticky at bottom of sidebar) */}
-        <div className="px-5 sm:px-6 py-3 sm:py-4 border-t border-[#3c4043]/40 flex flex-wrap items-center justify-between gap-3 shrink-0 bg-[#202124]">
+        <div className="md:hidden px-5 sm:px-6 py-3 sm:py-4 border-t border-[#3c4043]/40 flex flex-wrap items-center justify-between gap-3 shrink-0 bg-[#202124]">
           {/* On mobile settings tab: quick view preview link */}
           <button
             type="button"
@@ -1219,23 +1219,14 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <span>Preview</span>
           </button>
 
-          <div className="flex items-center gap-2.5 ml-auto">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 sm:px-5 py-2 rounded-lg bg-[#3c4043] hover:bg-[#4a4d51] active:bg-[#35373a] text-[#e8eaed] text-xs font-medium border border-[#5f6368]/50 transition-colors cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handlePrintApply}
-              className="md:hidden px-5 sm:px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40 transition-all cursor-pointer flex items-center gap-1.5"
-            >
-              <span>Confirm &amp; Pay</span>
-              <span>→</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handlePrintApply}
+            className="px-5 sm:px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40 transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
+          >
+            <span>Confirm &amp; Pay</span>
+            <span>→</span>
+          </button>
         </div>
       </aside>
 
