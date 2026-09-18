@@ -146,3 +146,24 @@
   transform: scale(0.88);
 }
 
+/* Keep the primary action responsive without drawing attention away from the form. */
+.btn-shimmer .preview-arrow {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-shimmer:hover .preview-arrow,
+.btn-shimmer:focus-visible .preview-arrow {
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
