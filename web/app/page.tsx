@@ -8,6 +8,7 @@ import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { FileUploader, UploadedFileState } from '@/components/customer/FileUploader';
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
+import { PaymentModal } from '@/components/customer/PaymentModal';
 import { calculateOrderPrice } from '@/lib/pricing';
 import { computeEffectivePageCount } from '@/lib/page-range';
 import { formatCurrency } from '@/lib/utils';
@@ -27,10 +28,6 @@ import { calculateBatchTotalPages, compileBatchPdf } from '@/lib/batch-compiler'
 import { uploadDocumentFile } from '@/lib/uploader';
 import { User, Phone, MessageSquare, XCircle } from '@/components/ui/Icons';
 
-const PaymentModal = dynamic(
-  () => import('@/components/customer/PaymentModal').then((module) => module.PaymentModal),
-  { ssr: false }
-);
 const AdobePrintPreviewModal = dynamic(
   () => import('@/components/customer/AdobePrintPreviewModal').then((module) => module.AdobePrintPreviewModal),
   { ssr: false }
@@ -72,7 +69,7 @@ export default function CustomerHomePage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
-  // Preload Adobe Preview Modal & PDF rendering engine when user uploads files
+  // Preload the large preview renderer when user uploads files.
   useEffect(() => {
     if (uploadedFile || batchFiles.length > 0) {
       import('@/components/customer/AdobePrintPreviewModal')
@@ -330,14 +327,13 @@ export default function CustomerHomePage() {
   const showNotesField = pricing.form_fields?.allowCustomerNotes !== false;
   const showCustomerInfoSection = showNameField || showPhoneField || showNotesField;
 
-  const handleOpenPayment = async () => {
+  const handleOpenPayment = () => {
     if (!checkoutEnabled || !pricingReady || !priceBreakdown) return;
 
-    let targetFile = uploadedFile;
-    if (hasBatch) {
-      targetFile = await ensureBatchReady();
-      if (!targetFile) return;
-    } else if (!targetFile) {
+    // Show payment choices immediately. Batch compilation/upload is deferred
+    // until the customer selects Cash or UPI, so closing the preview never
+    // leaves the customer waiting on a network operation.
+    if (hasBatch ? batchFiles.length === 0 : !uploadedFile) {
       alert('Please upload a document to proceed.');
       return;
     }
