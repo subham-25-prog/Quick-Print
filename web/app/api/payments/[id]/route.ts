@@ -5,7 +5,7 @@ import { hasOrderAccess, createOrderAccessToken } from '@/lib/order-access';
 import { rateLimit } from '@/lib/security';
 import { apiError, HttpError } from '@/lib/http';
 import { paymentProvider } from '@/lib/payments';
-import { reconcilePayment } from '@/lib/payments/service';
+import { openPayment, reconcilePayment } from '@/lib/payments/service';
 import { uuid } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
@@ -58,24 +58,33 @@ export async function GET(
     let verificationPending = false;
 
     if (currentPayment.status === 'PENDING' && currentPayment.provider !== 'cash' && !currentPayment.review_required) {
-      const { data: lock, error: lockError } = await db
-        .from('payments')
-        .update({ reconcile_after: new Date(Date.now() + 15000).toISOString() })
-        .eq('id', id)
-        .eq('shop_id', shopId)
-        .lte('reconcile_after', new Date().toISOString())
-        .select('id')
-        .maybeSingle();
+      if (!currentPayment.payment_url && !currentPayment.creation_started_at) {
+        const provider = await paymentProvider();
+        const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
+        const proto = req.headers.get('x-forwarded-proto') || 'https';
+        const requestOrigin = host ? `${proto}://${host}` : req.nextUrl.origin;
+        const opened = await openPayment(currentPayment, provider, requestOrigin);
+        currentPayment = { ...currentPayment, payment_url: opened.paymentUrl };
+      } else {
+        const { data: lock, error: lockError } = await db
+          .from('payments')
+          .update({ reconcile_after: new Date(Date.now() + 15000).toISOString() })
+          .eq('id', id)
+          .eq('shop_id', shopId)
+          .lte('reconcile_after', new Date().toISOString())
+          .select('id')
+          .maybeSingle();
 
-      if (lockError) throw lockError;
+        if (lockError) throw lockError;
 
-      if (lock) {
-        try {
-          const provider = await paymentProvider();
-          currentPayment = await reconcilePayment(currentPayment, provider);
-        } catch (reconcileErr) {
-          console.error('Payment reconciliation error for payment', id, reconcileErr);
-          verificationPending = true;
+        if (lock) {
+          try {
+            const provider = await paymentProvider();
+            currentPayment = await reconcilePayment(currentPayment, provider);
+          } catch (reconcileErr) {
+            console.error('Payment reconciliation error for payment', id, reconcileErr);
+            verificationPending = true;
+          }
         }
       }
     }

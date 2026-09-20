@@ -30,6 +30,12 @@ export default function PaymentPage() {
   const [retrying, setRetrying] = useState(false);
 
   useEffect(() => {
+    if (state?.status === 'PENDING' && state.paymentUrl) {
+      window.location.assign(state.paymentUrl);
+    }
+  }, [state?.status, state?.paymentUrl]);
+
+  useEffect(() => {
     let stopped = false;
     setState(null);
     setError('');

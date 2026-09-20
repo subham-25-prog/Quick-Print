@@ -15,6 +15,7 @@ interface PaymentModalProps {
   onlineEnabled?: boolean;
   cashEnabled?: boolean;
   error?: string;
+  selectedMethod?: 'UPI' | 'CASH' | null;
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({
@@ -27,6 +28,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
   onlineEnabled,
   cashEnabled,
   error,
+  selectedMethod,
 }) => {
   const allowOnline = onlineEnabled !== undefined
     ? onlineEnabled
@@ -62,6 +64,11 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
         </div>
 
         {error&&<p role="alert" className="p-3 rounded-xl bg-amber-50 text-amber-900 [overflow-wrap:anywhere]">{error}</p>}
+        {submitting && (
+          <p role="status" className="p-3 rounded-xl bg-indigo-50 text-indigo-900 text-sm font-medium text-center">
+            {selectedMethod === 'CASH' ? 'Preparing your cash confirmation…' : 'Opening secure payment…'}
+          </p>
+        )}
         {allowOnline && (
           <button
             type="button"
@@ -79,7 +86,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               </span>
             </span>
             <span className="mt-3 block w-full py-3 rounded-xl bg-indigo-600 text-center text-white font-bold text-xs">
-              {submitting ? 'Opening payment app…' : `Pay ${formatCurrency(amount)} online`}
+              {submitting && selectedMethod === 'UPI' ? 'Opening payment app…' : `Pay ${formatCurrency(amount)} online`}
             </span>
           </button>
         )}
@@ -101,7 +108,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
               </span>
             </span>
             <span className="mt-3 block w-full py-3 rounded-xl bg-white border border-slate-300 text-center text-slate-800 font-bold text-xs">
-              Pay {formatCurrency(amount)} by cash
+              {submitting && selectedMethod === 'CASH' ? 'Preparing cash confirmation…' : `Pay ${formatCurrency(amount)} by cash`}
             </span>
           </button>
         )}

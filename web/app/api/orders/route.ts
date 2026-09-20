@@ -39,7 +39,6 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     requireSameOrigin(req);
-    await rateLimit(req, 'checkout', 10);
 
     if (!createOrderAccessToken(randomUUID())) {
       throw new HttpError(503, 'Checkout security is not configured.');
@@ -62,22 +61,28 @@ export async function POST(req: NextRequest) {
     const db = database();
     const shopId = getCurrentShopId();
     const owner = hash(token);
-
-    const { data: file, error: fileError } = await db
-      .from('uploaded_files')
-      .select('*')
-      .eq('id', uploadId)
-      .eq('shop_id', shopId)
-      .eq('owner_hash', owner)
-      .is('deleted_at', null)
-      .maybeSingle();
+    // These checks do not depend on one another. Running them together removes
+    // two network round trips from the time between tapping a payment method
+    // and reaching the next screen.
+    const [, fileResult, pricing] = await Promise.all([
+      rateLimit(req, 'checkout', 10),
+      db
+        .from('uploaded_files')
+        .select('*')
+        .eq('id', uploadId)
+        .eq('shop_id', shopId)
+        .eq('owner_hash', owner)
+        .is('deleted_at', null)
+        .maybeSingle(),
+      getActivePricing(),
+    ]);
+    const { data: file, error: fileError } = fileResult;
 
     if (fileError) throw fileError;
     if (!file || file.deletion_claimed_at || Date.parse(file.expires_at) < Date.now()) {
       throw new HttpError(404, 'This upload has expired. Upload it again.');
     }
 
-    const pricing = await getActivePricing();
     if (paymentMethod === 'CASH' && pricing.form_fields?.allowCashPayment === false) {
       throw new HttpError(400, 'Cash payment is unavailable.');
     }
@@ -241,11 +246,7 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    const { data: createdPayment, error: insertError } = await db
-      .from('payments')
-      .insert(paymentRecord)
-      .select('*')
-      .single();
+    const { error: insertError } = await db.from('payments').insert(paymentRecord);
 
     if (insertError) {
       if (insertError.code === '23505') {
@@ -273,8 +274,26 @@ export async function POST(req: NextRequest) {
       throw insertError;
     }
 
-    const opened = await openPayment(createdPayment, provider, requestOrigin);
-    return NextResponse.json(opened, { status: 201 });
+    // Do not hold the customer on the checkout modal while the external UPI
+    // provider creates its link. The local payment page creates that link on
+    // its first status check and forwards the customer as soon as it is ready.
+    const accessToken = createOrderAccessToken(paymentId);
+    if (!accessToken) {
+      throw new HttpError(503, 'Checkout access security is not configured.');
+    }
+    return NextResponse.json(
+      {
+        success: true,
+        paymentId,
+        accessToken,
+        amount: price.totalAmount,
+        reference: paymentRecord.payment_reference,
+        status: 'PENDING',
+        paymentMethod: 'UPI',
+        environment: provider.environment,
+      },
+      { status: 201 }
+    );
   } catch (error) {
     return apiError(error);
   }

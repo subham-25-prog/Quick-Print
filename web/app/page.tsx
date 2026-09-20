@@ -85,6 +85,7 @@ export default function CustomerHomePage() {
   // Payment modal & order submission
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod | null>(null);
   const checkoutRequest = useRef(false);
   const [checkoutError,setCheckoutError]=useState('');
   const [pricingReady,setPricingReady]=useState(false);
@@ -359,6 +360,7 @@ export default function CustomerHomePage() {
     }
     if (!targetFile || checkoutRequest.current || submitting || !pricingReady || !checkoutEnabled || !priceBreakdown) return;
     checkoutRequest.current = true;
+    setSelectedPaymentMethod(method);
     setSubmitting(true);
     setCheckoutError('');
     try {
@@ -401,7 +403,7 @@ export default function CustomerHomePage() {
       if (data.paymentUrl) { window.location.assign(data.paymentUrl); return; }
       router.push(statusUrl);
     }catch(e){setCheckoutError(e instanceof Error?e.message:'Unable to start payment. Please retry.');}
-    finally{checkoutRequest.current = false;setSubmitting(false);}
+    finally{checkoutRequest.current = false;setSubmitting(false);setSelectedPaymentMethod(null);}
   };
 
   // Determine if finishing section has active options
@@ -674,6 +676,7 @@ export default function CustomerHomePage() {
         pricing={pricing}
         onlineEnabled={onlinePaymentEnabled}
         cashEnabled={cashPaymentEnabled}
+        selectedMethod={selectedPaymentMethod}
       />}
 
       {/* Adobe Acrobat Advanced Print Settings & Preview Modal */}

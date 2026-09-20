@@ -20,24 +20,26 @@ export async function getActivePricing(): Promise<PricingConfig> {
   const shopId = getCurrentShopId();
   const db = database();
 
-  const { data, error } = await db
-    .from('shop_settings')
-    .select('pricing')
-    .eq('shop_id', shopId)
-    .maybeSingle();
+  const [{ data, error }, { data: shop, error: shopError }] = await Promise.all([
+    db
+      .from('shop_settings')
+      .select('pricing')
+      .eq('shop_id', shopId)
+      .maybeSingle(),
+    db
+      .from('shops')
+      .select('name, address, phone')
+      .eq('id', shopId)
+      .maybeSingle(),
+  ]);
 
   if (error) throw error;
+  if (shopError) throw shopError;
   if (!data?.pricing) {
     throw new HttpError(503, 'The shopkeeper must finish setting up pricing before checkout.');
   }
 
   const { admin_pin: _pin, ...pricing } = data.pricing;
-
-  const { data: shop } = await db
-    .from('shops')
-    .select('name, address, phone')
-    .eq('id', shopId)
-    .maybeSingle();
 
   let shopName = pricing.shop_name || shop?.name || defaultPricingConfig.shop_name;
   if (/quickprint/i.test(shopName)) {
