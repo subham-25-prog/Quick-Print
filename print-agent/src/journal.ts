@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { ClaimedJob, PrintOutcome } from './client';
 
 export interface Entry {
@@ -63,6 +64,14 @@ export function acquireLock(file: string): () => void {
       } catch (e) {
         if ((e as NodeJS.ErrnoException).code === 'ESRCH') {
           alive = false;
+        } else if (
+          (e as NodeJS.ErrnoException).code === 'EPERM' &&
+          isDefinitelyNotNodeProcess(pid)
+        ) {
+          // Windows may recycle a dead agent's PID for a protected system
+          // process. process.kill(pid, 0) then reports EPERM even though the
+          // process cannot possibly own this Node agent lock.
+          alive = false;
         } else {
           throw e;
         }
@@ -89,5 +98,24 @@ export function acquireLock(file: string): () => void {
     };
   } finally {
     fs.rmdirSync(guard);
+  }
+}
+
+function isDefinitelyNotNodeProcess(pid: number): boolean {
+  if (process.platform !== 'win32') return false;
+
+  try {
+    const output = execFileSync(
+      'tasklist',
+      ['/FI', `PID eq ${pid}`, '/FO', 'CSV', '/NH'],
+      { encoding: 'utf8', windowsHide: true }
+    ).trim();
+    // tasklist emits one quoted CSV record, such as
+    // "svchost.exe","4892",... . Treat only a known non-Node executable as
+    // stale; an unknown result remains protected by the existing EPERM error.
+    const imageName = /^"([^"]+)"/.exec(output)?.[1]?.toLowerCase();
+    return Boolean(imageName && imageName !== 'node.exe' && imageName !== 'node');
+  } catch {
+    return false;
   }
 }
