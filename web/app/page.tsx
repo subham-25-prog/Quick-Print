@@ -24,8 +24,8 @@ import {
   AdvancedPrintConfig,
   BatchFileItem,
 } from '@/types';
-import { calculateBatchTotalPages, compileBatchPdf } from '@/lib/batch-compiler';
-import { uploadDocumentFile } from '@/lib/uploader';
+import { calculateBatchTotalPages } from '@/lib/batch-compiler';
+import { createCheckoutPreparation } from '@/lib/checkout-preparation';
 import { User, Phone, MessageSquare, XCircle } from '@/components/ui/Icons';
 
 const AdobePrintPreviewModal = dynamic(
@@ -45,6 +45,7 @@ export default function CustomerHomePage() {
   const [batchFiles, setBatchFiles] = useState<BatchFileItem[]>([]);
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const lastCompiledBatchSig = useRef<string>('');
+  const [checkoutPreparation] = useState(createCheckoutPreparation);
   const [batchPreviewFile, setBatchPreviewFile] = useState<File | null>(null);
   const [paperSize, setPaperSize] = useState<PaperSize>('A4');
   const [colorMode, setColorMode] = useState<ColorMode>('BW');
@@ -271,54 +272,17 @@ export default function CustomerHomePage() {
   const getBatchSignature = (files: BatchFileItem[]) =>
     files.map((f) => `${f.id}-${f.name}-${f.size}-${f.pageCount}-${f.copies}`).join('|');
 
-  const ensureBatchReady = async (): Promise<UploadedFileState | null> => {
-    if (!hasBatch) {
-      return uploadedFile;
-    }
-
-    if (batchFiles.length === 1) {
-      const first = batchFiles[0];
-      const singleSig = `single-${first.id}-${first.size}-${first.name}`;
-      if (uploadedFile && lastCompiledBatchSig.current === singleSig) {
-        return uploadedFile;
-      }
-      setIsProcessingBatch(true);
-      setCheckoutError('');
-      try {
-        const uploaded = await uploadDocumentFile(first.file);
-        setUploadedFile(uploaded);
-        lastCompiledBatchSig.current = singleSig;
-        return uploaded;
-      } catch (err) {
-        console.error('File upload failed:', err);
-        setCheckoutError(err instanceof Error ? err.message : 'Failed to prepare document for printing.');
-        return null;
-      } finally {
-        setIsProcessingBatch(false);
-      }
-    }
-
-    const currentSig = getBatchSignature(batchFiles);
-    if (uploadedFile && lastCompiledBatchSig.current === currentSig) {
-      return uploadedFile;
-    }
-
-    setIsProcessingBatch(true);
-    setCheckoutError('');
-    try {
-      const { file: compiledFile } = await compileBatchPdf(batchFiles);
-      const uploaded = await uploadDocumentFile(compiledFile);
-      setUploadedFile(uploaded);
-      lastCompiledBatchSig.current = currentSig;
-      return uploaded;
-    } catch (err) {
-      console.error('Batch compilation or upload failed:', err);
-      setCheckoutError(err instanceof Error ? err.message : 'Failed to prepare batch documents for printing.');
-      return null;
-    } finally {
-      setIsProcessingBatch(false);
-    }
-  };
+  // Start uploading while the customer reviews options. Checkout joins the
+  // same request, and rapid batch edits are debounced before preparation.
+  useEffect(() => {
+    if (!hasBatch) return;
+    const timer = window.setTimeout(() => {
+      void checkoutPreparation.prepareUpload(batchFiles).catch(() => {
+        // Foreground checkout retries and displays any persistent error.
+      });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [batchFiles, hasBatch, checkoutPreparation]);
 
   // Customer form field configuration
   const showNameField = pricing.form_fields?.showCustomerName !== false;
@@ -331,9 +295,7 @@ export default function CustomerHomePage() {
   const handleOpenPayment = () => {
     if (!checkoutEnabled || !pricingReady || !priceBreakdown) return;
 
-    // Show payment choices immediately. Batch compilation/upload is deferred
-    // until the customer selects Cash or UPI, so closing the preview never
-    // leaves the customer waiting on a network operation.
+    // Show payment choices immediately while document preparation continues.
     if (hasBatch ? batchFiles.length === 0 : !uploadedFile) {
       alert('Please upload a document to proceed.');
       return;
@@ -353,17 +315,17 @@ export default function CustomerHomePage() {
   };
 
   const handleConfirmOrder = async (method: PaymentMethod) => {
-    let targetFile = uploadedFile;
-    if (hasBatch) {
-      targetFile = await ensureBatchReady();
-      if (!targetFile) return;
-    }
-    if (!targetFile || checkoutRequest.current || submitting || !pricingReady || !checkoutEnabled || !priceBreakdown) return;
+    if (checkoutRequest.current || submitting || !pricingReady || !checkoutEnabled || !priceBreakdown) return;
+    if (!hasBatch && !uploadedFile) return;
     checkoutRequest.current = true;
     setSelectedPaymentMethod(method);
     setSubmitting(true);
     setCheckoutError('');
     try {
+      const targetFile = hasBatch
+        ? await checkoutPreparation.prepareUpload(batchFiles)
+        : uploadedFile;
+      if (!targetFile) return;
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -624,7 +586,7 @@ export default function CustomerHomePage() {
                 // Compile in memory (super fast in RAM, NO server network upload!)
                 setIsProcessingBatch(true);
                 try {
-                  const { file: compiledFile } = await compileBatchPdf(batchFiles);
+                  const compiledFile = await checkoutPreparation.prepareDocument(batchFiles);
                   setBatchPreviewFile(compiledFile);
                   lastCompiledBatchSig.current = currentSig;
                   setIsAdobeModalOpen(true);
