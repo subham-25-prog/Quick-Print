@@ -794,8 +794,11 @@ export default function AdminLiveOrdersPage() {
                           {order.print_sides === 'DOUBLE' ? '🔄 2-Side' : '📄 1-Side'}
                         </span>
 
-                        <span className="px-2.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 font-black text-[10px] shrink-0 shadow-2xs">
-                          {order.page_count}p × {order.copies} = {totalPages}p
+                        <span
+                          className="px-2.5 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 font-black text-[10px] shrink-0 shadow-2xs"
+                          title={`${order.page_count} document ${order.page_count === 1 ? 'page' : 'pages'}; ${totalPages} ${totalPages === 1 ? 'page' : 'pages'} to print`}
+                        >
+                          Pages: {order.page_count} × {order.copies} · Print: {totalPages}
                         </span>
 
                         {order.add_ons?.spiralBinding && (
