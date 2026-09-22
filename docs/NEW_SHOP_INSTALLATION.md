@@ -2,7 +2,7 @@
 
 1. Identify the shop's owner, Windows PC, supported printer and existing merchant provider. Check official API eligibility using MERCHANT_PROVIDER_SETUP.md; a soundbox or static merchant QR is not sufficient.
 2. Create shop-owned GitHub/Vercel/Supabase resources or deliver a copy with documented ownership. Use separate resources and secrets for each shop. The current deployment serves one fixed QUICKPRINT_SHOP_ID, never a customer-selected shop.
-3. Use Node 22. From the repository root run `npm ci`, then `node scripts/new-shop.mjs --slug abc-xerox --name "ABC Xerox" --url https://abc.example`. Or use `./setup.ps1 -Slug abc-xerox -Name "ABC Xerox" -Url https://abc.example`.
+3. Use Node 24 LTS. From the repository root run `npm ci`, then `node scripts/new-shop.mjs --slug abc-xerox --name "ABC Xerox" --url https://abc.example`. Or use `./setup.ps1 -Slug abc-xerox -Name "ABC Xerox" -Url https://abc.example`.
 4. The script creates a git-ignored `generated/abc-xerox` directory containing a shop SQL seed, web environment file and agent environment file. It generates independent random security keys, never prints them, and refuses to overwrite existing packages. Protect these files with Windows user-only access and an encrypted password manager. No cloud changes occur.
 5. On a FRESH empty Supabase project, run the generated fresh-install.sql once. It combines the tested migration manifest and shop seed; do not separately run shop.sql. For existing installations use the upgrade sequence in DEPLOYMENT.md, never replay the fresh installer. Preserve the generated UUID. Review every rate with the owner.
 6. Fill Supabase server credentials and the shop's approved PhonePe sandbox credentials privately in Vercel. Configure the stable website URL. Deploy.

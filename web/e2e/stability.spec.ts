@@ -72,7 +72,7 @@ test('status recovers from a failed request and shows retries and failures accur
   });
   await page.goto('/status/' + id + '?access_token=test-token');
   await expect(page.getByText('Temporary outage')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Sent to printer' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Document Printed & Ready!' })).toBeVisible();
   status = 'PENDING';
   await expect(page.getByRole('heading', { name: 'Preparing Document Pages' })).toBeVisible({ timeout: 8000 });
   status = 'FAILED';

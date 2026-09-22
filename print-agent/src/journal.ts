@@ -10,16 +10,39 @@ export interface Entry {
 
 export class Journal {
   private entries = new Map<string, Entry>();
+  private appendsSinceCompaction = 0;
+
+  // Keep recovery fast and disk consumption bounded on agents that stay up for
+  // months. An entry has at most three state transitions, so this threshold is
+  // deliberately high enough to avoid doing maintenance during normal work.
+  private static readonly COMPACT_AFTER_APPENDS = 250;
 
   constructor(private file: string) {
     if (fs.existsSync(file)) {
       const content = fs.readFileSync(file, 'utf8');
-      for (const line of content.split('\n').filter(Boolean)) {
-        const entry = JSON.parse(line) as Entry;
-        if (!entry.job?.job_id || !['STARTING', 'REPORT', 'ACK'].includes(entry.state)) {
+      const lines = content.split('\n');
+      const hasTornTail = content.length > 0 && !content.endsWith('\n');
+
+      for (let index = 0; index < lines.length; index++) {
+        const line = lines[index];
+        if (!line) continue;
+
+        try {
+          const entry = JSON.parse(line) as Entry;
+          if (!entry.job?.job_id || !['STARTING', 'REPORT', 'ACK'].includes(entry.state)) {
+            throw new Error('Invalid entry');
+          }
+          this.entries.set(entry.job.job_id, entry);
+        } catch {
+          // append() fsyncs before any server transition or print side effect.
+          // A truncated final write is therefore safe to ignore, while damage
+          // to an earlier complete record still stops the agent for recovery.
+          if (hasTornTail && index === lines.length - 1) {
+            console.warn(JSON.stringify({ event: 'journal_torn_tail_ignored' }));
+            break;
+          }
           throw new Error('Invalid journal; stop for recovery');
         }
-        this.entries.set(entry.job.job_id, entry);
       }
     }
   }
@@ -33,6 +56,10 @@ export class Journal {
       fs.closeSync(fd);
     }
     this.entries.set(entry.job.job_id, entry);
+    this.appendsSinceCompaction++;
+    if (this.appendsSinceCompaction >= Journal.COMPACT_AFTER_APPENDS) {
+      this.compact();
+    }
   }
 
   pending(): Entry[] {
@@ -42,6 +69,35 @@ export class Journal {
   dispatched(id: string): boolean {
     const entry = this.entries.get(id);
     return Boolean(entry && entry.outcome !== 'FAILED');
+  }
+
+  private compact() {
+    const temporaryFile = `${this.file}.compact`;
+    const pending = this.pending();
+    const fd = fs.openSync(temporaryFile, 'w');
+    try {
+      for (const entry of pending) {
+        fs.writeSync(fd, JSON.stringify(entry) + '\n');
+      }
+      fs.fsyncSync(fd);
+    } finally {
+      fs.closeSync(fd);
+    }
+
+    try {
+      fs.renameSync(temporaryFile, this.file);
+      this.entries = new Map(pending.map((entry) => [entry.job.job_id, entry]));
+      this.appendsSinceCompaction = 0;
+      console.log(JSON.stringify({ event: 'journal_compacted', pending: pending.length }));
+    } catch (error) {
+      // The original journal remains authoritative when replacement fails.
+      // A later append may retry compaction; do not interrupt printing.
+      fs.unlinkSync(temporaryFile);
+      console.error(JSON.stringify({
+        event: 'journal_compaction_failed',
+        message: error instanceof Error ? error.message : String(error),
+      }));
+    }
   }
 }
 
@@ -93,7 +149,11 @@ export function acquireLock(file: string): () => void {
       if (!released) {
         released = true;
         fs.closeSync(fd);
-        fs.unlinkSync(file);
+        // Do not remove a replacement lock if an operator has recovered the
+        // state directory while this process was still winding down.
+        if (fs.existsSync(file) && fs.readFileSync(file, 'utf8') === String(process.pid)) {
+          fs.unlinkSync(file);
+        }
       }
     };
   } finally {

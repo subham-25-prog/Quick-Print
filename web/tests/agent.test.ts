@@ -1,4 +1,4 @@
-import {mkdtempSync,rmSync} from 'node:fs';
+import {mkdtempSync,readFileSync,rmSync,writeFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {beforeEach,afterEach,expect,test,vi} from 'vitest';
@@ -45,6 +45,20 @@ test('printer service reports installed printers and supports dynamic switching'
   service.setConfiguredPrinter('Printer B');
   expect(service.getConfiguredPrinter()).toBe('Printer B');
 
+});
+test('journal tolerates only a torn final line and compacts acknowledged history',()=>{
+  const journalPath=join(dir,'journal.jsonl');
+  writeFileSync(journalPath, JSON.stringify({job,state:'ACK',outcome:'SUBMITTED'})+'\n{"job":');
+  expect(new Journal(journalPath).pending()).toEqual([]);
+
+  writeFileSync(journalPath, '{not-json}\n');
+  expect(()=>new Journal(journalPath)).toThrow('Invalid journal');
+
+  const compacted=new Journal(join(dir,'compact.jsonl'));
+  for(let index=0;index<249;index++) compacted.append({job:{...job,job_id:`ack-${index}`},state:'ACK',outcome:'SUBMITTED'});
+  compacted.append({job,state:'REPORT',outcome:'REVIEW'});
+  expect(readFileSync(join(dir,'compact.jsonl'),'utf8')).toContain('"job1"');
+  expect(new Journal(join(dir,'compact.jsonl')).pending()).toEqual([{job,state:'REPORT',outcome:'REVIEW'}]);
 });
 
 test('printer discovery filters virtual queues and preserves offline and error states', () => {

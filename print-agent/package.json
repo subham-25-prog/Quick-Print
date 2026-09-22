@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Windows Print Agent for QuickPrint Self-Service System",
   "main": "dist/index.js",
+  "engines": {
+    "node": "24.x"
+  },
   "scripts": {
     "build": "npx tsc",
     "start": "node dist/index.js",

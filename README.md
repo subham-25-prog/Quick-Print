@@ -12,7 +12,7 @@ The queue has exactly-once **job creation**, leased claims and durable dispatch 
 
 ## Start here
 
-Use Node 22. Run `npm ci` at the root and `npm ci --prefix print-agent`. Read [new-shop installation](docs/NEW_SHOP_INSTALLATION.md) and [deployment](docs/DEPLOYMENT.md) before running SQL or enabling live payments. Generate an independent shop package with:
+Use Node 24 LTS. Run `npm ci` at the root and `npm ci --prefix print-agent`. Read [new-shop installation](docs/NEW_SHOP_INSTALLATION.md) and [deployment](docs/DEPLOYMENT.md) before running SQL or enabling live payments. Generate an independent shop package with:
 
 ```text
 node scripts/new-shop.mjs --slug abc-xerox --name "ABC Xerox" --url https://abc.example

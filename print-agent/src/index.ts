@@ -19,7 +19,7 @@ async function main() {
   const client = new ShopApiClient(config);
   const printer = new WindowsPrinterService(config.printerName, config.simulatePrint);
   const health = new AgentHealthServer(config);
-  health.start();
+  await health.start();
 
   const journal = new Journal(path.join(config.stateDir, 'dispatch.jsonl'));
   const worker = new AgentWorker(client, printer, journal, config.downloadDir);
@@ -34,12 +34,14 @@ async function main() {
   );
 
   let stopping = false;
-  process.on('SIGINT', () => {
+  let wakeDelay: (() => void) | undefined;
+  const requestStop = () => {
+    if (stopping) return;
     stopping = true;
-  });
-  process.on('SIGTERM', () => {
-    stopping = true;
-  });
+    wakeDelay?.();
+  };
+  process.on('SIGINT', requestStop);
+  process.on('SIGTERM', requestStop);
 
   let heartbeatAt = 0;
   let backoffMs = config.pollIntervalMs;
@@ -104,11 +106,28 @@ async function main() {
       backoffMs = Math.min(60000, backoffMs * 2);
     }
 
-    await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    if (!stopping) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          wakeDelay = undefined;
+          resolve();
+        }, backoffMs);
+        wakeDelay = () => {
+          clearTimeout(timer);
+          wakeDelay = undefined;
+          resolve();
+        };
+      });
+    }
   }
 
-  releaseLock();
-  process.exit(0);
+  try {
+    await health.stop();
+  } finally {
+    process.off('SIGINT', requestStop);
+    process.off('SIGTERM', requestStop);
+    releaseLock();
+  }
 }
 
 main().catch((err) => {

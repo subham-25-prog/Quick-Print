@@ -2,7 +2,7 @@
 
 ## Automated local checks
 
-Use Node 22 from the repository root:
+Use Node 24 LTS from the repository root:
 ```text
 npm ci
 npm ci --prefix print-agent

@@ -1,6 +1,6 @@
 # Windows agent
 
-Use Node 22 on the shop user's Windows account and the official driver for the selected USB/Wi-Fi/network printer. HP, Canon, Epson and Brother are possible via Windows drivers, but **each driver/model must pass installation acceptance**. No physical hardware was tested in this engineering run.
+Use Node 24 LTS on the shop user's Windows account and the official driver for the selected USB/Wi-Fi/network printer. HP, Canon, Epson and Brother are possible via Windows drivers, but **each driver/model must pass installation acceptance**. No physical hardware was tested in this engineering run.
 
 Run `npm ci`, `npm run build`, configure .env, then `npm start` inside print-agent. AGENT_ID must match web PRINT_AGENT_ID and PRINT_AGENT_SECRET must match exactly. BACKEND_URL is the stable HTTPS origin. Sandbox requires SIMULATE_PRINT=true; live rejects simulation, test jobs and an empty PRINTER_NAME. Select the exact Windows printer name, not a filename such as agent.db.
 
@@ -23,7 +23,7 @@ WMI status is driver-dependent. Microsoft documents No Error=2 and warns that so
 
 Health JSON is local only at http://127.0.0.1:9191. It is not exposed on the LAN and does not allow remote printing. Structured logs avoid credentials and document contents.
 
-Keep .env, state/dispatch.jsonl and state/agent.lock protected by the shop user's filesystem permissions. Preserve the journal and state path through restarts/upgrades. Lost completion responses retry acknowledgements only. A corrupt journal stops the agent. Do not clear it to force a reprint.
+Keep .env, state/dispatch.jsonl and state/agent.lock protected by the shop user's filesystem permissions. Preserve the journal and state path through restarts/upgrades. Lost completion responses retry acknowledgements only. The agent automatically compacts acknowledged journal records; it accepts only a torn final line left by an interrupted write. A corrupt complete record stops the agent. Do not clear it to force a reprint.
 
 An agent.lock.acquiring directory left by a crash during lock acquisition requires explicit recovery: verify all agent processes are stopped, preserve the journal, then remove only that empty guard directory. Do not remove a lock from a running process.
 
