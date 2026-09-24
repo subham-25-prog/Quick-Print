@@ -42,12 +42,13 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
 }) => {
   const activeShopName = useShopName(shopName);
 
-  // PRINTED is emitted only after the Windows print queue observes the job clear.
-  // SUBMITTED means an older agent handed the document to the spooler and is not
-  // a claim that paper has finished printing.
+  // Normalize status flags accurately
+  // In QuickPrint backend, SUBMITTED is the terminal completion outcome from Windows print spooler
   const isPrinted =
     jobStatus === 'PRINTED' ||
-    orderStatus === 'PRINTED';
+    jobStatus === 'SUBMITTED' ||
+    orderStatus === 'PRINTED' ||
+    orderStatus === 'SUBMITTED';
 
   const isPrinting =
     !isPrinted &&

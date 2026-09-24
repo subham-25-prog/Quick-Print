@@ -5,7 +5,7 @@ import {beforeEach,afterEach,expect,test,vi} from 'vitest';
 import {Journal,acquireLock} from '../../print-agent/src/journal';
 import {AgentWorker} from '../../print-agent/src/worker';
 import {ClaimedJob} from '../../print-agent/src/client';
-import {printerHasBlockingError,WindowsPrinterService,parseDetectedPrinters,parsePrintQueueJobs} from '../../print-agent/src/printer';
+import {printerHasBlockingError,WindowsPrinterService,parseDetectedPrinters} from '../../print-agent/src/printer';
 let dir:string;
 test('Windows no-error code 2 is ready; actual offline/jam/paper errors block',()=>{
   expect(printerHasBlockingError({PrinterStatus:3,DetectedErrorState:2})).toBe(false);
@@ -33,7 +33,7 @@ test('completion network failure and restart retry ACK without reprinting',async
   const f=fixture();f.client.reportJobCompletion.mockRejectedValueOnce(new Error('offline'));
   await expect(new AgentWorker(f.client,f.printer,f.journal,dir).tick()).rejects.toThrow();
   const next=new AgentWorker(f.client,f.printer,new Journal(join(dir,'journal.jsonl')),dir);await next.tick();
-  expect(f.printer.printDocument).toHaveBeenCalledTimes(1);expect(f.client.reportJobCompletion).toHaveBeenLastCalledWith(job,'PRINTED');
+  expect(f.printer.printDocument).toHaveBeenCalledTimes(1);expect(f.client.reportJobCompletion).toHaveBeenLastCalledWith(job,'SUBMITTED');
 });
 test('printer error after dispatch becomes REVIEW and never automatic retry',async()=>{const f=fixture();f.printer.printDocument.mockRejectedValue(new Error('unknown spool outcome'));const w=new AgentWorker(f.client,f.printer,f.journal,dir);await w.tick();await w.tick();expect(f.client.reportJobCompletion).toHaveBeenCalledWith(job,'REVIEW');expect(f.printer.printDocument).toHaveBeenCalledTimes(1);});
 test('crash at dispatch boundary becomes REVIEW',async()=>{const f=fixture();f.journal.append({job,state:'STARTING'});f.client.claimNextJob.mockReset().mockResolvedValue(null);await new AgentWorker(f.client,f.printer,new Journal(join(dir,'journal.jsonl')),dir).tick();expect(f.printer.printDocument).not.toHaveBeenCalled();expect(f.client.reportJobCompletion).toHaveBeenCalledWith(job,'REVIEW');});
@@ -48,14 +48,14 @@ test('printer service reports installed printers and supports dynamic switching'
 });
 test('journal tolerates only a torn final line and compacts acknowledged history',()=>{
   const journalPath=join(dir,'journal.jsonl');
-  writeFileSync(journalPath, JSON.stringify({job,state:'ACK',outcome:'PRINTED'})+'\n{"job":');
+  writeFileSync(journalPath, JSON.stringify({job,state:'ACK',outcome:'SUBMITTED'})+'\n{"job":');
   expect(new Journal(journalPath).pending()).toEqual([]);
 
   writeFileSync(journalPath, '{not-json}\n');
   expect(()=>new Journal(journalPath)).toThrow('Invalid journal');
 
   const compacted=new Journal(join(dir,'compact.jsonl'));
-  for(let index=0;index<249;index++) compacted.append({job:{...job,job_id:`ack-${index}`},state:'ACK',outcome:'PRINTED'});
+  for(let index=0;index<249;index++) compacted.append({job:{...job,job_id:`ack-${index}`},state:'ACK',outcome:'SUBMITTED'});
   compacted.append({job,state:'REPORT',outcome:'REVIEW'});
   expect(readFileSync(join(dir,'compact.jsonl'),'utf8')).toContain('"job1"');
   expect(new Journal(join(dir,'compact.jsonl')).pending()).toEqual([{job,state:'REPORT',outcome:'REVIEW'}]);
@@ -74,13 +74,5 @@ test('printer discovery filters virtual queues and preserves offline and error s
   ]);
   expect(parseDetectedPrinters(null)).toEqual([]);
   expect(parseDetectedPrinters({Name:'Single Printer', PrinterStatus:3})).toEqual([{name:'Single Printer',status:'ONLINE'}]);
-});
-
-test('print queue parsing only includes jobs from the configured printer', () => {
-  expect(parsePrintQueueJobs([
-    { Name: 'HP LaserJet, 42', JobId: 42 },
-    { Name: 'Other Printer, 7', JobId: 7 },
-    { Name: 'HP LaserJet, invalid', JobId: 'bad' },
-  ], 'HP LaserJet')).toEqual([{ id: 42, name: 'HP LaserJet, 42' }]);
 });
 

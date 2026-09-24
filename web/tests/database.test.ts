@@ -77,12 +77,12 @@ test('wrong-shop claims empty; overlapping workers get only one claim; fence tok
   await db.query(`SELECT start_print_job($1,$2,$3,$4)`,[shop,'agent-one',job.id,job.claim_token]);
   await expect(db.query(`SELECT start_print_job($1,$2,$3,$4)`,[shop,'agent-one',job.id,job.claim_token])).rejects.toThrow();
 });
-test('queue-complete acknowledgements are idempotent and never reissued or regressed',async()=>{
-  const args=[shop,'agent-one',job.id,job.claim_token,'PRINTED'];
+test('acknowledgements idempotent; submitted job never reissued or regressed by callback',async()=>{
+  const args=[shop,'agent-one',job.id,job.claim_token,'SUBMITTED'];
   await db.query('SELECT finish_print_job($1,$2,$3,$4,$5)',args);
   await db.query('SELECT finish_print_job($1,$2,$3,$4,$5)',args);
   await db.query('SELECT finalize_payment($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[shop,payment,'phonepe','merchant','ref-test','txn-test',1200,'INR','live','fingerprint']);
-  expect((await db.query<{order_status:string}>('SELECT order_status FROM orders WHERE id=$1',[order])).rows[0].order_status).toBe('PRINTED');
+  expect((await db.query<{order_status:string}>('SELECT order_status FROM orders WHERE id=$1',[order])).rows[0].order_status).toBe('SUBMITTED');
   expect((await db.query(`SELECT * FROM claim_print_job('${shop}','agent-one')`)).rows).toHaveLength(0);
   await expect(db.query('SELECT retry_safe_print($1,$2)',[shop,order])).rejects.toThrow();
 });

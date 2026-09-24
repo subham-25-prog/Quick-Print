@@ -10,11 +10,11 @@ export async function POST(req: NextRequest) {
     const agentId = agentIdentity(req);
     const body = await readJson(req);
 
-    if (!['PRINTED', 'SUBMITTED', 'FAILED', 'REVIEW'].includes(String(body.outcome))) {
+    if (!['SUBMITTED', 'FAILED', 'REVIEW'].includes(String(body.outcome))) {
       throw new HttpError(400, 'Explicit print outcome is required.');
     }
 
-    let { error } = await database().rpc('finish_print_job', {
+    const { error } = await database().rpc('finish_print_job', {
       p_shop_id: getCurrentShopId(),
       p_agent_id: agentId,
       p_job_id: uuid(body.jobId),

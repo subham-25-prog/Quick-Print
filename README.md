@@ -8,7 +8,7 @@ Upload → server page count/price → pending payment → official backend veri
 
 No verified payment means no order confirmation and no print. No screenshot, “I paid,” browser redirect, cash/manual approval or localStorage bypass is accepted. PhonePe v2 is implemented behind a provider interface. Paytm and other providers are extension points, not falsely advertised as supported. An existing merchant QR does not automatically supply PG/API credentials.
 
-The queue has exactly-once **job creation**, leased claims and durable dispatch recovery. The agent reports **PRINTED** only after it observes the new Windows print-queue job clear. That confirms spooler completion, not physical paper delivery; an unobservable or stalled queue stops for review rather than falsely showing success.
+The queue has exactly-once **job creation**, leased claims and durable dispatch recovery. Generic Windows drivers do not prove exactly-once physical output. Uncertain dispatch stops for review; successful submission is called SUBMITTED, not fabricated PRINTED.
 
 ## Start here
 

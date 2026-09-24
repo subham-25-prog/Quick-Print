@@ -11,32 +11,6 @@ export interface DetectedPrinter {
   status: 'ONLINE' | 'OFFLINE' | 'ERROR' | 'UNKNOWN';
 }
 
-interface PrintQueueJob {
-  id: number;
-  name: string;
-}
-
-export function parsePrintQueueJobs(raw: unknown, printerName: string): PrintQueueJob[] {
-  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
-  const prefix = `${printerName},`.toLocaleLowerCase();
-  return list.flatMap((job) => {
-    const name = typeof job?.Name === 'string' ? job.Name : '';
-    const id = Number(job?.JobId);
-    return name.toLocaleLowerCase().startsWith(prefix) && Number.isSafeInteger(id) && id > 0
-      ? [{ id, name }]
-      : [];
-  });
-}
-
-const QUEUE_POLL_INTERVAL_MS = 1000;
-const QUEUE_OBSERVATION_TIMEOUT_MS = 15000;
-const MIN_QUEUE_COMPLETION_TIMEOUT_MS = 60000;
-const MAX_QUEUE_COMPLETION_TIMEOUT_MS = 15 * 60 * 1000;
-
-function delay(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
 export function parseDetectedPrinters(raw: unknown): DetectedPrinter[] {
   const list = Array.isArray(raw) ? raw : [raw];
   const virtual = /OneNote|Shared Fax|XPS Document Writer|Microsoft Print to PDF|Root Print Queue|^Fax$/i;
@@ -137,51 +111,6 @@ export class WindowsPrinterService {
     }
   }
 
-  private async queuedJobIds(): Promise<Set<number>> {
-    const { stdout } = await execute(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        '$ErrorActionPreference = "Stop"; Get-CimInstance Win32_PrintJob | Select-Object Name,JobId | ConvertTo-Json -Compress',
-      ],
-      { windowsHide: true, timeout: 10000 }
-    );
-    const jobs = parsePrintQueueJobs(JSON.parse(stdout.trim() || '[]'), this.configuredPrinter);
-    return new Set(jobs.map((job) => job.id));
-  }
-
-  private async waitForQueueCompletion(existingJobIds: Set<number>, job: ClaimedJob): Promise<void> {
-    const pages = Math.max(1, job.page_count * job.copies);
-    const completionTimeout = Math.min(
-      MAX_QUEUE_COMPLETION_TIMEOUT_MS,
-      Math.max(MIN_QUEUE_COMPLETION_TIMEOUT_MS, pages * 8000)
-    );
-    const startedAt = Date.now();
-    const observedJobIds = new Set<number>();
-
-    while (Date.now() - startedAt < completionTimeout) {
-      const currentJobIds = await this.queuedJobIds();
-      for (const id of currentJobIds) {
-        if (!existingJobIds.has(id)) observedJobIds.add(id);
-      }
-
-      if (observedJobIds.size > 0) {
-        const isStillQueued = [...observedJobIds].some((id) => currentJobIds.has(id));
-        if (!isStillQueued) return;
-      } else if (Date.now() - startedAt >= QUEUE_OBSERVATION_TIMEOUT_MS) {
-        // Different drivers have different queue behavior. Without observing
-        // the job, completion is not something the agent can honestly claim.
-        throw new Error('Could not verify this job in the Windows print queue. Please check the printer.');
-      }
-
-      await delay(QUEUE_POLL_INTERVAL_MS);
-    }
-
-    throw new Error('The Windows print queue did not finish this document in time. Please check the printer.');
-  }
-
   async printDocument(filePath: string, job: ClaimedJob): Promise<void> {
     if (this.simulation) {
       if (!job.is_test) throw new Error('Cannot simulate a live payment');
@@ -206,7 +135,6 @@ export class WindowsPrinterService {
           ? 'A4'
           : job.paper_size;
 
-    const existingJobIds = await this.queuedJobIds();
     await print(filePath, {
       printer: this.configuredPrinter,
       copies: job.copies,
@@ -216,6 +144,5 @@ export class WindowsPrinterService {
       scale: 'fit',
       silent: false,
     });
-    await this.waitForQueueCompletion(existingJobIds, job);
   }
 }

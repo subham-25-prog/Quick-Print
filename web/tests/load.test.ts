@@ -71,10 +71,10 @@ test.skipIf(process.env.QUICKPRINT_LOAD_TEST !== '1')('bounded local component l
       expect(seen.has(job.id)).toBe(false);
       seen.add(job.id);
       await db.query('SELECT start_print_job($1,$2,$3,$4)',[shop,'load-agent',job.id,job.claim_token]);
-      await db.query('SELECT finish_print_job($1,$2,$3,$4,$5)',[shop,'load-agent',job.id,job.claim_token,'PRINTED']);
+      await db.query('SELECT finish_print_job($1,$2,$3,$4,$5)',[shop,'load-agent',job.id,job.claim_token,'SUBMITTED']);
     });
     expect(seen.size).toBe(1000);
-    expect((await db.query(`SELECT * FROM print_jobs WHERE status <> 'PRINTED'`)).rows).toHaveLength(0);
+    expect((await db.query(`SELECT * FROM print_jobs WHERE status <> 'SUBMITTED'`)).rows).toHaveLength(0);
     let allowed = 0;
     await measure('Rate limiter burst: 1000 requests, limit 10', 1000, 100, async () => {
       const response = await db.query<{allowed:boolean}>("SELECT consume_rate_limit('load-burst',10,3600) AS allowed");
