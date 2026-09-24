@@ -714,7 +714,7 @@ export default function AdminLiveOrdersPage() {
                     />
 
                     {/* Column 1: Customer & Token (Strict 1 Line) */}
-                    <div className="flex items-center gap-3 min-w-[210px] max-w-[240px] pl-1.5 shrink-0">
+                    <div className="flex items-center gap-3 min-w-[260px] max-w-[340px] lg:max-w-[400px] pl-1.5 shrink-0">
                       <div
                         className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-xs text-white shrink-0 shadow-xs ${
                           isPending
@@ -731,7 +731,7 @@ export default function AdminLiveOrdersPage() {
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 whitespace-nowrap">
-                          <span className="font-extrabold text-xs text-slate-900 truncate">
+                          <span className="font-extrabold text-xs text-slate-900 truncate max-w-[190px] sm:max-w-[240px] lg:max-w-[290px]" title={order.customer_name?.trim() || 'Walk-in'}>
                             {order.customer_name?.trim() || 'Walk-in'}
                           </span>
                           <button
