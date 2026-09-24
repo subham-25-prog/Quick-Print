@@ -17,6 +17,28 @@ export interface UploadOptions {
   onXhrCreated?: (xhr: XMLHttpRequest) => void;
 }
 
+const CHUNK_SIZE = 3 * 1024 * 1024;
+const CHUNK_UPLOAD_TIMEOUT_MS = 180000;
+// The server allows five minutes for the final chunk to assemble, validate and
+// store a large document. Keep the browser alive a little longer so it receives
+// the server's useful response instead of reporting a generic connection error.
+const FINALIZATION_TIMEOUT_MS = 330000;
+
+function uploadFailureMessage(xhr: XMLHttpRequest, fallback: string): string {
+  if (xhr.status === 504) {
+    return 'This document took too long to process. Please retry; if it keeps failing, compress the PDF or split it into smaller files.';
+  }
+
+  try {
+    const response = JSON.parse(xhr.responseText) as { error?: unknown };
+    if (typeof response.error === 'string' && response.error.trim()) return response.error;
+  } catch {
+    // A proxy error page is not JSON. Use the actionable fallback below.
+  }
+
+  return fallback;
+}
+
 export function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -57,7 +79,6 @@ export async function uploadDocumentFile(
 ): Promise<UploadedFileState> {
   const { onProgress, onXhrCreated } = options || {};
 
-  const CHUNK_SIZE = 3 * 1024 * 1024; // 3 MB
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
   let resultFileInfo: {
@@ -128,20 +149,15 @@ export async function uploadDocumentFile(
               reject(new Error('Invalid response received from server.'));
             }
           } else {
-            try {
-              const res = JSON.parse(xhr.responseText);
-              reject(new Error(res.error || `Upload failed with status ${xhr.status}`));
-            } catch {
-              reject(new Error(`Upload failed with status ${xhr.status}`));
-            }
+            reject(new Error(uploadFailureMessage(xhr, `Upload failed with status ${xhr.status}. Please try again.`)));
           }
         };
 
-        xhr.onerror = () => reject(new Error('Network connection failed during upload.'));
-        xhr.ontimeout = () => reject(new Error('Upload timed out. Please try again.'));
+        xhr.onerror = () => reject(new Error('The upload connection was interrupted. Check your internet connection and retry the document.'));
+        xhr.ontimeout = () => reject(new Error('This document is taking longer than expected to process. Please retry; if it keeps failing, compress the PDF or split it into smaller files.'));
         xhr.onabort = () => reject(new Error('Upload cancelled.'));
 
-        xhr.timeout = 180000;
+        xhr.timeout = chunkIndex === totalChunks - 1 ? FINALIZATION_TIMEOUT_MS : CHUNK_UPLOAD_TIMEOUT_MS;
         xhr.open('POST', '/api/upload');
         xhr.send(chunkFormData);
       });
@@ -192,20 +208,15 @@ export async function uploadDocumentFile(
             reject(new Error('Invalid response received from server.'));
           }
         } else {
-          try {
-            const res = JSON.parse(xhr.responseText);
-            reject(new Error(res.error || `Upload failed with status ${xhr.status}`));
-          } catch {
-            reject(new Error('Failed to upload document. Please try again.'));
-          }
+          reject(new Error(uploadFailureMessage(xhr, 'Failed to upload document. Please try again.')));
         }
       };
 
-      xhr.onerror = () => reject(new Error('Network connection failed during upload.'));
-      xhr.ontimeout = () => reject(new Error('Upload timed out. Please try again.'));
+      xhr.onerror = () => reject(new Error('The upload connection was interrupted. Check your internet connection and retry the document.'));
+      xhr.ontimeout = () => reject(new Error('This document is taking longer than expected to process. Please retry; if it keeps failing, compress the PDF or split it into smaller files.'));
       xhr.onabort = () => reject(new Error('Upload cancelled.'));
 
-      xhr.timeout = 180000;
+      xhr.timeout = FINALIZATION_TIMEOUT_MS;
       xhr.open('POST', '/api/upload');
       xhr.send(formData);
     });

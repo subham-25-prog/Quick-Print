@@ -15,7 +15,11 @@ const BUCKET_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 const MAX_CONTENT_LENGTH_BYTES = 105 * 1024 * 1024; // 105 MB multipart overhead
 
-export const maxDuration = 60;
+// The final chunk reassembles the document, validates its PDF structure, uploads
+// the finished PDF and writes its record. Scanned, 100+ page documents can take
+// longer than the default function duration even though each individual chunk is
+// small. Keep this within Vercel Hobby's five-minute limit.
+export const maxDuration = 300;
 
 async function ensurePrivateBucket(db: ReturnType<typeof database>) {
   const now = Date.now();
@@ -300,21 +304,25 @@ export async function POST(req: NextRequest) {
       }
 
       // Final chunk: assemble all parts
-      const partPaths: string[] = [];
-      const buffers: Buffer[] = [];
-      let assembledSize = chunkBuffer.length;
-      for (let i = 0; i < totalChunks - 1; i++) {
-        const p = `orders/chunks/${chunkOwner}/${i}.pdf`;
-        partPaths.push(p);
-        const { data: blob, error } = await db.storage.from('shop-documents').download(p);
+      const partPaths = Array.from(
+        { length: totalChunks - 1 },
+        (_, index) => `orders/chunks/${chunkOwner}/${index}.pdf`
+      );
+      // Download all previously saved parts concurrently. Downloading 30+ parts
+      // one-by-one made the final request exceed its duration for large PDFs.
+      const buffers = await Promise.all(partPaths.map(async (partPath, index) => {
+        const { data: blob, error } = await db.storage.from('shop-documents').download(partPath);
         if (error || !blob) {
-          throw new HttpError(500, `Missing chunk ${i}: ${error?.message || 'Download failed'}. Please retry upload.`);
+          throw new HttpError(500, `Missing chunk ${index}: ${error?.message || 'Download failed'}. Please retry upload.`);
         }
-        assembledSize += blob.size;
-        if (blob.size > 10 * 1024 * 1024 || assembledSize > declaredSize || assembledSize > MAX_FILE_SIZE_BYTES) {
+        if (blob.size > 10 * 1024 * 1024) {
           throw new HttpError(413, 'Upload exceeds its declared size.');
         }
-        buffers.push(Buffer.from(await blob.arrayBuffer()));
+        return Buffer.from(await blob.arrayBuffer());
+      }));
+      const assembledSize = chunkBuffer.length + buffers.reduce((size, buffer) => size + buffer.length, 0);
+      if (assembledSize > declaredSize || assembledSize > MAX_FILE_SIZE_BYTES) {
+        throw new HttpError(413, 'Upload exceeds its declared size.');
       }
       if (assembledSize !== declaredSize) throw new HttpError(400, 'Upload size does not match. Upload again.');
       buffers.push(chunkBuffer);

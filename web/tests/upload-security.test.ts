@@ -46,6 +46,17 @@ test('two chunks finalize with a server-generated ID and cannot overwrite a know
   expect(await mocks.store.get(victim)!.text()).toBe('victim');
   expect([...mocks.store.keys()].filter(p=>p.includes('/chunks/'))).toHaveLength(0);
 });
+test('a 110-page PDF can be reassembled from chunks and retains its actual page count', async () => {
+  const document = await PDFDocument.create();
+  for (let page = 0; page < 110; page++) document.addPage();
+  const bytes = await document.save();
+  const split = Math.floor(bytes.length / 2);
+
+  expect((await POST(chunk(bytes.slice(0, split), 0, bytes.length))).status).toBe(200);
+  const response = await POST(chunk(bytes.slice(split), 1, bytes.length));
+  expect(response.status).toBe(200);
+  expect((await response.json()).fileInfo.pageCount).toBe(110);
+});
 test('knowing upload ID with wrong owner token cannot read or delete its chunks',async()=>{
   const bytes=await pdf(),split=Math.floor(bytes.length/2);
   await POST(chunk(bytes.slice(0,split),0,bytes.length));
