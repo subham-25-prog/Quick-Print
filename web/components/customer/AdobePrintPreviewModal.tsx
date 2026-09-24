@@ -1373,7 +1373,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         </div>
 
         {/* Bottom Quick-Action Bar in Preview Canvas: Edit on left side, Confirm & Pay on right bottom */}
-        <div className="w-full px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3 z-20 shrink-0 bg-[#202124]/95 backdrop-blur-md border-t border-[#3c4043]/70 shadow-lg">
+        <div className="w-full px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-2.5 md:gap-3 z-20 shrink-0 bg-[#202124]/95 backdrop-blur-md border-t border-[#3c4043]/70 shadow-lg">
           {/* Left Side: Edit Button */}
           <button
             type="button"
@@ -1387,12 +1387,12 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 firstInput?.focus();
               }
             }}
-            className="py-2.5 sm:py-3 px-4.5 sm:px-6 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-900 border-2 border-indigo-400/60 hover:border-indigo-300 text-white text-sm sm:text-base font-bold flex items-center gap-2.5 shadow-md shadow-black/40 ring-1 ring-indigo-500/20 transition-all cursor-pointer active:scale-95"
+            className="flex-1 md:flex-none h-11 md:h-auto py-2 md:py-3 px-3 md:px-6 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:bg-slate-900 border border-slate-600/80 md:border-2 md:border-indigo-400/60 md:hover:border-indigo-300 text-white text-xs sm:text-sm md:text-base font-bold flex items-center justify-center md:justify-start gap-2 md:gap-2.5 shadow-xs md:shadow-md md:shadow-black/40 md:ring-1 md:ring-indigo-500/20 transition-all cursor-pointer active:scale-95"
             title="Edit Print Settings"
           >
-            <Edit className="w-5 h-5 text-indigo-300" />
+            <Edit className="w-4 h-4 md:w-5 md:h-5 text-indigo-300 shrink-0" />
             <span className="font-extrabold tracking-wide">Edit</span>
-            <span className="hidden sm:inline-block text-xs text-slate-300 font-medium border-l border-slate-600/90 pl-2.5 ml-0.5">
+            <span className="hidden md:inline-block text-xs text-slate-300 font-medium border-l border-slate-600/90 pl-2.5 ml-0.5">
               {modalPaperSize} • {isBw ? 'B&W' : 'Color'} • {modalCopies}x
             </span>
           </button>
@@ -1401,10 +1401,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           <button
             type="button"
             onClick={handlePrintApply}
-            className="py-2.5 sm:py-3 px-5 sm:px-7 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-sm sm:text-base font-extrabold shadow-lg shadow-emerald-950/60 ring-2 ring-emerald-400/50 hover:ring-emerald-300 transition-all shrink-0 cursor-pointer flex items-center gap-2 ml-auto"
+            className="flex-[1.4] md:flex-none h-11 md:h-auto py-2 md:py-3 px-4 md:px-7 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm md:text-base font-extrabold shadow-md md:shadow-lg shadow-emerald-950/60 ring-1 md:ring-2 ring-emerald-400/50 hover:ring-emerald-300 transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1.5 md:gap-2 md:ml-auto"
           >
             <span>Confirm &amp; Pay</span>
-            <span className="text-lg leading-none">→</span>
+            <span className="text-base md:text-lg leading-none">→</span>
           </button>
         </div>
       </main>
