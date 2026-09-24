@@ -1387,12 +1387,12 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 firstInput?.focus();
               }
             }}
-            className="py-2 sm:py-2.5 px-4 sm:px-5 rounded-xl bg-[#2b2d30] hover:bg-[#383a3e] active:bg-[#202124] border border-slate-600/70 text-slate-100 text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer active:scale-95"
+            className="py-2.5 sm:py-3 px-4.5 sm:px-6 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-900 border-2 border-indigo-400/60 hover:border-indigo-300 text-white text-sm sm:text-base font-bold flex items-center gap-2.5 shadow-md shadow-black/40 ring-1 ring-indigo-500/20 transition-all cursor-pointer active:scale-95"
             title="Edit Print Settings"
           >
-            <Edit className="w-4 h-4 text-[#8ab4f8]" />
-            <span>Edit</span>
-            <span className="hidden sm:inline-block text-[11px] text-slate-400 font-normal border-l border-slate-600/80 pl-2 ml-0.5">
+            <Edit className="w-5 h-5 text-indigo-300" />
+            <span className="font-extrabold tracking-wide">Edit</span>
+            <span className="hidden sm:inline-block text-xs text-slate-300 font-medium border-l border-slate-600/90 pl-2.5 ml-0.5">
               {modalPaperSize} • {isBw ? 'B&W' : 'Color'} • {modalCopies}x
             </span>
           </button>
@@ -1401,10 +1401,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           <button
             type="button"
             onClick={handlePrintApply}
-            className="py-2 sm:py-2.5 px-5 sm:px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm font-extrabold shadow-lg shadow-emerald-950/60 ring-2 ring-emerald-400/50 hover:ring-emerald-300 transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ml-auto"
+            className="py-2.5 sm:py-3 px-5 sm:px-7 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-sm sm:text-base font-extrabold shadow-lg shadow-emerald-950/60 ring-2 ring-emerald-400/50 hover:ring-emerald-300 transition-all shrink-0 cursor-pointer flex items-center gap-2 ml-auto"
           >
             <span>Confirm &amp; Pay</span>
-            <span className="text-base leading-none">→</span>
+            <span className="text-lg leading-none">→</span>
           </button>
         </div>
       </main>
