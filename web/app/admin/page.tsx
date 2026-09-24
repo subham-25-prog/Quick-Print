@@ -677,7 +677,7 @@ export default function AdminLiveOrdersPage() {
                 const isPending = order.order_status === 'PAYMENT_VERIFICATION_PENDING' || order.order_status === 'PENDING_PAYMENT';
                 const isPrinting = order.order_status === 'APPROVED' || order.order_status === 'PRINTING';
                 const isPrinted = order.order_status === 'PRINTED' || order.order_status === 'SUBMITTED';
-                const isFailed = order.order_status === 'FAILED' || order.order_status === 'CANCELLED' || order.order_status === 'REJECTED';
+                const isRejected = order.order_status === 'REJECTED';
 
                 const fileBadge = getFileBadge(order.file_name);
                 const initials = getInitials(order.customer_name);
@@ -693,7 +693,7 @@ export default function AdminLiveOrdersPage() {
                         ? 'border-indigo-300 bg-gradient-to-r from-indigo-50/40 via-white to-white ring-1 ring-indigo-500/20'
                         : isPrinted
                         ? 'border-slate-200 bg-white hover:border-emerald-300'
-                        : isFailed
+                        : isRejected
                         ? 'border-rose-200 bg-rose-50/15'
                         : 'border-slate-200 bg-white'
                     }`}
@@ -707,7 +707,7 @@ export default function AdminLiveOrdersPage() {
                           ? 'bg-indigo-600 animate-pulse'
                           : isPrinted
                           ? 'bg-emerald-500'
-                          : isFailed
+                          : isRejected
                           ? 'bg-rose-500'
                           : 'bg-slate-300'
                       }`}
@@ -723,8 +723,6 @@ export default function AdminLiveOrdersPage() {
                             ? 'bg-gradient-to-tr from-indigo-600 to-blue-500'
                             : isPrinted
                             ? 'bg-gradient-to-tr from-emerald-600 to-teal-500'
-                            : isFailed
-                            ? 'bg-gradient-to-tr from-rose-600 to-red-500'
                             : 'bg-slate-700'
                         }`}
                       >
@@ -844,11 +842,11 @@ export default function AdminLiveOrdersPage() {
                                 : isPrinting
                                 ? 'bg-indigo-100 text-indigo-800'
                                 : isPrinted
-                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                : 'bg-rose-100 text-rose-800 border border-rose-200'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-rose-100 text-rose-800'
                             }`}
                           >
-                            {isPrinted ? 'Successful' : isFailed ? 'Failed' : isPrinting ? 'Printing' : isPending ? 'Pending' : order.order_status.replace(/_/g, ' ')}
+                            {order.order_status.replace(/_/g, ' ')}
                           </span>
                         </div>
                       </div>
@@ -1066,9 +1064,6 @@ export default function AdminLiveOrdersPage() {
                     <span className="font-mono text-xs font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
                       {selectedOrderForHistory.order_number}
                     </span>
-                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black ${['PRINTED', 'SUBMITTED'].includes(selectedOrderForHistory.order_status) ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : ['FAILED', 'REJECTED', 'CANCELLED'].includes(selectedOrderForHistory.order_status) ? 'bg-rose-100 text-rose-800 border border-rose-200' : ['APPROVED', 'PRINTING'].includes(selectedOrderForHistory.order_status) ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
-                      {['PRINTED', 'SUBMITTED'].includes(selectedOrderForHistory.order_status) ? 'Successful' : ['FAILED', 'REJECTED', 'CANCELLED'].includes(selectedOrderForHistory.order_status) ? 'Failed' : ['APPROVED', 'PRINTING'].includes(selectedOrderForHistory.order_status) ? 'Printing' : 'Pending'}
-                    </span>
                   </div>
                   <p className="text-[11px] text-slate-400 font-medium mt-0.5">
                     Placed on {formatDate(selectedOrderForHistory.created_at)}
@@ -1170,7 +1165,7 @@ export default function AdminLiveOrdersPage() {
             {/* Financial & Payment History */}
             <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
               <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center justify-between">
-                <span>Payment Status</span>
+                <span>Payment & Verification</span>
                 <span className={`px-2 py-0.2 rounded-md font-extrabold text-[9px] ${
                   selectedOrderForHistory.payment_status === 'PAID'
                     ? 'bg-emerald-100 text-emerald-800'
