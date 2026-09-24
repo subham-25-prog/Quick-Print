@@ -80,7 +80,7 @@ export default function OrderStatusPage() {
           router.replace('/status/' + result.order.id + '?access_token=' + encodeURIComponent(nextToken));
           return false;
         }
-        const done = ['PRINTED', 'SUBMITTED', 'FAILED', 'REVIEW', 'CANCELLED', 'REJECTED'];
+        const done = ['PRINTED', 'FAILED', 'REVIEW', 'CANCELLED', 'REJECTED'];
         return done.includes(result.order.order_status) || done.includes(result.job?.status) ? 4000 : 1000;
       },
       onError: (error) => {
@@ -127,9 +127,7 @@ export default function OrderStatusPage() {
 
   const isPrinted =
     data?.order?.order_status === 'PRINTED' ||
-    data?.order?.order_status === 'SUBMITTED' ||
-    data?.job?.status === 'PRINTED' ||
-    data?.job?.status === 'SUBMITTED';
+    data?.job?.status === 'PRINTED';
 
   const isHardwarePrinting =
     !isPrinted &&

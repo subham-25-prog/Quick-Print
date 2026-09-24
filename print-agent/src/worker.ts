@@ -52,8 +52,11 @@ export class AgentWorker {
         started = true;
 
         await this.client.startJob(job);
+        // printDocument waits until Windows has observed this job leave its
+        // print queue. Do not tell the customer that printing is complete just
+        // because Sumatra has handed the PDF to the spooler.
         await this.printer.printDocument(tempFile, job);
-        this.journal.append({ job, state: 'REPORT', outcome: 'SUBMITTED' });
+        this.journal.append({ job, state: 'REPORT', outcome: 'PRINTED' });
       } catch {
         this.journal.append({ job, state: 'REPORT', outcome: started ? 'REVIEW' : 'FAILED' });
       } finally {

@@ -10,5 +10,6 @@
   "migrations/20260912_allow_large_file_uploads.sql",
   "migrations/20260912_rename_shop_to_cyber_cafe.sql",
   "migrations/20260913052027_secure_cash_actions.sql",
-  "migrations/20260917_add_cashfree_provider.sql"
+  "migrations/20260917_add_cashfree_provider.sql",
+  "migrations/20260924_confirm_print_queue_completion.sql"
 ]

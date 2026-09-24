@@ -6,7 +6,7 @@ This release is a **candidate**, not an already activated live shop. Back up Sup
 
 ## Security update: 13 September 2026
 
-For an existing installation, apply `supabase/migrations/20260913052027_secure_cash_actions.sql` before deploying the updated web code. It adds a service-role-only cash transaction and does not delete existing data. Fresh installations include it through `migration-order.json`.
+For an existing installation, apply `supabase/migrations/20260913052027_secure_cash_actions.sql` and then `supabase/migrations/20260924_confirm_print_queue_completion.sql` before deploying the updated web code. The latter lets the print agent mark an order complete only after its Windows print-queue job clears. Fresh installations include both through `migration-order.json`.
 
 Set an explicit `PRINT_AGENT_SECRET` of at least 32 characters on both web and agent. Order-list access no longer accepts the hard-coded fallback. If that historical value was used in a deployed configuration, rotate it on both sides. No credentials are included in this update.
 

@@ -19,7 +19,7 @@ export interface ClaimedJob {
   is_test: boolean;
 }
 
-export type PrintOutcome = 'SUBMITTED' | 'FAILED' | 'REVIEW';
+export type PrintOutcome = 'PRINTED' | 'SUBMITTED' | 'FAILED' | 'REVIEW';
 
 export interface HeartbeatResponse {
   success: boolean;
