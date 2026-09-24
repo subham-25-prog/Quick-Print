@@ -32,7 +32,7 @@ export default function AdminLiveOrdersPage() {
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [showClearModal, setShowClearModal] = useState(false);
-  const [clearScope, setClearScope] = useState<'COMPLETED' | 'ALL'>('COMPLETED');
+
   const [isClearing, setIsClearing] = useState(false);
   const [agentOnline, setAgentOnline] = useState<boolean | null>(null);
   const [selectedOrderForHistory, setSelectedOrderForHistory] = useState<Order | null>(null);
@@ -84,9 +84,9 @@ export default function AdminLiveOrdersPage() {
 
   const handleConfirmClear = async () => {
     const previousOrders = [...orders];
-    const targetOrders = clearScope === 'ALL'
-      ? orders
-      : orders.filter((o) => ['PRINTED', 'SUBMITTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status));
+    const targetOrders = orders;
+
+
     const targetCount = targetOrders.length;
     const targetIds = targetOrders.map((o) => o.id);
 
@@ -96,20 +96,20 @@ export default function AdminLiveOrdersPage() {
     setActionLoadingKey('CLEAR_HISTORY');
     setIsClearing(true);
 
-    if (clearScope === 'ALL') {
-      setOrders([]);
-    } else {
-      setOrders((prev) =>
-        prev.filter((o) => !deletedOrderIdsRef.current.has(o.id))
-      );
-    }
+    setOrders([]);
+
+
+
+
+
+
     showToast(`Cleared ${targetCount} order(s) from history.`, 'success');
 
     try {
       const res = await fetch('/api/admin/actions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'CLEAR_HISTORY', scope: clearScope }),
+        body: JSON.stringify({ action: 'CLEAR_HISTORY', scope: 'ALL' }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to clear history');
@@ -596,7 +596,7 @@ export default function AdminLiveOrdersPage() {
                     showToast('No orders in history to clear.', 'error');
                     return;
                   }
-                  setClearScope(completedOrdersCount > 0 ? 'COMPLETED' : 'ALL');
+
                   setShowClearModal(true);
                 }}
                 disabled={isRefreshing || isClearing}
@@ -933,9 +933,9 @@ export default function AdminLiveOrdersPage() {
                 <Trash2 className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-base font-extrabold text-slate-900">Clear Order History</h3>
+                <h3 className="text-base font-extrabold text-slate-900">Delete All Orders</h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  Choose which records to remove. This permanently deletes the order details and uploaded document files.
+                  This will permanently delete all {orders.length} order(s) and uploaded document files.
                 </p>
               </div>
               <button
@@ -948,63 +948,15 @@ export default function AdminLiveOrdersPage() {
               </button>
             </div>
 
-            {/* Scope Selection Options */}
-            <div className="space-y-2.5">
-              <label
-                onClick={() => setClearScope('COMPLETED')}
-                className={`flex items-start gap-3 p-3 rounded-2xl border text-left cursor-pointer transition-all ${
-                  clearScope === 'COMPLETED'
-                    ? 'border-indigo-600 bg-indigo-50/50 shadow-2xs'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="clearScope"
-                  checked={clearScope === 'COMPLETED'}
-                  onChange={() => setClearScope('COMPLETED')}
-                  className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
-                />
-                <div className="flex-1 text-xs">
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <span>Completed History Only</span>
-                    <span className="px-2 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
-                      {completedOrdersCount} orders
-                    </span>
-                  </div>
-                  <p className="text-slate-500 mt-0.5 text-[11px]">
-                    Removes printed, cancelled, and failed orders. Keeps active and pending print jobs intact.
-                  </p>
-                </div>
-              </label>
-
-              <label
-                onClick={() => setClearScope('ALL')}
-                className={`flex items-start gap-3 p-3 rounded-2xl border text-left cursor-pointer transition-all ${
-                  clearScope === 'ALL'
-                    ? 'border-rose-600 bg-rose-50/50 shadow-2xs'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="clearScope"
-                  checked={clearScope === 'ALL'}
-                  onChange={() => setClearScope('ALL')}
-                  className="mt-0.5 text-rose-600 focus:ring-rose-500"
-                />
-                <div className="flex-1 text-xs">
-                  <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                    <span>Clear All Orders & History</span>
-                    <span className="px-2 py-0.2 rounded-full bg-rose-100 text-rose-800 text-[10px] font-extrabold">
-                      {orders.length} orders
-                    </span>
-                  </div>
-                  <p className="text-slate-500 mt-0.5 text-[11px]">
-                    Completely purges all orders and queues. Fresh clean slate for the store.
-                  </p>
-                </div>
-              </label>
+            {/* Orders Summary to be deleted */}
+            <div className="p-3.5 rounded-2xl bg-rose-50/60 border border-rose-200/80 flex items-center justify-between">
+              <div className="text-xs">
+                <span className="font-extrabold text-slate-900 block">Total Orders To Delete</span>
+                <span className="text-[11px] text-slate-500 font-medium">All active and completed orders will be purged</span>
+              </div>
+              <span className="px-3 py-1 rounded-xl bg-rose-600 text-white text-xs font-black shadow-xs">
+                {orders.length} Orders
+              </span>
             </div>
 
             {/* Warning Note */}
@@ -1026,7 +978,7 @@ export default function AdminLiveOrdersPage() {
               <button
                 type="button"
                 onClick={handleConfirmClear}
-                disabled={isClearing || (clearScope === 'COMPLETED' && completedOrdersCount === 0 && orders.length > 0)}
+                disabled={isClearing || orders.length === 0}
                 className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-rose-600/20 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
               >
                 {isClearing ? (
@@ -1037,7 +989,7 @@ export default function AdminLiveOrdersPage() {
                 ) : (
                   <>
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Yes, Delete Permanently</span>
+                    <span>Yes, Delete All Orders</span>
                   </>
                 )}
               </button>
