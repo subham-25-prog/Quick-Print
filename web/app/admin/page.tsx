@@ -455,9 +455,9 @@ export default function AdminLiveOrdersPage() {
           </div>
 
           {/* Interactive Toolbar: Search Box, Filter Pills & Sync Button */}
-          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 pt-1">
+          <div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center justify-between gap-3 pt-1">
             {/* Search Input */}
-            <div className="relative flex-1 max-w-md">
+            <div className="relative flex-1 min-w-[260px] sm:min-w-[320px] max-w-md">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                 <Search className="w-4 h-4" />
               </div>
@@ -465,7 +465,7 @@ export default function AdminLiveOrdersPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, #order, phone, or file..."
+                placeholder="Search by name, order #, phone, or file..."
                 className="w-full pl-10 pr-9 py-2 rounded-2xl bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-200 text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-2xs"
               />
               {searchQuery && (

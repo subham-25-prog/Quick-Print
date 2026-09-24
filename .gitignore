@@ -44,4 +44,9 @@ Thumbs.db
 Quick-Print-live/
 QuickPrint-launch-setup/
 
+# Auto-generated agent docs
+AGENTS.md
+CLAUDE.md
+
+
 
