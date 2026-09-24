@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
-import { print, getDefaultPrinter } from 'pdf-to-printer';
+import { print, getDefaultPrinter, getPrinters } from 'pdf-to-printer';
 import { ClaimedJob } from './client';
 
 const execute = promisify(execFile);
@@ -20,6 +20,17 @@ export function parseDetectedPrinters(raw: unknown): DetectedPrinter[] {
       name: String(p.Name).trim(),
       status: p.WorkOffline || [6, 7].includes(p.PrinterStatus) ? 'OFFLINE' :
         printerHasBlockingError(p) ? 'ERROR' : 'ONLINE',
+    }));
+}
+
+export function parsePdfToPrinterList(raw: Array<{ name?: string; deviceId?: string }>): DetectedPrinter[] {
+  const list = Array.isArray(raw) ? raw : [];
+  const virtual = /OneNote|Shared Fax|XPS Document Writer|Microsoft Print to PDF|Root Print Queue|^Fax$/i;
+  return list
+    .filter((p) => (p?.name || p?.deviceId) && !virtual.test(p.name || p.deviceId || ''))
+    .map((p) => ({
+      name: String(p.name || p.deviceId).trim(),
+      status: 'ONLINE' as const,
     }));
 }
 
@@ -42,6 +53,9 @@ export function printerHasBlockingError(
 }
 
 export class WindowsPrinterService {
+  private cachedPrinters: DetectedPrinter[] = [];
+  private lastScanTime = 0;
+
   constructor(
     private configuredPrinter: string,
     private simulation = false
@@ -60,24 +74,79 @@ export class WindowsPrinterService {
   }
 
   async getDetectedPrinters(): Promise<DetectedPrinter[]> {
-    if (process.platform === 'win32') {
-      try {
-        const { stdout } = await execute(
-          'powershell.exe',
-          [
-            '-NoProfile',
-            '-NonInteractive',
-            '-Command',
-            '$ErrorActionPreference = "Stop"; Get-CimInstance Win32_Printer | Select-Object Name,PortName,DriverName,WorkOffline,PrinterStatus,DetectedErrorState | ConvertTo-Json -Compress',
-          ],
-          { windowsHide: true, timeout: 10000 }
-        );
-        return parseDetectedPrinters(JSON.parse(stdout.trim() || '[]'));
-      } catch {
-        // A failed scan is not an empty inventory or proof of a connection.
-        throw new Error('Windows printer discovery failed');
+    if (process.platform !== 'win32') return [];
+
+    const now = Date.now();
+    // Cache valid scan for 30s to avoid spamming Windows spooler/WMI on every 5s heartbeat
+    if (this.cachedPrinters.length > 0 && now - this.lastScanTime < 30000) {
+      return this.cachedPrinters;
+    }
+
+    // 1. Fast native Get-Printer (takes 100-300ms)
+    try {
+      const { stdout } = await execute(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          '$ErrorActionPreference = "Stop"; Get-Printer | Select-Object Name,PortName,DriverName,PrinterStatus | ConvertTo-Json -Compress',
+        ],
+        { windowsHide: true, timeout: 5000 }
+      );
+      const parsed = JSON.parse(stdout.trim() || '[]');
+      const printers = parseDetectedPrinters(parsed);
+      if (printers.length > 0) {
+        this.cachedPrinters = printers;
+        this.lastScanTime = now;
+        return printers;
+      }
+    } catch {
+      // Fall through to fast pdf-to-printer fallback
+    }
+
+    // 2. Fast pdf-to-printer native fallback (~100ms)
+    try {
+      const pList = await getPrinters();
+      const printers = parsePdfToPrinterList(pList);
+      if (printers.length > 0) {
+        this.cachedPrinters = printers;
+        this.lastScanTime = now;
+        return printers;
+      }
+    } catch {
+      // Fall through to WMI or cached inventory
+    }
+
+    // 3. Fallback to WMI if available
+    try {
+      const { stdout } = await execute(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          'Get-CimInstance Win32_Printer | Select-Object Name,PortName,DriverName,WorkOffline,PrinterStatus,DetectedErrorState | ConvertTo-Json -Compress',
+        ],
+        { windowsHide: true, timeout: 6000 }
+      );
+      const printers = parseDetectedPrinters(JSON.parse(stdout.trim() || '[]'));
+      if (printers.length > 0) {
+        this.cachedPrinters = printers;
+        this.lastScanTime = now;
+        return printers;
+      }
+    } catch {
+      // Return cached list rather than throwing
+      if (this.cachedPrinters.length > 0) {
+        return this.cachedPrinters;
       }
     }
+
+    if (this.cachedPrinters.length > 0) {
+      return this.cachedPrinters;
+    }
+
     return [];
   }
 
@@ -90,24 +159,40 @@ export class WindowsPrinterService {
     if (process.platform !== 'win32') {
       throw new Error('Live printing requires Windows');
     }
+    if (!this.configuredPrinter) {
+      throw new Error('No printer configured');
+    }
 
-    const { stdout } = await execute(
-      'powershell.exe',
-      [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        'Get-CimInstance Win32_Printer | Select-Object Name,WorkOffline,PrinterStatus,DetectedErrorState | ConvertTo-Json -Compress',
-      ],
-      { windowsHide: true, timeout: 10000 }
+    // Check specific printer directly by name (fast, ~50ms)
+    try {
+      const escaped = this.configuredPrinter.replace(/'/g, "''");
+      const { stdout } = await execute(
+        'powershell.exe',
+        [
+          '-NoProfile',
+          '-NonInteractive',
+          '-Command',
+          `Get-Printer -Name '${escaped}' -ErrorAction SilentlyContinue | Select-Object Name,PrinterStatus | ConvertTo-Json -Compress`,
+        ],
+        { windowsHide: true, timeout: 4000 }
+      );
+      if (stdout.trim()) {
+        const p = JSON.parse(stdout.trim());
+        if ([6, 7].includes(p.PrinterStatus)) {
+          throw new Error('Configured printer is offline or reporting an error');
+        }
+        return;
+      }
+    } catch (e: unknown) {
+      if ((e as Error)?.message?.includes('offline')) throw e;
+    }
+
+    // Fallback: check if printer exists in our cached list
+    const found = this.cachedPrinters.find(
+      (p) => p.name.toLowerCase() === this.configuredPrinter.toLowerCase()
     );
-
-    const parsed = JSON.parse(stdout || '[]');
-    const printers = Array.isArray(parsed) ? parsed : [parsed];
-    const printer = printers.find((p) => p.Name === this.configuredPrinter);
-
-    if (printerHasBlockingError(printer)) {
-      throw new Error('Configured printer is missing, offline, or reporting an error');
+    if (found && found.status === 'OFFLINE') {
+      throw new Error('Configured printer is offline or reporting an error');
     }
   }
 

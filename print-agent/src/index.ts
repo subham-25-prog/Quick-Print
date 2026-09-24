@@ -47,12 +47,11 @@ async function main() {
   let backoffMs = config.pollIntervalMs;
 
   while (!stopping) {
-    try {
-      if (Date.now() - heartbeatAt >= config.heartbeatIntervalMs) {
+    // 1. Heartbeat & Discovery (isolated so any network/WMI delay never blocks print queue processing)
+    if (Date.now() - heartbeatAt >= config.heartbeatIntervalMs) {
+      try {
         const detected = await printer.getDetectedPrinters();
         const installed = detected.map((p) => p.name);
-        // Choose an initial device only when no explicit choice exists. Never
-        // silently reroute an unavailable selected printer to another device.
         if (!printer.getConfiguredPrinter()) {
           const defaultName = await printer.getDefaultPrinterName();
           const initial = detected.find((p) => p.name === defaultName && p.status === 'ONLINE')
@@ -74,13 +73,19 @@ async function main() {
         health.updatePrinters(installed, printer.getConfiguredPrinter());
         health.recordHeartbeat();
         heartbeatAt = Date.now();
+      } catch (hbErr: unknown) {
+        console.error(
+          JSON.stringify({
+            event: 'heartbeat_deferred',
+            message: (hbErr as Error)?.message || String(hbErr),
+          })
+        );
       }
+    }
 
-      try {
-        await worker.tick();
-      } catch {
-        console.error(JSON.stringify({ event: 'printer_unavailable' }));
-      }
+    // 2. Immediate Print Job Polling & Processing
+    try {
+      await worker.tick();
       backoffMs = config.pollIntervalMs;
     } catch (err: unknown) {
       // Axios errors may contain Authorization headers: never serialize them.
