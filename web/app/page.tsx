@@ -608,7 +608,7 @@ export default function CustomerHomePage() {
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="e.g. Rahul Sharma"
+                      placeholder="e.g. Shubhamoy"
                       className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
                     />
                     <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
