@@ -16,6 +16,100 @@ Play,
 Trash2
 } from '@/components/ui/Icons';
 
+interface PrinterCardProps {
+  printer: { id?: string; name: string; status: string; is_selected: boolean; last_seen?: string };
+  isSelected: boolean;
+  selectionPending: boolean;
+  switchingPrinter: boolean;
+  onSelectPrinter: (name: string) => void;
+  onDeletePrinter: (e: React.MouseEvent, name: string) => void;
+}
+
+const PrinterCard = React.memo<PrinterCardProps>(({
+  printer,
+  isSelected,
+  selectionPending,
+  switchingPrinter,
+  onSelectPrinter,
+  onDeletePrinter,
+}) => {
+  const isOnline = printer.status === 'ONLINE';
+
+  return (
+    <div
+      className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 contain-layout ${
+        isSelected
+          ? 'border-indigo-600 bg-indigo-50/60 text-slate-900 ring-2 ring-indigo-600/30 shadow-xs'
+          : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50/60 text-slate-700'
+      }`}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div
+          className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
+            isSelected
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'bg-slate-100 text-slate-600'
+          }`}
+        >
+          <Printer className="w-5 h-5" />
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-slate-900 break-all">
+              {printer.name}
+            </span>
+            <span
+              className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold ${
+                isOnline
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+              }`}
+            >
+              {isOnline ? 'Online' : printer.status}
+            </span>
+          </div>
+          <div className="text-[10px] text-slate-400 font-medium truncate">
+            {isSelected ? (selectionPending ? 'Waiting for agent confirmation' : 'Selected output') : 'Select this printer for subsequent documents'}
+          </div>
+        </div>
+      </div>
+
+      <div className="shrink-0 flex items-center justify-end gap-1.5">
+        {isSelected ? (
+          <span className="px-3 py-1 rounded-xl text-[10px] font-extrabold bg-indigo-600 text-white flex items-center gap-1.5 shadow-2xs">
+            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+            <span>{selectionPending ? 'Pending' : 'Selected Printer'}</span>
+          </span>
+        ) : (
+          <button
+            type="button"
+            disabled={switchingPrinter}
+            aria-label={`Use ${printer.name}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectPrinter(printer.name);
+            }}
+            className="px-3 py-1 rounded-xl text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer touch-manipulation"
+          >
+            Use This
+          </button>
+        )}
+
+        <button
+          type="button"
+          disabled={switchingPrinter}
+          onClick={(e) => onDeletePrinter(e, printer.name)}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer touch-manipulation"
+          title={`Remove ${printer.name}`}
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    </div>
+  );
+});
+PrinterCard.displayName = 'PrinterCard';
+
 export default function AdminPrintingSettingsPage() {
   const [form, setForm] = useState<PricingConfig>(useInitialPricing());
   const [loading, setLoading] = useState(true);
@@ -93,7 +187,7 @@ export default function AdminPrintingSettingsPage() {
     };
   }, [loadPrinters]);
 
-  const handleSelectPrinter = async (printerName: string) => {
+  const handleSelectPrinter = useCallback(async (printerName: string) => {
     if (!printerName.trim() || printerBusy.current) return;
     const target = printerName.trim();
     printerBusy.current = true;
@@ -124,9 +218,9 @@ export default function AdminPrintingSettingsPage() {
       setSwitchingPrinter(false);
       void loadPrinters();
     }
-  };
+  }, [loadPrinters]);
 
-  const handleDeletePrinter = async (e: React.MouseEvent, printerName: string) => {
+  const handleDeletePrinter = useCallback(async (e: React.MouseEvent, printerName: string) => {
     e.stopPropagation();
     if (!window.confirm(`Remove "${printerName}" from the list?`)) {
       return;
@@ -148,7 +242,7 @@ export default function AdminPrintingSettingsPage() {
     } catch {
       showToast('Network error removing printer', 'error');
     }
-  };
+  }, [loadPrinters]);
 
   const handleSave = async () => {
     setSaving(true);
@@ -310,80 +404,16 @@ export default function AdminPrintingSettingsPage() {
             {printers.length > 0 ? (
               printers.map((printer) => {
                 const isSelected = form.selected_printer === printer.name || (!form.selected_printer && printer.is_selected);
-                const isOnline = printer.status === 'ONLINE';
-
                 return (
-                  <div
+                  <PrinterCard
                     key={printer.name}
-                    className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                      isSelected
-                        ? 'border-indigo-600 bg-indigo-50/60 text-slate-900 ring-2 ring-indigo-600/30 shadow-xs'
-                        : 'border-slate-200 bg-white hover:border-indigo-200 hover:bg-slate-50/60 text-slate-700'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'bg-slate-100 text-slate-600'
-                        }`}
-                      >
-                        <Printer className="w-5 h-5" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="text-xs font-bold text-slate-900 break-all">
-                            {printer.name}
-                          </span>
-                          <span
-                            className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold ${
-                              isOnline
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-slate-100 text-slate-600 border border-slate-200'
-                            }`}
-                          >
-                            {isOnline ? 'Online' : printer.status}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-slate-400 font-medium truncate">
-                          {isSelected ? (selectionPending ? 'Waiting for agent confirmation' : 'Selected output') : 'Select this printer for subsequent documents'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 flex items-center justify-end gap-1.5">
-                      {isSelected ? (
-                        <span className="px-3 py-1 rounded-xl text-[10px] font-extrabold bg-indigo-600 text-white flex items-center gap-1.5 shadow-2xs">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-                          <span>{selectionPending ? 'Pending' : 'Selected Printer'}</span>
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={switchingPrinter}
-                          aria-label={`Use ${printer.name}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSelectPrinter(printer.name);
-                          }}
-                          className="px-3 py-1 rounded-xl text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer"
-                        >
-                          Use This
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        disabled={switchingPrinter}
-                        onClick={(e) => handleDeletePrinter(e, printer.name)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                        title="Remove printer from list"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
+                    printer={printer}
+                    isSelected={isSelected}
+                    selectionPending={selectionPending}
+                    switchingPrinter={switchingPrinter}
+                    onSelectPrinter={handleSelectPrinter}
+                    onDeletePrinter={handleDeletePrinter}
+                  />
                 );
               })
             ) : (

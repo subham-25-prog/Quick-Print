@@ -27,7 +27,7 @@ interface LivePrintVisualizerProps {
   colorMode?: string;
 }
 
-export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
+export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.memo(({
   jobStatus,
   orderStatus,
   paymentStatus,
@@ -185,7 +185,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
   ];
 
   return (
-    <div className="relative w-full overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-5 sm:p-7 text-white space-y-6 transition-all duration-300">
+    <div className="relative w-full overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-5 sm:p-7 text-white space-y-6 transition-all duration-300 contain-layout">
       {/* Ambient background glow */}
       <div className={`absolute top-0 right-1/4 w-72 h-32 blur-3xl pointer-events-none rounded-full transition-all duration-700 ${
         currentStep >= 5 ? 'bg-emerald-500/25' : 'bg-indigo-600/15'
@@ -468,4 +468,5 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = ({
       )}
     </div>
   );
-};
+});
+LivePrintVisualizer.displayName = 'LivePrintVisualizer';

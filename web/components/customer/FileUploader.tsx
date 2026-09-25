@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Plus, Minus } from '@/components/ui/Icons';
 import { BatchFileItem } from '@/types';
 import { detectFilePageCount, calculateBatchTotalPages } from '@/lib/batch-compiler';
@@ -17,13 +17,13 @@ interface FileUploaderProps {
   isProcessingBatch?: boolean;
 }
 
-const DocumentPreviewBox: React.FC<{
+const DocumentPreviewBox = React.memo<{
   file?: File | Blob | null;
   name: string;
   pageCount?: number;
   fallbackUrl?: string;
   className?: string;
-}> = ({ file, name, pageCount = 1, fallbackUrl, className = '' }) => {
+}>(({ file, name, pageCount = 1, fallbackUrl, className = '' }) => {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
 
   const isPdf =
@@ -47,7 +47,7 @@ const DocumentPreviewBox: React.FC<{
 
   return (
     <div
-      className={`w-12 h-14 sm:w-13 sm:h-15 rounded-xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden shrink-0 flex flex-col justify-between relative select-none ${className}`}
+      className={`w-12 h-14 sm:w-13 sm:h-15 rounded-xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden shrink-0 flex flex-col justify-between relative select-none contain-paint ${className}`}
       title={name}
     >
       {isImg ? (
@@ -97,7 +97,77 @@ const DocumentPreviewBox: React.FC<{
       )}
     </div>
   );
-};
+});
+DocumentPreviewBox.displayName = 'DocumentPreviewBox';
+
+interface BatchFileRowProps {
+  item: BatchFileItem;
+  idx: number;
+  onUpdateCopies: (id: string, delta: number) => void;
+  onRemove: (id: string) => void;
+}
+
+const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies, onRemove }) => {
+  return (
+    <div
+      className="animate-fade-in-scale p-3 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-2xs flex flex-wrap items-center justify-between gap-3 transition-all duration-150 contain-layout"
+    >
+      {/* Left: Small preview box */}
+      <div className="flex items-center gap-3 min-w-0 flex-1 select-none">
+        <DocumentPreviewBox file={item.file} name={item.name} pageCount={item.pageCount} />
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-semibold text-slate-800 truncate" title={item.name}>
+            <span className="text-slate-400 font-normal mr-1">#{idx + 1}</span>
+            <span className="truncate">{item.name}</span>
+          </div>
+          <div className="text-[11px] text-slate-500 font-medium mt-1 flex items-center gap-2 flex-wrap">
+            <span className="text-indigo-600 font-semibold">
+              {item.pageCount} {item.pageCount === 1 ? 'page' : 'pages'}
+            </span>
+            <span className="text-slate-300">·</span>
+            <span>{formatFileSize(item.size)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Right: Per-File Copies Stepper & Remove */}
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50/80 p-0.5 shadow-2xs">
+          <button
+            type="button"
+            onClick={() => onUpdateCopies(item.id, -1)}
+            disabled={item.copies <= 1}
+            className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-manipulation"
+            title="Decrease copies"
+          >
+            <Minus className="w-3 h-3" />
+          </button>
+          <span className="px-2.5 text-xs font-bold text-slate-800 min-w-[54px] text-center select-none">
+            {item.copies} {item.copies === 1 ? 'copy' : 'copies'}
+          </span>
+          <button
+            type="button"
+            onClick={() => onUpdateCopies(item.id, 1)}
+            className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-manipulation"
+            title="Increase copies"
+          >
+            <Plus className="w-3 h-3" />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onRemove(item.id)}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all cursor-pointer touch-manipulation"
+          title="Remove file"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+});
+BatchFileRow.displayName = 'BatchFileRow';
 
 function generateUUID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -287,7 +357,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const updateItemCopies = (id: string, delta: number) => {
+  const updateItemCopies = useCallback((id: string, delta: number) => {
     if (!onBatchFilesChange) return;
     const updated = batchFiles.map((item) => {
       if (item.id === id) {
@@ -297,13 +367,13 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       return item;
     });
     onBatchFilesChange(updated);
-  };
+  }, [batchFiles, onBatchFilesChange]);
 
-  const removeBatchItem = (id: string) => {
+  const removeBatchItem = useCallback((id: string) => {
     if (!onBatchFilesChange) return;
     const updated = batchFiles.filter((item) => item.id !== id);
     onBatchFilesChange(updated);
-  };
+  }, [batchFiles, onBatchFilesChange]);
 
   // --- MULTIPLE FILES MODE RENDER ---
   if (allowMultiple) {
@@ -361,67 +431,15 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           <div className="space-y-2.5">
             {/* Batch items list */}
             <div className="space-y-2">
-              {batchFiles.map((item, idx) => {
-                return (
-                  <div
-                    key={item.id}
-                    className="animate-fade-in-scale p-3 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-2xs flex flex-wrap items-center justify-between gap-3 transition-all duration-200"
-                  >
-                    {/* Left: Small preview box where user can see uploaded image or PDF content */}
-                    <div className="flex items-center gap-3 min-w-0 flex-1 select-none">
-                      <DocumentPreviewBox file={item.file} name={item.name} pageCount={item.pageCount} />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-xs font-semibold text-slate-800 truncate" title={item.name}>
-                          <span className="text-slate-400 font-normal mr-1">#{idx + 1}</span>
-                          <span className="truncate">{item.name}</span>
-                        </div>
-                        <div className="text-[11px] text-slate-500 font-medium mt-1 flex items-center gap-2 flex-wrap">
-                          <span className="text-indigo-600 font-semibold">
-                            {item.pageCount} {item.pageCount === 1 ? 'page' : 'pages'}
-                          </span>
-                          <span className="text-slate-300">·</span>
-                          <span>{formatFileSize(item.size)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right: Per-File Copies Stepper & Remove */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50/80 p-0.5 shadow-2xs">
-                        <button
-                          type="button"
-                          onClick={() => updateItemCopies(item.id, -1)}
-                          disabled={item.copies <= 1}
-                          className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer"
-                          title="Decrease copies"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="px-2.5 text-xs font-bold text-slate-800 min-w-[54px] text-center">
-                          {item.copies} {item.copies === 1 ? 'copy' : 'copies'}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => updateItemCopies(item.id, 1)}
-                          className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer"
-                          title="Increase copies"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => removeBatchItem(item.id)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all cursor-pointer"
-                        title="Remove file"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              {batchFiles.map((item, idx) => (
+                <BatchFileRow
+                  key={item.id}
+                  item={item}
+                  idx={idx}
+                  onUpdateCopies={updateItemCopies}
+                  onRemove={removeBatchItem}
+                />
+              ))}
             </div>
 
             {/* Add More Files Button & Batch Summary */}

@@ -1259,9 +1259,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         </div>
 
         {/* Centered Document Canvas Container */}
-        <div className="flex-1 w-full flex items-center justify-center overflow-auto p-1 sm:p-4 my-auto relative">
+        <div className="flex-1 w-full flex items-center justify-center overflow-auto p-1 sm:p-4 my-auto relative touch-manipulation">
           <div
-            className="relative bg-white shadow-[0_12px_40px_rgba(0,0,0,0.65)] transition-all duration-150 rounded-xs flex items-center justify-center overflow-hidden border border-slate-400/20"
+            className="relative bg-white shadow-[0_12px_40px_rgba(0,0,0,0.65)] transition-all duration-150 rounded-xs flex items-center justify-center overflow-hidden border border-slate-400/20 contain-paint"
             style={{
               aspectRatio: `${paperAspectRatio}`,
               width: isLandscape
@@ -1269,7 +1269,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 : `${Math.round(330 * (zoomLevel / 100))}px`,
               maxWidth: '92%',
               maxHeight: '68vh',
-              transform: `rotate(${rotationAngle}deg)`,
+              transform: `rotate(${rotationAngle}deg) translateZ(0)`,
+              willChange: 'transform',
               filter: isBw ? 'grayscale(100%)' : 'none',
             }}
           >
@@ -1300,14 +1301,14 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         </div>
 
         {/* Bottom Floating Navigation & Zoom Bar (Optimized for Mobile) */}
-        <div className="bg-[#202124]/95 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#3c4043] flex items-center gap-2 sm:gap-3 text-xs text-white shadow-xl z-20 shrink-0 mb-1">
+        <div className="bg-[#202124]/95 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#3c4043] flex items-center gap-2 sm:gap-3 text-xs text-white shadow-xl z-20 shrink-0 mb-1 touch-manipulation">
           {/* Page Navigator */}
           <div className="flex items-center gap-0.5 sm:gap-1">
             <button
               type="button"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage <= 1}
-              className="p-1 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+              className="p-1 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer touch-manipulation"
               title="Previous sheet"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -1322,7 +1323,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 setCurrentPage((p) => Math.min(totalSheetsToPreview, p + 1))
               }
               disabled={currentPage >= totalSheetsToPreview}
-              className="p-1 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+              className="p-1 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer touch-manipulation"
               title="Next sheet"
             >
               <ChevronRight className="w-4 h-4" />
@@ -1336,7 +1337,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <button
               type="button"
               onClick={() => setZoomLevel((z) => Math.max(50, z - 20))}
-              className="p-1 rounded-full hover:bg-slate-700 cursor-pointer"
+              className="p-1 rounded-full hover:bg-slate-700 cursor-pointer touch-manipulation"
               title="Zoom out"
             >
               <ZoomOut className="w-3.5 h-3.5" />
@@ -1344,7 +1345,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <button
               type="button"
               onClick={() => setZoomLevel(100)}
-              className="text-[10px] sm:text-[11px] font-mono text-slate-300 hover:text-white px-0.5 sm:px-1"
+              className="text-[10px] sm:text-[11px] font-mono text-slate-300 hover:text-white px-0.5 sm:px-1 touch-manipulation"
               title="Reset Zoom"
             >
               {zoomLevel}%
@@ -1352,7 +1353,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <button
               type="button"
               onClick={() => setZoomLevel((z) => Math.min(200, z + 20))}
-              className="p-1 rounded-full hover:bg-slate-700 cursor-pointer"
+              className="p-1 rounded-full hover:bg-slate-700 cursor-pointer touch-manipulation"
               title="Zoom in"
             >
               <ZoomIn className="w-3.5 h-3.5" />
@@ -1365,7 +1366,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           <button
             type="button"
             onClick={() => setRotationAngle((r) => (r + 90) % 360)}
-            className="p-1 rounded-full hover:bg-slate-700 cursor-pointer"
+            className="p-1 rounded-full hover:bg-slate-700 cursor-pointer touch-manipulation"
             title="Rotate View 90°"
           >
             <RotateCw className="w-3.5 h-3.5" />
@@ -1373,7 +1374,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         </div>
 
         {/* Bottom Quick-Action Bar in Preview Canvas: Edit on left side, Confirm & Pay on right bottom */}
-        <div className="w-full px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-2.5 md:gap-3 z-20 shrink-0 bg-[#202124]/95 backdrop-blur-md border-t border-[#3c4043]/70 shadow-lg">
+        <div className="w-full px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-2.5 md:gap-3 z-20 shrink-0 bg-[#202124]/95 backdrop-blur-md border-t border-[#3c4043]/70 shadow-lg touch-manipulation">
           {/* Left Side: Edit Button */}
           <button
             type="button"
@@ -1387,7 +1388,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 firstInput?.focus();
               }
             }}
-            className="flex-1 md:flex-none h-11 md:h-auto py-2 md:py-3 px-3 md:px-6 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:bg-slate-900 border border-slate-600/80 md:border-2 md:border-indigo-400/60 md:hover:border-indigo-300 text-white text-xs sm:text-sm md:text-base font-bold flex items-center justify-center md:justify-start gap-2 md:gap-2.5 shadow-xs md:shadow-md md:shadow-black/40 md:ring-1 md:ring-indigo-500/20 transition-all cursor-pointer active:scale-95"
+            className="flex-1 md:flex-none h-11 md:h-auto py-2 md:py-3 px-3 md:px-6 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:bg-slate-900 border border-slate-600/80 md:border-2 md:border-indigo-400/60 md:hover:border-indigo-300 text-white text-xs sm:text-sm md:text-base font-bold flex items-center justify-center md:justify-start gap-2 md:gap-2.5 shadow-xs md:shadow-md md:shadow-black/40 md:ring-1 md:ring-indigo-500/20 transition-all cursor-pointer active:scale-95 touch-manipulation"
             title="Edit Print Settings"
           >
             <Edit className="w-4 h-4 md:w-5 md:h-5 text-indigo-300 shrink-0" />
@@ -1401,7 +1402,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           <button
             type="button"
             onClick={handlePrintApply}
-            className="flex-[1.4] md:flex-none h-11 md:h-auto py-2 md:py-3 px-4 md:px-7 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm md:text-base font-extrabold shadow-md md:shadow-lg shadow-emerald-950/60 ring-1 md:ring-2 ring-emerald-400/50 hover:ring-emerald-300 transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1.5 md:gap-2 md:ml-auto"
+            className="flex-[1.4] md:flex-none h-11 md:h-auto py-2 md:py-3 px-4 md:px-7 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm md:text-base font-extrabold shadow-md md:shadow-lg shadow-emerald-950/60 ring-1 md:ring-2 ring-emerald-400/50 hover:ring-emerald-300 transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1.5 md:gap-2 md:ml-auto touch-manipulation"
           >
             <span>Confirm &amp; Pay</span>
             <span className="text-base md:text-lg leading-none">→</span>
