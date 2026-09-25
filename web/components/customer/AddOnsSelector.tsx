@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import { AddOnOptions, PricingConfig } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 
@@ -10,7 +10,7 @@ interface AddOnsSelectorProps {
   pricing: PricingConfig;
 }
 
-export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
+const AddOnsSelectorComponent: React.FC<AddOnsSelectorProps> = ({
   addOns,
   onAddOnsChange,
   pricing,
@@ -58,12 +58,12 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
   }
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-2.5 contain-layout">
       {/* 1. Spiral Binding */}
       {enabledAddons.spiralBinding !== false && (
         <label
           onClick={() => toggleStandardAddon('spiralBinding')}
-          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all duration-150 active-press select-none ${
             addOns.spiralBinding
               ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
               : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -74,7 +74,7 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
               type="checkbox"
               checked={!!addOns.spiralBinding}
               onChange={() => {}}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer pointer-events-none"
             />
             <div>
               <div className="text-xs font-bold text-slate-900">Spiral Binding (Plastic Coil)</div>
@@ -93,7 +93,7 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
       {enabledAddons.hardBinding !== false && (
         <label
           onClick={() => toggleStandardAddon('hardBinding')}
-          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all duration-150 active-press select-none ${
             addOns.hardBinding
               ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
               : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -104,7 +104,7 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
               type="checkbox"
               checked={!!addOns.hardBinding}
               onChange={() => {}}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer pointer-events-none"
             />
             <div>
               <div className="text-xs font-bold text-slate-900">Hard Cover Book Binding</div>
@@ -123,7 +123,7 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
       {enabledAddons.softBinding === true && (
         <label
           onClick={() => toggleStandardAddon('softBinding')}
-          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all duration-150 active-press select-none ${
             addOns.softBinding
               ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
               : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -134,7 +134,7 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
               type="checkbox"
               checked={!!addOns.softBinding}
               onChange={() => {}}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer pointer-events-none"
             />
             <div>
               <div className="text-xs font-bold text-slate-900">Soft Cover Binding</div>
@@ -153,7 +153,7 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
       {enabledAddons.stapling !== false && (
         <label
           onClick={() => toggleStandardAddon('stapling')}
-          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all duration-150 active-press select-none ${
             addOns.stapling
               ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
               : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -164,7 +164,7 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
               type="checkbox"
               checked={!!addOns.stapling}
               onChange={() => {}}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer pointer-events-none"
             />
             <div>
               <div className="text-xs font-bold text-slate-900">Corner Stapling</div>
@@ -183,7 +183,7 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
       {enabledAddons.lamination !== false && (
         <label
           onClick={() => toggleStandardAddon('lamination')}
-          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all duration-150 active-press select-none ${
             addOns.lamination
               ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
               : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -194,7 +194,7 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
               type="checkbox"
               checked={!!addOns.lamination}
               onChange={() => {}}
-              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+              className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer pointer-events-none"
             />
             <div>
               <div className="text-xs font-bold text-slate-900">Soft Lamination (per page)</div>
@@ -216,7 +216,7 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
           <label
             key={addon.id}
             onClick={() => toggleCustomAddon(addon.id)}
-            className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+            className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all duration-150 active-press select-none ${
               isSelected
                 ? 'border-indigo-600 bg-indigo-50/50 text-slate-900 ring-1 ring-indigo-600'
                 : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
@@ -227,7 +227,7 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
                 type="checkbox"
                 checked={isSelected}
                 onChange={() => {}}
-                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer"
+                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-0 cursor-pointer pointer-events-none"
               />
               <div>
                 <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
@@ -247,3 +247,5 @@ export const AddOnsSelector: React.FC<AddOnsSelectorProps> = ({
     </div>
   );
 };
+
+export const AddOnsSelector = memo(AddOnsSelectorComponent);

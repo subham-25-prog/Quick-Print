@@ -3,6 +3,7 @@ import './globals.css';
 import { shopConfig } from '@/lib/config';
 import { getInitialPricing } from '@/lib/initial-pricing-server';
 import { InitialPricingProvider } from '@/lib/initial-pricing';
+import { PwaRegistrar } from '@/components/PwaRegistrar';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +19,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: `${pricing.shop_name} – Self-Service Document Printing`,
     description: `${shopConfig.tagline}. Upload a document, pay securely, and track your verified print job.`,
+    manifest: '/manifest.json',
+    icons: {
+      icon: '/icon.svg',
+      apple: '/icon.svg',
+    },
   };
 }
 
@@ -36,7 +42,10 @@ export default async function RootLayout({
           <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] bg-purple-600/10 blur-[130px] rounded-full" />
         </div>
         <div className="relative z-10 flex-1 flex flex-col">
-          <InitialPricingProvider value={pricing}>{children}</InitialPricingProvider>
+          <InitialPricingProvider value={pricing}>
+            {children}
+            <PwaRegistrar />
+          </InitialPricingProvider>
         </div>
       </body>
     </html>

@@ -1,5 +1,6 @@
 'use client';
-import { useEffect, useState, useRef } from 'react';
+
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
@@ -37,6 +38,23 @@ export default function OrderStatusPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [isOfflineCached, setIsOfflineCached] = useState(false);
+
+  // Restore order state from local cache instantly (0ms latency / offline-first)
+  useEffect(() => {
+    if (!id) return;
+    try {
+      const cached = localStorage.getItem(`quickprint_cached_status_${id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.order?.id) {
+          setData(parsed);
+          setLoading(false);
+          setIsOfflineCached(true);
+        }
+      }
+    } catch {}
+  }, [id]);
 
   useEffect(() => {
     if (data?.order?.order_number && typeof document !== 'undefined') {
@@ -45,9 +63,7 @@ export default function OrderStatusPage() {
   }, [data?.order?.order_number, shopName]);
 
   useEffect(() => {
-    setData(null);
     setError('');
-    setLoading(true);
     setCopied(false);
     if (!token) {
       setLoading(false);
@@ -59,7 +75,9 @@ export default function OrderStatusPage() {
       intervalMs: 1000,
       poll: async (signal) => {
         const res = await fetch('/api/orders/' + id, {
-          headers: { 'x-order-access-token': token }, cache: 'no-store', signal,
+          headers: { 'x-order-access-token': token },
+          cache: 'no-store',
+          signal,
         });
         const result = await res.json();
         if (stopped || signal.aborted) return false;
@@ -73,8 +91,15 @@ export default function OrderStatusPage() {
         }
         if (!result?.order?.id) throw new Error('Order status is temporarily unavailable.');
         setData(result);
+        setIsOfflineCached(false);
         setError('');
         setLoading(false);
+
+        // Cache the verified status locally
+        try {
+          localStorage.setItem(`quickprint_cached_status_${id}`, JSON.stringify(result));
+        } catch {}
+
         if (result.order.id !== id) {
           const nextToken = result.orderAccessToken || token;
           router.replace('/status/' + result.order.id + '?access_token=' + encodeURIComponent(nextToken));
@@ -90,6 +115,7 @@ export default function OrderStatusPage() {
         }
       },
     });
+
     let channel: BroadcastChannel | undefined;
     try {
       if ('BroadcastChannel' in window) {
@@ -99,6 +125,7 @@ export default function OrderStatusPage() {
         };
       }
     } catch {}
+
     return () => {
       stopped = true;
       polling.stop();
@@ -108,7 +135,7 @@ export default function OrderStatusPage() {
 
   useEffect(() => () => clearTimeout(copyTimer.current), []);
 
-  const copyOrderId = async () => {
+  const copyOrderId = useCallback(async () => {
     if (!data?.order?.order_number) return;
     try {
       await navigator.clipboard.writeText(data.order.order_number);
@@ -118,7 +145,7 @@ export default function OrderStatusPage() {
     } catch {
       setError('Unable to copy. Please select and copy the order number manually.');
     }
-  };
+  }, [data?.order?.order_number]);
 
   const isAwaitingVerification =
     data?.order?.payment_status === 'AWAITING_VERIFICATION' ||
@@ -148,9 +175,9 @@ export default function OrderStatusPage() {
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-16">
       <Header shopName={shopName} />
 
-      <main className="max-w-xl mx-auto w-full px-4 pt-5 space-y-4">
+      <main className="max-w-xl mx-auto w-full px-4 pt-5 space-y-4 contain-layout">
         {/* Top Connectivity & Live Indicator */}
-        <div className="flex items-center justify-between px-2 text-xs">
+        <div className="flex items-center justify-between px-2 text-xs select-none">
           <div className="flex items-center gap-2">
             <span className="relative flex h-2.5 w-2.5">
               <span
@@ -186,13 +213,13 @@ export default function OrderStatusPage() {
           </div>
           <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Live Sync
+            {isOfflineCached ? 'Cached Offline' : 'Live Sync'}
           </span>
         </div>
 
         {/* Loading placeholder */}
         {loading && !data && (
-          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xs text-center space-y-3">
+          <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xs text-center space-y-3 animate-pulse">
             <RefreshCw className="w-8 h-8 animate-spin text-indigo-600 mx-auto" />
             <p className="text-sm font-semibold text-slate-700">Loading verified order…</p>
           </div>
@@ -200,7 +227,7 @@ export default function OrderStatusPage() {
 
         {/* Error notification */}
         {error && (
-          <div role="alert" className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm flex items-start gap-3">
+          <div role="alert" className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm flex items-start gap-3 animate-fade-in-up">
             <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div>
               <p className="font-bold">Notice</p>
@@ -220,7 +247,7 @@ export default function OrderStatusPage() {
 
             {/* Awaiting Cash Verification Card OR Live Animated 5-Step Print Status Pipeline */}
             {isAwaitingVerification ? (
-              <section className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 rounded-3xl p-6 sm:p-7 text-white shadow-lg space-y-4 relative overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+              <section className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 rounded-3xl p-6 sm:p-7 text-white shadow-lg space-y-4 relative overflow-hidden animate-fade-in-scale">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="relative flex h-3 w-3">
@@ -272,10 +299,10 @@ export default function OrderStatusPage() {
             )}
 
             {/* 2. Order Reference & Receipt Card */}
-            <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
+            <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4 contain-layout">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block select-none">
                     Order Number
                   </span>
                   <span className="font-mono text-base font-extrabold text-slate-900 tracking-tight">
@@ -285,7 +312,7 @@ export default function OrderStatusPage() {
                 <button
                   type="button"
                   onClick={copyOrderId}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active-press cursor-pointer select-none"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied ? 'Copied' : 'Copy'}</span>
@@ -308,7 +335,7 @@ export default function OrderStatusPage() {
               </div>
 
               {/* Specs Pills */}
-              <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1">
+              <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1 select-none">
                 <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
                   <span className="text-[10px] text-slate-400 block uppercase font-bold">Paper</span>
                   <span className="font-bold text-slate-800">{data.order.paper_size}</span>
@@ -329,28 +356,26 @@ export default function OrderStatusPage() {
 
               {/* Price Total */}
               <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-600">
+                <span className="text-sm font-bold text-slate-600 select-none">
                   {isAwaitingVerification ? 'Amount Due' : 'Total Paid'}
                 </span>
                 <div className="text-right">
                   <span className="text-xl font-black text-emerald-700">
                     {formatCurrency(data.order.total_amount)}
                   </span>
-                  <span className={`text-[10px] block font-semibold ${isAwaitingVerification ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  <span className={`text-[10px] block font-semibold select-none ${isAwaitingVerification ? 'text-amber-600' : 'text-emerald-600'}`}>
                     {isAwaitingVerification ? '⏳ Cash – Pay at Counter' : data.order.payment_method === 'CASH' ? '✓ Cash Verified' : '✓ Paid Online'}
                   </span>
                 </div>
               </div>
             </section>
-
-
           </>
         )}
 
         {/* Action Button: Print Another Document */}
         <Link
           href="/"
-          className="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-center font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+          className="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-center font-bold text-sm shadow-md transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active-press select-none"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Print Another Document</span>

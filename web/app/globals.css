@@ -8,9 +8,32 @@
     --foreground: 222.2 84% 4.9%;
   }
 
+  html {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+    overscroll-behavior-y: contain;
+  }
+
   body {
     @apply bg-slate-100 text-slate-900 antialiased min-h-screen selection:bg-indigo-600 selection:text-white;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Instant touch response: Eradicate 300ms tap delay and touch lag across all interactive surfaces */
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  [role="button"],
+  label[for] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
@@ -33,35 +56,70 @@
   background: #94a3b8;
 }
 
-/* Premium Animation Keyframes */
+/* 120 FPS Hardware Acceleration & Compositor Primitives */
+.gpu-layer {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity;
+}
+
+.will-change-transform {
+  will-change: transform;
+}
+
+.will-change-opacity {
+  will-change: opacity;
+}
+
+/* 120 FPS High-Performance Layout Containment */
+.contain-layout {
+  contain: layout style paint;
+}
+
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 80px;
+}
+
+/* Instant Tactile Touch Press */
+.active-press {
+  transition: transform 0.08s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.08s ease;
+}
+
+.active-press:active:not(:disabled) {
+  transform: scale(0.975);
+}
+
+/* Premium Animation Keyframes (Strictly transform & opacity for 120 FPS compositing) */
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translate3d(0, 12px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes fadeInScale {
   from {
     opacity: 0;
-    transform: scale(0.96) translateY(4px);
+    transform: scale3d(0.96, 0.96, 1) translate3d(0, 4px, 0);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: scale3d(1, 1, 1) translate3d(0, 0, 0);
   }
 }
 
 @keyframes shimmer {
   0% {
-    transform: translateX(-120%);
+    transform: translate3d(-120%, 0, 0);
   }
   100% {
-    transform: translateX(220%);
+    transform: translate3d(220%, 0, 0);
   }
 }
 
@@ -76,20 +134,22 @@
 
 @keyframes floatGentle {
   0%, 100% {
-    transform: translateY(0);
+    transform: translate3d(0, 0, 0);
   }
   50% {
-    transform: translateY(-3px);
+    transform: translate3d(0, -3px, 0);
   }
 }
 
 /* Premium Animation Utility Classes */
 .animate-fade-in-up {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 .animate-fade-in-scale {
   animation: fadeInScale 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
 }
 
 .animate-glow-pulse {
@@ -98,12 +158,15 @@
 
 .animate-float-gentle {
   animation: floatGentle 3s ease-in-out infinite;
+  will-change: transform;
 }
 
 /* Premium Shimmer Button Highlight */
 .btn-shimmer {
   position: relative;
   overflow: hidden;
+  transform: translate3d(0, 0, 0);
+  touch-action: manipulation;
 }
 
 .btn-shimmer::after {
@@ -119,41 +182,48 @@
     rgba(255, 255, 255, 0.22) 50%,
     transparent 65%
   );
-  transform: translateX(-120%);
+  transform: translate3d(-120%, 0, 0);
   animation: shimmer 4.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
+  will-change: transform;
 }
 
-/* Tactile micro-interactions */
+/* Tactile micro-interactions with GPU-accelerated compositing */
 .card-hover-lift {
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  touch-action: manipulation;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.18s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.15s ease;
 }
 
 .card-hover-lift:hover {
-  transform: translateY(-2px);
+  transform: translate3d(0, -2px, 0);
   box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.08);
 }
 
 .card-hover-lift:active {
-  transform: translateY(0) scale(0.985);
+  transform: translate3d(0, 0, 0) scale(0.985);
 }
 
 .stepper-btn {
-  transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s ease;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: transform 0.1s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.12s ease;
 }
 
 .stepper-btn:active:not(:disabled) {
   transform: scale(0.88);
 }
 
-/* Keep the primary action responsive without drawing attention away from the form. */
+/* Keep the primary action responsive without drawing attention away from the form */
 .btn-shimmer .preview-arrow {
   transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn-shimmer:hover .preview-arrow,
 .btn-shimmer:focus-visible .preview-arrow {
-  transform: translateX(3px);
+  transform: translate3d(3px, 0, 0);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -166,4 +236,3 @@
     transition-duration: 0.01ms !important;
   }
 }
-
