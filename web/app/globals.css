@@ -141,7 +141,63 @@
   }
 }
 
+@keyframes laserScan {
+  0% {
+    transform: translate3d(0, -100%, 0);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  75% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 180%, 0);
+    opacity: 0;
+  }
+}
+
+@keyframes paperSlideOut {
+  0% {
+    transform: translate3d(0, -14px, 0) scale(0.96);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate3d(0, 3px, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ledBlink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
 /* Premium Animation Utility Classes */
+.animate-laser-scan {
+  animation: laserScan 2.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  will-change: transform, opacity;
+}
+
+.animate-paper-slide {
+  animation: paperSlideOut 3.5s cubic-bezier(0.16, 1, 0.3, 1) infinite alternate;
+  will-change: transform, opacity;
+}
+
+.animate-led-blink {
+  animation: ledBlink 1.2s ease-in-out infinite;
+  will-change: opacity;
+}
+
 .animate-fade-in-up {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: transform, opacity;

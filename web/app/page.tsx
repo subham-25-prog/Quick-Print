@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
+import { PrinterHero } from '@/components/customer/PrinterHero';
 import { FileUploader, UploadedFileState } from '@/components/customer/FileUploader';
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
@@ -296,6 +297,19 @@ export default function CustomerHomePage() {
     ? 1
     : Math.max(1, hasBatch && batchFiles.length === 1 ? batchFiles[0].copies || copies : copies);
 
+  const currentFileName = useMemo(() => {
+    if (hasBatch && batchFiles.length > 1) {
+      return `${batchFiles.length} Documents`;
+    }
+    if (hasBatch && batchFiles.length === 1) {
+      return batchFiles[0].name;
+    }
+    if (uploadedFile) {
+      return uploadedFile.file.name;
+    }
+    return undefined;
+  }, [hasBatch, batchFiles, uploadedFile]);
+
   const priceBreakdown = useMemo(() => {
     try {
       return calculateOrderPrice(
@@ -495,6 +509,13 @@ export default function CustomerHomePage() {
       <Header shopName={pricing.shop_name} />
 
       <main className="max-w-xl mx-auto w-full px-4 pt-4 pb-4 space-y-4">
+        {/* Shop Profile & Interactive Printer Station */}
+        <PrinterHero
+          shopName={pricing.shop_name}
+          uploadedFileName={currentFileName}
+          pageCount={uploadedFile || hasBatch ? totalDocPages : undefined}
+        />
+
         {!priceBreakdown && (
           <p role="alert" className="rounded-xl bg-amber-50 p-4 text-amber-900">
             Pricing is unavailable for this selection. Choose another print option or contact the shopkeeper.
@@ -535,7 +556,7 @@ export default function CustomerHomePage() {
         )}
 
         {/* Card 1: 1. Upload Document */}
-        <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-3 hover:border-slate-300 contain-layout">
+        <section id="upload-section" className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-3 hover:border-slate-300 contain-layout">
           <div className="flex items-center justify-between select-none">
             <h2 className="text-sm font-bold text-slate-900">
               1. Upload Document{allowMultiple ? 's' : ''}
