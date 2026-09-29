@@ -57,10 +57,12 @@
 }
 
 /* 120 FPS Hardware Acceleration & Compositor Primitives */
-.gpu-layer {
+.gpu-layer,
+.hardware-accelerated {
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;
   perspective: 1000px;
+  transform-style: preserve-3d;
   will-change: transform, opacity;
 }
 
@@ -72,23 +74,41 @@
   will-change: opacity;
 }
 
-/* 120 FPS High-Performance Layout Containment */
+/* 120 FPS High-Performance Layout & Paint Containment */
 .contain-layout {
   contain: layout style paint;
 }
 
-.content-auto {
-  content-visibility: auto;
-  contain-intrinsic-size: 80px;
+.contain-paint {
+  contain: paint;
 }
 
-/* Instant Tactile Touch Press */
+.contain-layout-paint {
+  contain: layout paint;
+}
+
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 80px;
+}
+
+/* Instant Tactile Touch Press (0ms delay, GPU composited scale) */
 .active-press {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
   transition: transform 0.08s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.08s ease;
 }
 
 .active-press:active:not(:disabled) {
-  transform: scale(0.975);
+  transform: scale3d(0.975, 0.975, 1);
+}
+
+.touch-instant {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Premium Animation Keyframes (Strictly transform & opacity for 120 FPS compositing) */

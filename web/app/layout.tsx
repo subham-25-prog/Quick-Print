@@ -12,6 +12,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   userScalable: true,
   themeColor: '#0f172a',
+  interactiveWidget: 'resizes-content',
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -23,6 +24,11 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: '/icon.svg',
       apple: '/icon.svg',
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'black-translucent',
+      title: pricing.shop_name,
     },
   };
 }

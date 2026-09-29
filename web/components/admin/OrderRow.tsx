@@ -42,6 +42,49 @@ const getFileBadge = (fileName?: string) => {
   return { ext, color: 'bg-slate-100 text-slate-700 border-slate-200' };
 };
 
+function areOrderRowPropsEqual(prevProps: OrderRowProps, nextProps: OrderRowProps): boolean {
+  const prevId = String(prevProps.rawOrder?.id || prevProps.rawOrder?.orderId || '');
+  const nextId = String(nextProps.rawOrder?.id || nextProps.rawOrder?.orderId || '');
+  if (prevId !== nextId) return false;
+
+  const prevOrderNum = String(prevProps.rawOrder?.order_number || prevProps.rawOrder?.orderNumber || prevId);
+  const nextOrderNum = String(nextProps.rawOrder?.order_number || nextProps.rawOrder?.orderNumber || nextId);
+
+  // If copied state affects this specific row
+  if (prevProps.copiedOrderId !== nextProps.copiedOrderId) {
+    if (prevProps.copiedOrderId === prevOrderNum || nextProps.copiedOrderId === nextOrderNum) {
+      return false;
+    }
+  }
+
+  // If actionLoadingKey affects this specific row
+  const prevKey = prevProps.actionLoadingKey;
+  const nextKey = nextProps.actionLoadingKey;
+  if (prevKey !== nextKey) {
+    if (prevKey?.startsWith(prevId) || nextKey?.startsWith(nextId)) {
+      return false;
+    }
+  }
+
+  const prev = prevProps.rawOrder;
+  const next = nextProps.rawOrder;
+  if (!prev || !next) return prev === next;
+
+  return (
+    prev.order_status === next.order_status &&
+    prev.total_amount === next.total_amount &&
+    prev.payment_status === next.payment_status &&
+    prev.copies === next.copies &&
+    prev.page_count === next.page_count &&
+    prev.paper_size === next.paper_size &&
+    prev.color_mode === next.color_mode &&
+    prev.print_sides === next.print_sides &&
+    prev.customer_name === next.customer_name &&
+    prev.customer_phone === next.customer_phone &&
+    prev.customer_notes === next.customer_notes
+  );
+}
+
 export const OrderRow = memo(function OrderRow({
   rawOrder,
   copiedOrderId,
@@ -322,4 +365,4 @@ export const OrderRow = memo(function OrderRow({
       </div>
     </div>
   );
-});
+}, areOrderRowPropsEqual);

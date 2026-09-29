@@ -8,7 +8,7 @@ interface DeveloperBadgeProps {
   className?: string;
 }
 
-export const DeveloperBadge: React.FC<DeveloperBadgeProps> = ({
+export const DeveloperBadge: React.FC<DeveloperBadgeProps> = React.memo(({
   dark = false,
   className = '',
 }) => {
@@ -38,4 +38,6 @@ export const DeveloperBadge: React.FC<DeveloperBadgeProps> = ({
       </div>
     </div>
   );
-};
+});
+DeveloperBadge.displayName = 'DeveloperBadge';
+

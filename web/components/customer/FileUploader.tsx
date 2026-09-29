@@ -180,7 +180,7 @@ function generateUUID(): string {
   });
 }
 
-export const FileUploader: React.FC<FileUploaderProps> = ({
+export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
   onFileUploaded,
   uploadedFile,
   allowMultiple = false,
@@ -606,4 +606,5 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       )}
     </div>
   );
-};
+});
+FileUploader.displayName = 'FileUploader';

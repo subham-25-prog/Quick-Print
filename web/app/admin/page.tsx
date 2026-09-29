@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, useDeferredValue, useTransition } from 'react';
 import { startPolling } from '@/lib/polling';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
@@ -32,6 +32,15 @@ export default function AdminLiveOrdersPage() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [filter, setFilter] = useState<'ALL' | 'CURRENT' | 'PENDING' | 'PRINTING' | 'COMPLETED'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const [, startFilterTransition] = useTransition();
+
+  const handleFilterChange = useCallback((newFilter: 'ALL' | 'CURRENT' | 'PENDING' | 'PRINTING' | 'COMPLETED') => {
+    startFilterTransition(() => {
+      setFilter(newFilter);
+    });
+  }, []);
+
   const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null);
   const [copiedOrderId, setCopiedOrderId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -308,9 +317,9 @@ export default function AdminLiveOrdersPage() {
 
         if (!matchesFilter) return false;
 
-        // 2. Search Query Filter
-        if (searchQuery.trim()) {
-          const query = searchQuery.toLowerCase().trim();
+        // 2. Search Query Filter (Concurrent non-blocking search at 120 FPS)
+        if (deferredSearchQuery.trim()) {
+          const query = deferredSearchQuery.toLowerCase().trim();
           const nameMatch = (order.customer_name || '').toLowerCase().includes(query);
           const orderNumMatch = (order.order_number || '').toLowerCase().includes(query);
           const phoneMatch = (order.customer_phone || '').toLowerCase().includes(query);
@@ -322,7 +331,7 @@ export default function AdminLiveOrdersPage() {
         return true;
       })
       .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
-  }, [orders, filter, searchQuery]);
+  }, [orders, filter, deferredSearchQuery]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-100 via-slate-50 to-slate-100 flex flex-col font-sans pb-24">
@@ -389,7 +398,7 @@ export default function AdminLiveOrdersPage() {
             <div className="flex flex-wrap items-center gap-2 text-xs font-semibold">
               <button
                 type="button"
-                onClick={() => setFilter('CURRENT')}
+                onClick={() => handleFilterChange('CURRENT')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
                   filter === 'CURRENT'
                     ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
@@ -402,7 +411,7 @@ export default function AdminLiveOrdersPage() {
 
               <button
                 type="button"
-                onClick={() => setFilter('COMPLETED')}
+                onClick={() => handleFilterChange('COMPLETED')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
                   filter === 'COMPLETED'
                     ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
@@ -415,7 +424,7 @@ export default function AdminLiveOrdersPage() {
 
               <button
                 type="button"
-                onClick={() => setFilter('ALL')}
+                onClick={() => handleFilterChange('ALL')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
                   filter === 'ALL'
                     ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
@@ -459,7 +468,7 @@ export default function AdminLiveOrdersPage() {
               <div className="flex items-center gap-1 bg-slate-100/90 p-1 rounded-2xl border border-slate-200 text-xs font-semibold">
                 <button
                   type="button"
-                  onClick={() => setFilter('CURRENT')}
+                  onClick={() => handleFilterChange('CURRENT')}
                   className={`px-3 py-1.5 rounded-xl transition-all duration-100 active:scale-95 cursor-pointer flex items-center gap-1.5 ${
                     filter === 'CURRENT'
                       ? 'bg-white text-indigo-700 font-bold shadow-xs'
@@ -475,7 +484,7 @@ export default function AdminLiveOrdersPage() {
 
                 <button
                   type="button"
-                  onClick={() => setFilter('COMPLETED')}
+                  onClick={() => handleFilterChange('COMPLETED')}
                   className={`px-3 py-1.5 rounded-xl transition-all duration-100 active:scale-95 cursor-pointer flex items-center gap-1.5 ${
                     filter === 'COMPLETED'
                       ? 'bg-white text-emerald-700 font-bold shadow-xs'
@@ -491,7 +500,7 @@ export default function AdminLiveOrdersPage() {
 
                 <button
                   type="button"
-                  onClick={() => setFilter('ALL')}
+                  onClick={() => handleFilterChange('ALL')}
                   className={`px-3 py-1.5 rounded-xl transition-all duration-100 active:scale-95 cursor-pointer flex items-center gap-1.5 ${
                     filter === 'ALL'
                       ? 'bg-white text-slate-900 font-bold shadow-xs'
@@ -506,7 +515,7 @@ export default function AdminLiveOrdersPage() {
 
                 <button
                   type="button"
-                  onClick={() => setFilter('PENDING')}
+                  onClick={() => handleFilterChange('PENDING')}
                   className={`px-2.5 py-1.5 rounded-xl transition-all duration-100 active:scale-95 cursor-pointer flex items-center gap-1 text-[11px] ${
                     filter === 'PENDING'
                       ? 'bg-white text-amber-700 font-bold shadow-xs'
@@ -518,7 +527,7 @@ export default function AdminLiveOrdersPage() {
 
                 <button
                   type="button"
-                  onClick={() => setFilter('PRINTING')}
+                  onClick={() => handleFilterChange('PRINTING')}
                   className={`px-2.5 py-1.5 rounded-xl transition-all duration-100 active:scale-95 cursor-pointer flex items-center gap-1 text-[11px] ${
                     filter === 'PRINTING'
                       ? 'bg-white text-indigo-700 font-bold shadow-xs'

@@ -11,7 +11,7 @@ interface HeaderProps {
   shopName?: string;
 }
 
-export const Header: React.FC<HeaderProps> = ({ isAdmin = false, shopName }) => {
+export const Header: React.FC<HeaderProps> = React.memo(({ isAdmin = false, shopName }) => {
   const displayName = useShopName(shopName);
 
   React.useEffect(() => {
@@ -74,4 +74,5 @@ export const Header: React.FC<HeaderProps> = ({ isAdmin = false, shopName }) => 
       </div>
     </header>
   );
-};
+});
+Header.displayName = 'Header';

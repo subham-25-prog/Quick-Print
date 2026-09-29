@@ -276,15 +276,18 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
         </div>
         <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden relative">
           <div
-            className={`h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r ${
+            className={`w-full h-full rounded-full transition-transform duration-700 ease-out bg-gradient-to-r will-change-transform ${
               currentStep >= 5
                 ? 'from-emerald-500 to-teal-400'
                 : 'from-indigo-600 via-cyan-400 to-emerald-400'
             }`}
-            style={{ width: `${progressPercentage}%` }}
+            style={{
+              transform: `scaleX(${progressPercentage / 100})`,
+              transformOrigin: 'left',
+            }}
           />
           {currentStep === 4 && (
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse" />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse pointer-events-none" />
           )}
         </div>
       </div>

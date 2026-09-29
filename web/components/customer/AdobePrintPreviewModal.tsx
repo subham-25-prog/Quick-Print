@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { AdvancedPrintConfig, PaperSize, ColorMode, PrintSides, PricingConfig } from '@/types';
 import { UploadedFileState } from './FileUploader';
 import {
@@ -409,12 +409,13 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     return isLandscape ? 297 / 210 : 210 / 297;
   }, [modalPaperSize, isLandscape]);
 
-  // Compute effective scale factor for drawing
+  // Compute effective scale factor for drawing with deferred value for 120 FPS slider responsiveness
+  const deferredCustomScale = useDeferredValue(customScalePercent);
   const effectiveScale = useMemo(() => {
     if (scaleMode === 'FIT') return 0.94;
     if (scaleMode === 'ACTUAL') return 1.0;
-    return Math.min(3.0, Math.max(0.2, (customScalePercent || 100) / 100));
-  }, [scaleMode, customScalePercent]);
+    return Math.min(3.0, Math.max(0.2, (deferredCustomScale || 100) / 100));
+  }, [scaleMode, deferredCustomScale]);
 
   // Fallback realistic vector mockup when document is still parsing
   const drawFallbackResumeMockup = useCallback(
@@ -810,10 +811,14 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       }
     }
 
-    drawCanvas();
+    let frameId: number | null = null;
+    frameId = requestAnimationFrame(() => {
+      void drawCanvas();
+    });
 
     return () => {
       cancelled = true;
+      if (frameId !== null) cancelAnimationFrame(frameId);
     };
   }, [
     currentPage,
