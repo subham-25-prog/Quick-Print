@@ -44,13 +44,17 @@ export async function POST(req: NextRequest) {
         .map((p: string) => textField(p, 200));
     }
 
-    let printerDetails: Array<{ name: string; status: 'ONLINE' | 'OFFLINE' | 'ERROR' | 'UNKNOWN' }> | undefined;
+    let printerDetails: Array<{ id?: string; name: string; status: 'ONLINE' | 'OFFLINE' | 'ERROR' | 'UNKNOWN' }> | undefined;
     if (Array.isArray(body.printerDetails)) {
       printerDetails = body.printerDetails.slice(0, 50).map((p: any) => {
         if (!p || !['ONLINE', 'OFFLINE', 'ERROR', 'UNKNOWN'].includes(p.status)) {
           throw new HttpError(400, 'Invalid printer status.');
         }
-        return { name: textField(p.name, 200), status: p.status };
+        return {
+          id: p.id ? textField(p.id, 200) : undefined,
+          name: textField(p.name, 200),
+          status: p.status,
+        };
       });
     }
 

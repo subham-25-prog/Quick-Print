@@ -7,6 +7,7 @@ import { ClaimedJob } from './client';
 const execute = promisify(execFile);
 
 export interface DetectedPrinter {
+  id?: string;
   name: string;
   status: 'ONLINE' | 'OFFLINE' | 'ERROR' | 'UNKNOWN';
 }
@@ -16,11 +17,17 @@ export function parseDetectedPrinters(raw: unknown): DetectedPrinter[] {
   const virtual = /OneNote|Shared Fax|XPS Document Writer|Microsoft Print to PDF|Root Print Queue|^Fax$/i;
   return list.filter((p) => p?.Name && !virtual.test(p.Name) &&
     !virtual.test(p.DriverName || '') && !/^(nul:|PORTPROMPT:|SHRFAX:|FILE:)/i.test(p.PortName || ''))
-    .map((p) => ({
-      name: String(p.Name).trim(),
-      status: p.WorkOffline || [6, 7].includes(p.PrinterStatus) ? 'OFFLINE' :
-        printerHasBlockingError(p) ? 'ERROR' : 'ONLINE',
-    }));
+    .map((p) => {
+      const item: DetectedPrinter = {
+        name: String(p.Name).trim(),
+        status: p.WorkOffline || [6, 7].includes(p.PrinterStatus) ? 'OFFLINE' :
+          printerHasBlockingError(p) ? 'ERROR' : 'ONLINE',
+      };
+      if (p.DeviceId || p.id) {
+        item.id = String(p.DeviceId || p.id).trim();
+      }
+      return item;
+    });
 }
 
 export function parsePdfToPrinterList(raw: Array<{ name?: string; deviceId?: string }>): DetectedPrinter[] {
@@ -28,10 +35,16 @@ export function parsePdfToPrinterList(raw: Array<{ name?: string; deviceId?: str
   const virtual = /OneNote|Shared Fax|XPS Document Writer|Microsoft Print to PDF|Root Print Queue|^Fax$/i;
   return list
     .filter((p) => (p?.name || p?.deviceId) && !virtual.test(p.name || p.deviceId || ''))
-    .map((p) => ({
-      name: String(p.name || p.deviceId).trim(),
-      status: 'ONLINE' as const,
-    }));
+    .map((p) => {
+      const item: DetectedPrinter = {
+        name: String(p.name || p.deviceId).trim(),
+        status: 'ONLINE' as const,
+      };
+      if (p.deviceId) {
+        item.id = String(p.deviceId).trim();
+      }
+      return item;
+    });
 }
 
 export function printerHasBlockingError(
@@ -191,7 +204,7 @@ export class WindowsPrinterService {
     const found = this.cachedPrinters.find(
       (p) => p.name.toLowerCase() === this.configuredPrinter.toLowerCase()
     );
-    if (found && found.status === 'OFFLINE') {
+    if (!found || found.status !== 'ONLINE') {
       throw new Error('Configured printer is offline or reporting an error');
     }
   }

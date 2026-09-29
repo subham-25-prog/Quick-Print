@@ -59,17 +59,27 @@ const PrinterCard = React.memo<PrinterCardProps>(({
               {printer.name}
             </span>
             <span
-              className={`inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold ${
+              className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold ${
                 isOnline
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  : 'bg-rose-50 text-rose-700 border border-rose-200'
               }`}
             >
-              {isOnline ? 'Online' : printer.status}
+              <span className={`w-1.5 h-1.5 rounded-full mr-1 ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+              {isOnline ? 'Online' : 'Offline'}
+              <span className="sr-only">{isOnline ? 'ONLINE' : 'OFFLINE'}</span>
             </span>
           </div>
           <div className="text-[10px] text-slate-400 font-medium truncate">
-            {isSelected ? (selectionPending ? 'Waiting for agent confirmation' : 'Selected output') : 'Select this printer for subsequent documents'}
+            {isSelected
+              ? !isOnline
+                ? 'Default printer (currently offline — jobs will wait for connection)'
+                : selectionPending
+                  ? 'Waiting for agent confirmation'
+                  : 'Default printer for customer print jobs'
+              : isOnline
+                ? 'Ready • Click to set as default printer'
+                : 'Offline • Previously connected device'}
           </div>
         </div>
       </div>
@@ -78,7 +88,7 @@ const PrinterCard = React.memo<PrinterCardProps>(({
         {isSelected ? (
           <span className="px-3 py-1 rounded-xl text-[10px] font-extrabold bg-indigo-600 text-white flex items-center gap-1.5 shadow-2xs">
             <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-            <span>{selectionPending ? 'Pending' : 'Selected Printer'}</span>
+            <span>{selectionPending ? 'Pending' : 'Default Printer'}</span>
           </span>
         ) : (
           <button
@@ -89,9 +99,9 @@ const PrinterCard = React.memo<PrinterCardProps>(({
               e.stopPropagation();
               onSelectPrinter(printer.name);
             }}
-            className="px-3 py-1 rounded-xl text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer touch-manipulation"
+            className="px-3 py-1 rounded-xl text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 transition-colors cursor-pointer touch-manipulation disabled:opacity-50"
           >
-            Use This
+            Set as Default
           </button>
         )}
 
@@ -99,10 +109,12 @@ const PrinterCard = React.memo<PrinterCardProps>(({
           type="button"
           disabled={switchingPrinter}
           onClick={(e) => onDeletePrinter(e, printer.name)}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer touch-manipulation"
-          title={`Remove ${printer.name}`}
+          className="p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer touch-manipulation flex items-center gap-1 text-[10px] font-bold"
+          aria-label={`Forget ${printer.name}`}
+          title={`Forget ${printer.name}`}
         >
           <Trash2 className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Forget</span>
         </button>
       </div>
     </div>
@@ -122,7 +134,6 @@ export default function AdminPrintingSettingsPage() {
   >([]);
   const [loadingPrinters, setLoadingPrinters] = useState(false);
   const [agentOnline, setAgentOnline] = useState(false);
-  const [manualPrinterName, setManualPrinterName] = useState('');
   const [switchingPrinter, setSwitchingPrinter] = useState(false);
   const [printerError, setPrinterError] = useState('');
   const [selectionPending, setSelectionPending] = useState(false);
@@ -222,7 +233,7 @@ export default function AdminPrintingSettingsPage() {
 
   const handleDeletePrinter = useCallback(async (e: React.MouseEvent, printerName: string) => {
     e.stopPropagation();
-    if (!window.confirm(`Remove "${printerName}" from the list?`)) {
+    if (!window.confirm(`Forget "${printerName}" from saved devices for this shop?`)) {
       return;
     }
 
@@ -233,14 +244,14 @@ export default function AdminPrintingSettingsPage() {
         body: JSON.stringify({ printerName }),
       });
       if (res.ok) {
-        showToast(`Removed "${printerName}"`, 'success');
+        showToast(`Forgot printer "${printerName}"`, 'success');
         await loadPrinters();
       } else {
         const data = await res.json();
-        showToast(data.error || 'Failed to remove printer', 'error');
+        showToast(data.error || 'Failed to forget printer', 'error');
       }
     } catch {
-      showToast('Network error removing printer', 'error');
+      showToast('Network error forgetting printer', 'error');
     }
   }, [loadPrinters]);
 
@@ -289,6 +300,13 @@ export default function AdminPrintingSettingsPage() {
     );
   }
 
+  const selectedPrinterName = form.selected_printer || printers.find((p) => p.is_selected)?.name || null;
+  const selectedPrinterObj = printers.find((p) => p.name === selectedPrinterName);
+  const isDefaultPrinterOffline = Boolean(
+    selectedPrinterName &&
+    (!agentOnline || !selectedPrinterObj || selectedPrinterObj.status === 'OFFLINE')
+  );
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-28">
       <AdminHeader shopName={form.shop_name} />
@@ -325,9 +343,10 @@ export default function AdminPrintingSettingsPage() {
               <Printer className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-slate-900">Printing Settings</h1>
+              <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider">Print Settings</div>
+              <h1 className="text-base font-bold text-slate-900">Printers</h1>
               <p className="text-[11px] text-slate-500 font-medium">
-                Hardware printer selection, spooling automation & device connection
+                Hardware printer detection, default device selection & spooling
               </p>
             </div>
           </div>
@@ -354,18 +373,28 @@ export default function AdminPrintingSettingsPage() {
 
         {/* Section 1: Connected Printers & Active Output Selection */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
                 <Printer className="w-4 h-4" />
               </div>
               <h2 className="text-sm font-bold text-slate-900">
-                Connected Printers & Selection
+                Printers
               </h2>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={loadPrinters}
+                disabled={loadingPrinters}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-2xs cursor-pointer disabled:opacity-50 active:scale-95"
+                title="Scan and refresh connected printers"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${loadingPrinters ? 'animate-spin' : ''}`} />
+                <span>Refresh printers</span>
+              </button>
               {agentOnline ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                   Agent Online
                 </span>
@@ -373,31 +402,44 @@ export default function AdminPrintingSettingsPage() {
                 <button
                   type="button"
                   onClick={handleStartAgent}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 transition-colors cursor-pointer"
                 >
                   <Play className="w-2.5 h-2.5 fill-amber-600 text-amber-600" />
                   <span>Start Print Agent</span>
                 </button>
               )}
-              <button
-                type="button"
-                onClick={loadPrinters}
-                disabled={loadingPrinters}
-                className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                title="Scan and refresh connected printers"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${loadingPrinters ? 'animate-spin' : ''}`} />
-              </button>
             </div>
           </div>
 
           <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-            Printers are detected by the Windows Print Agent and refreshed automatically. Choose the output for subsequent documents; a document already printing finishes on its current printer.
+            Printers are detected by this shop’s local print agent and refreshed automatically. Only printers detected by the agent or previously connected by this shop are shown.
           </p>
-          <p className="text-[11px] text-slate-500">New connections and selections appear after the next agent update, usually within 15–20 seconds.</p>
           {agentMode === 'sandbox' && <p role="status" className="text-xs text-amber-700">Simulation mode: physical printing is disabled. Printer discovery and selection are available.</p>}
           {selectionPending && <p role="status" className="text-xs text-amber-700">Selection saved. Waiting for the print agent to confirm it.</p>}
           {printerError && <p role="alert" className="text-xs text-rose-700">{printerError}. Displayed printer information may be out of date.</p>}
+
+          {/* Warning: Default Printer Offline */}
+          {isDefaultPrinterOffline && (
+            <div
+              role="alert"
+              className="p-4 rounded-2xl bg-amber-50 border border-amber-300/80 text-amber-950 flex items-start gap-3 shadow-xs animate-in fade-in duration-200"
+            >
+              <div className="w-8 h-8 rounded-xl bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0 text-amber-700 mt-0.5">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs font-bold text-amber-950 flex items-center gap-2">
+                  <span>Warning: Default printer &quot;{selectedPrinterName}&quot; is Offline</span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-100 text-rose-700 border border-rose-200">
+                    Offline
+                  </span>
+                </div>
+                <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
+                  Incoming print jobs will pause until this printer reconnects. QuickPrint will not silently send jobs to another printer.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* List of Connected Printers */}
           <div className="space-y-2">
@@ -417,76 +459,66 @@ export default function AdminPrintingSettingsPage() {
                 );
               })
             ) : (
-              <div className="p-6 rounded-2xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
-                <Printer className="w-8 h-8 text-slate-400 mx-auto" />
-                <div className="text-xs font-bold text-slate-700">No printers detected yet</div>
-                <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                  Make sure your Windows Print Agent is running on your machine to auto-detect installed printers, or specify a printer name manually below.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleStartAgent}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors shadow-xs"
-                >
-                  <Play className="w-3 h-3 fill-white" />
-                  <span>Launch Windows Print Agent</span>
-                </button>
+              <div className="p-8 rounded-3xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 mx-auto shadow-2xs">
+                  <Printer className="w-6 h-6 text-slate-400" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-xs font-bold text-slate-800">
+                    No printer connected.
+                  </h3>
+                  <p className="text-[11px] text-slate-500 max-w-sm mx-auto font-medium">
+                    Connect a printer to this shop’s print device to get started.
+                  </p>
+                </div>
+                <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    type="button"
+                    onClick={loadPrinters}
+                    disabled={loadingPrinters}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingPrinters ? 'animate-spin' : ''}`} />
+                    <span>Refresh printers</span>
+                  </button>
+                  {!agentOnline && (
+                    <button
+                      type="button"
+                      onClick={handleStartAgent}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors shadow-xs cursor-pointer"
+                    >
+                      <Play className="w-3 h-3 fill-white" />
+                      <span>Launch Print Agent</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </div>
 
-          {/* Quick Dropdown & Manual Input */}
-          <div className="pt-3 border-t border-slate-100 space-y-3">
-            <div className="text-[11px] font-bold text-slate-600">Quick Selection & Manual Setup:</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1">
-                  Choose from detected printers:
-                </label>
-                <select
-                  aria-label="Choose from detected printers"
-                  disabled={switchingPrinter}
-                  value={form.selected_printer || ''}
-                  onChange={(e) => handleSelectPrinter(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
-                >
-                  <option value="">-- Choose Printer --</option>
-                  {printers.map((p) => (
-                    <option key={p.name} value={p.name}>
-                      {p.name} {p.status === 'ONLINE' ? '(Ready)' : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 mb-1">
-                  Or enter custom printer name:
-                </label>
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="e.g. Canon LBP2900 or \\PC\Printer"
-                    value={manualPrinterName}
-                    onChange={(e) => setManualPrinterName(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
-                  />
-                  <button
-                    type="button"
-                    disabled={switchingPrinter || !manualPrinterName.trim()}
-                    onClick={() => {
-                      if (manualPrinterName.trim()) {
-                        handleSelectPrinter(manualPrinterName.trim());
-                        setManualPrinterName('');
-                      }
-                    }}
-                    className="px-3 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors shrink-0 cursor-pointer"
-                  >
-                    Set
-                  </button>
-                </div>
-              </div>
+          {/* Quick Dropdown for Default Printer Selection */}
+          {printers.length > 0 && (
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <label htmlFor="printer-select" className="block text-xs font-bold text-slate-700">
+                Choose from detected printers:
+              </label>
+              <select
+                id="printer-select"
+                aria-label="Choose from detected printers"
+                disabled={switchingPrinter}
+                value={selectedPrinterName || ''}
+                onChange={(e) => handleSelectPrinter(e.target.value)}
+                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600 cursor-pointer"
+              >
+                <option value="">-- Choose Printer --</option>
+                {printers.map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.name} {p.status === 'ONLINE' ? '(Ready)' : '(Offline)'}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
+          )}
         </section>
 
         {/* Bottom Save Bar */}

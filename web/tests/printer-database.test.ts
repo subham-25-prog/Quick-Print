@@ -1,6 +1,6 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ from: vi.fn(), upsert: vi.fn(), remove: vi.fn(), update: vi.fn(), settings: null as any, agent: null as any }));
+const mocks = vi.hoisted(() => ({ from: vi.fn(), upsert: vi.fn(), remove: vi.fn(), update: vi.fn(), settings: null as any, agent: null as any, printersData: null as any }));
 vi.mock('@/lib/supabase/admin', () => ({ getAdminClient: () => ({ from: mocks.from }) }));
 vi.mock('@/lib/shop', () => ({ getCurrentShopId: () => 'shop-one' }));
 import { getShopPrinters, recordAgentHeartbeat, setActivePrinter } from '@/lib/db';
@@ -11,9 +11,13 @@ beforeEach(() => {
   mocks.update.mockReset();
   mocks.settings = null;
   mocks.agent = null;
+  mocks.printersData = [
+    { id: 'real', name: 'Office Printer', status: 'ONLINE' },
+    { id: 'virtual', name: 'Microsoft Print to PDF' }
+  ];
   mocks.from.mockReset().mockImplementation((table: string) => {
     const data = table === 'printers'
-      ? [{ id: 'real', name: 'Office Printer', status: 'ONLINE' }, { id: 'virtual', name: 'Microsoft Print to PDF' }]
+      ? mocks.printersData
       : table === 'shop_settings' ? mocks.settings : mocks.agent;
     const chain: any = {
       select: () => chain, eq: () => chain, order: () => chain, limit: () => chain,
@@ -45,14 +49,27 @@ test('heartbeat keeps reported availability and does not fake selection acknowle
 });
 
 test('stale devices are offline and a selection stays pending until an agent reports it', async () => {
+  mocks.printersData = [
+    { id: 'real', name: 'Office Printer', status: 'ONLINE' },
+    { id: 'p2', name: 'Second Printer', status: 'OFFLINE' },
+    { id: 'virtual', name: 'Microsoft Print to PDF' }
+  ];
   mocks.settings = { pricing: { selected_printer: 'Second Printer' } };
   mocks.agent = { printer_name: 'Office Printer', status: 'ONLINE', last_heartbeat: new Date().toISOString(), mode: 'live' };
   const result = await getShopPrinters();
   expect(result.selectionPending).toBe(true);
   expect(result.printers.find((p) => p.name === 'Office Printer')?.status).toBe('OFFLINE');
-  expect(result.printers.find((p) => p.name === 'Second Printer')?.status).toBe('UNKNOWN');
+  expect(result.printers.find((p) => p.name === 'Second Printer')?.status).toBe('OFFLINE');
   mocks.agent.printer_name = 'Second Printer';
   expect((await getShopPrinters()).selectionPending).toBe(false);
+});
+
+test('unconnected printer from foreign settings is never shown in the list', async () => {
+  mocks.printersData = [{ id: 'real', name: 'Office Printer', status: 'ONLINE' }];
+  mocks.settings = { pricing: { selected_printer: 'Foreign Shop Printer' } };
+  const result = await getShopPrinters();
+  expect(result.printers.find((p) => p.name === 'Foreign Shop Printer')).toBeUndefined();
+  expect(result.printers.map((p) => p.name)).toEqual(['Office Printer']);
 });
 
 test('saving a selection never rewrites the agent reported printer', async () => {
