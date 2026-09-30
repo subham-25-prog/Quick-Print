@@ -17,7 +17,7 @@ export function appOrigin(): string {
   // Payment return URLs are security-sensitive. Never derive them from Host or
   // X-Forwarded-Host: those headers can be attacker controlled before a proxy
   // has explicitly validated them.
-  const origin = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  const origin = process.env.APP_URL?.trim();
   if (origin) {
     try {
       const u = new URL(origin);

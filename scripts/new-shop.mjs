@@ -52,7 +52,7 @@ const agentSecret = randomBytes(32).toString('hex');
 // Vercel / Cloud Environment Template
 const envConfig = {
   QUICKPRINT_SHOP_ID: shopId,
-  NEXT_PUBLIC_APP_URL: origin.origin,
+  APP_URL: origin.origin,
   NEXT_PUBLIC_SHOP_NAME: name,
   SUPABASE_URL: '',
   SUPABASE_SERVICE_ROLE_KEY: '',
@@ -67,7 +67,7 @@ const envConfig = {
   PAYMENT_ENVIRONMENT: 'sandbox',
   CASHFREE_APP_ID: '',
   CASHFREE_SECRET_KEY: '',
-  CASHFREE_API_VERSION: '2023-08-01',
+  CASHFREE_API_VERSION: '2025-01-01',
   PHONEPE_MERCHANT_ID: '',
   PHONEPE_CLIENT_ID: '',
   PHONEPE_CLIENT_VERSION: '',

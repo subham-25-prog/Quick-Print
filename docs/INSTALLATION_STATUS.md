@@ -34,7 +34,7 @@ available. These cannot be supplied by a static merchant UPI QR or fabricated.
    `CRON_SECRET` and the scheduled maintenance workflow. These variable names
    were absent from the observed Vercel configuration. Pairing and scheduling
    have not been verified or enabled in this session.
-3. Verify `NEXT_PUBLIC_APP_URL` equals the stable production origin. Vercel
+3. Verify server-only `APP_URL` equals the stable production origin. Vercel
    stored this public setting as a write-only secret and rejected an attempted
    edit due to its public prefix. The edit was cancelled; its value remains
    unverified. Correct it as a Config variable before payment acceptance.

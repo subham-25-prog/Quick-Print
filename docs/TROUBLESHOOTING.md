@@ -2,7 +2,7 @@
 
 | Symptom | Check / safe action |
 | --- | --- |
-| Payment return DEPLOYMENT_NOT_FOUND | NEXT_PUBLIC_APP_URL must be a stable existing domain. Redeploy, then create a new session only after checking the old payment. Existing provider sessions retain their original return URL. |
+| Payment return DEPLOYMENT_NOT_FOUND | APP_URL must be a stable existing domain. Redeploy, then create a new session only after checking the old payment. Existing provider sessions retain their original return URL. |
 | Static UPI QR pays but app does not print | Static QR is not connected to verified PG status. Configure the approved merchant API; never bypass verification. |
 | Payment stays pending | Check provider dashboard, credentials/environment, webhook deliveries and scheduled worker. A timeout is not failure or success. Do not pay twice. |
 | Merchant configuration not activated | Check exact merchant/account ownership and admin setup readiness; activate from Settings. |

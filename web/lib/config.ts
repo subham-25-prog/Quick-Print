@@ -6,7 +6,7 @@ export const shopConfig={
   address:process.env.NEXT_PUBLIC_SHOP_ADDRESS||'',
   phone:process.env.NEXT_PUBLIC_SHOP_PHONE||'',
   logoUrl:process.env.NEXT_PUBLIC_SHOP_LOGO_URL||'',
-  currencySymbol:'₹',appUrl:process.env.NEXT_PUBLIC_APP_URL||'',
+  currencySymbol:'₹',appUrl:process.env.APP_URL||'',
 };
 export const defaultPricingConfig:PricingConfig={...shopTemplate,shop_name:shopConfig.name,shop_address:shopConfig.address,shop_phone:shopConfig.phone,currency:'INR'} as PricingConfig;
 export const developerConfig = {

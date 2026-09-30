@@ -24,7 +24,7 @@ Read MERCHANT_PROVIDER_SETUP.md first. Do not reuse credentials pasted in chat; 
 
 1. Obtain this shop's approved PhonePe sandbox client ID, version, secret and merchant ID.
 2. Set `PAYMENT_PROVIDER=phonepe`, `PAYMENT_ENVIRONMENT=sandbox` and the six `PHONEPE_*` fields in the Vercel environment. Keep all secrets server-only.
-3. Set a stable `NEXT_PUBLIC_APP_URL`, secure order/admin/agent/cron secrets, and the actual `QUICKPRINT_SHOP_ID`. Redeploy.
+3. Set a stable server-only `APP_URL`, secure order/admin/agent/cron secrets, and the actual `QUICKPRINT_SHOP_ID`. Redeploy.
 4. In PhonePe's [webhook setup](https://developer.phonepe.com/payment-gateway/website-integration/standard-checkout/api-integration/api-reference/webhook), use `https://YOUR-STABLE-DOMAIN/api/payments/webhook`, select SHA username/password authentication, and configure the same `PHONEPE_WEBHOOK_USERNAME` / `PHONEPE_WEBHOOK_PASSWORD` as Vercel. Subscribe to `checkout.order.completed` and `checkout.order.failed`.
 5. The adapter validates the documented Authorization digest SHA256(username:password). This is **not** a Razorpay body signature. It stores a notification, then independently asks the authenticated status API. Even a tampered body with known webhook credentials cannot create a paid order without matching successful provider status.
 
