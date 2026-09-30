@@ -39,6 +39,38 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
 
   if (!isOpen) return null;
 
+  // Once a payment method is chosen, replace the choice card immediately.
+  // Large batches can still be compiling/uploading at this point, but the
+  // customer should see an intentional loading page rather than disabled
+  // Cash/UPI buttons that look unresponsive.
+  if (submitting) {
+    const isCash = selectedMethod === 'CASH';
+    return (
+      <div
+        className="fixed inset-0 z-50 bg-slate-950 text-white flex items-center justify-center p-6"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="w-full max-w-sm text-center space-y-5 animate-in fade-in zoom-in-95 duration-200">
+          <div className="mx-auto w-16 h-16 rounded-3xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full border-3 border-indigo-300/30 border-t-indigo-300 animate-spin" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-black tracking-tight">Preparing your print order</h3>
+            <p className="text-sm text-slate-300 leading-6">
+              {isCash
+                ? 'Your files are being prepared before we create the cash confirmation.'
+                : 'Your files are being prepared before we open secure UPI payment.'}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3 text-xs font-semibold text-indigo-100">
+            Please keep this page open. You will continue automatically.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 space-y-4 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto contain-layout">
@@ -64,11 +96,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
         </div>
 
         {error&&<p role="alert" className="p-3 rounded-xl bg-amber-50 text-amber-900 [overflow-wrap:anywhere]">{error}</p>}
-        {submitting && (
-          <p role="status" className="p-3 rounded-xl bg-indigo-50 text-indigo-900 text-sm font-medium text-center">
-            {selectedMethod === 'CASH' ? 'Preparing your cash confirmation…' : 'Opening secure payment…'}
-          </p>
-        )}
         {allowOnline && (
           <button
             type="button"
