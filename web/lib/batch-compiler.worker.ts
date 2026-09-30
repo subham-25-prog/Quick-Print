@@ -14,6 +14,7 @@ const workerScope = self as unknown as Worker;
 // 2400 px on A4's long edge is roughly 200 DPI: sharp for normal documents,
 // while avoiding a 40-photo batch becoming a hundreds-of-megabytes PDF.
 const MAX_PRINT_IMAGE_DIMENSION = 2400;
+const MAX_PRINT_IMAGE_BYTES = 1.5 * 1024 * 1024;
 
 function isPdf(item: BatchItem): boolean {
   return item.file.type === 'application/pdf' || item.name.toLowerCase().endsWith('.pdf');
@@ -29,35 +30,40 @@ function batchFileName(items: BatchItem[], totalPages: number): string {
     : `Batch_${items.length}_Documents_${totalPages}_Pages.pdf`;
 }
 
-async function imageBytesForPrint(item: BatchItem): Promise<ArrayBuffer> {
+async function imageBytesForPrint(item: BatchItem): Promise<{ bytes: ArrayBuffer; isPng: boolean }> {
   const originalBytes = await item.file.arrayBuffer();
   if (typeof createImageBitmap === 'undefined' || typeof OffscreenCanvas === 'undefined') {
-    return originalBytes;
+    return { bytes: originalBytes, isPng: isPng(item) };
   }
 
   let bitmap: ImageBitmap | undefined;
   try {
     bitmap = await createImageBitmap(item.file);
     const largestEdge = Math.max(bitmap.width, bitmap.height);
-    if (largestEdge <= MAX_PRINT_IMAGE_DIMENSION) return originalBytes;
+    if (largestEdge <= MAX_PRINT_IMAGE_DIMENSION && item.file.size <= MAX_PRINT_IMAGE_BYTES) {
+      return { bytes: originalBytes, isPng: isPng(item) };
+    }
 
-    const scale = MAX_PRINT_IMAGE_DIMENSION / largestEdge;
+    const scale = Math.min(1, MAX_PRINT_IMAGE_DIMENSION / largestEdge);
     const width = Math.max(1, Math.round(bitmap.width * scale));
     const height = Math.max(1, Math.round(bitmap.height * scale));
     const canvas = new OffscreenCanvas(width, height);
     const context = canvas.getContext('2d');
-    if (!context) return originalBytes;
+    if (!context) return { bytes: originalBytes, isPng: isPng(item) };
     context.imageSmoothingEnabled = true;
     context.imageSmoothingQuality = 'high';
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, width, height);
     context.drawImage(bitmap, 0, 0, width, height);
 
-    const type = isPng(item) ? 'image/png' : 'image/jpeg';
-    const blob = await canvas.convertToBlob({ type, quality: type === 'image/jpeg' ? 0.88 : undefined });
-    return blob.arrayBuffer();
+    // Large PNG camera/screenshot files are converted to JPEG as well. Keeping
+    // them lossless can turn only a few images into a very slow upload.
+    const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.9 });
+    return { bytes: await blob.arrayBuffer(), isPng: false };
   } catch {
     // Preserve the original image if a browser cannot decode or resize it in a
     // worker. pdf-lib will still validate it and surface an upload error.
-    return originalBytes;
+    return { bytes: originalBytes, isPng: isPng(item) };
   } finally {
     bitmap?.close();
   }
@@ -82,10 +88,10 @@ self.addEventListener('message', async (event: MessageEvent<WorkerRequest>) => {
         continue;
       }
 
-      const imageBytes = await imageBytesForPrint(item);
-      const image = isPng(item)
-        ? await mergedPdf.embedPng(imageBytes)
-        : await mergedPdf.embedJpg(imageBytes);
+      const preparedImage = await imageBytesForPrint(item);
+      const image = preparedImage.isPng
+        ? await mergedPdf.embedPng(preparedImage.bytes)
+        : await mergedPdf.embedJpg(preparedImage.bytes);
       const pageWidth = 595.28;
       const pageHeight = 841.89;
       const margin = 20;
