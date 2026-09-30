@@ -60,10 +60,7 @@ export async function GET(
     if (currentPayment.status === 'PENDING' && currentPayment.provider !== 'cash' && !currentPayment.review_required) {
       if (!currentPayment.payment_url && !currentPayment.creation_started_at) {
         const provider = await paymentProvider();
-        const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
-        const proto = req.headers.get('x-forwarded-proto') || 'https';
-        const requestOrigin = host ? `${proto}://${host}` : req.nextUrl.origin;
-        const opened = await openPayment(currentPayment, provider, requestOrigin);
+        const opened = await openPayment(currentPayment, provider);
         currentPayment = { ...currentPayment, payment_url: opened.paymentUrl };
       } else {
         const { data: lock, error: lockError } = await db

@@ -3,29 +3,17 @@ import { database, getOrderById } from '@/lib/db';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
 import { apiError, HttpError, readJson, requireSameOrigin } from '@/lib/http';
 import { getCurrentShopId } from '@/lib/shop';
-import { uuid } from '@/lib/validation';
-import { equalSecret } from '@/lib/security';
-
-function isAuthorized(req: NextRequest): boolean {
-  if (isAdminRequest(req)) return true;
-  const authHeader = req.headers.get('authorization')?.replace(/^Bearer /i, '') || '';
-  const agentSecret = process.env.PRINT_AGENT_SECRET || 'pYk-d8ajyGIcuqLqETqVrVWg7KOmiIuf8RR3hQze1c8';
-  if (authHeader && agentSecret && equalSecret(authHeader, agentSecret)) {
-    return true;
-  }
-  return false;
-}
+import { onlyFields, uuid } from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) {
+  if (!isAdminRequest(req)) {
     return adminUnauthorizedResponse();
   }
 
   try {
-    if (isAdminRequest(req)) {
-      requireSameOrigin(req);
-    }
+    requireSameOrigin(req, true);
     const body = await readJson(req);
+    onlyFields(body, ['action', 'orderId', 'scope']);
     if (body.action === 'CLEAR_HISTORY') {
       const shopId = getCurrentShopId();
       const db = database();

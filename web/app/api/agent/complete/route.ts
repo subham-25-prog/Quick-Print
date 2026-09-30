@@ -3,12 +3,13 @@ import { database } from '@/lib/db';
 import { agentIdentity } from '@/lib/security';
 import { getCurrentShopId } from '@/lib/shop';
 import { apiError, HttpError, readJson } from '@/lib/http';
-import { uuid } from '@/lib/validation';
+import { onlyFields, uuid } from '@/lib/validation';
 
 export async function POST(req: NextRequest) {
   try {
     const agentId = agentIdentity(req);
     const body = await readJson(req);
+    onlyFields(body, ['jobId', 'claimToken', 'outcome']);
 
     if (!['SUBMITTED', 'FAILED', 'REVIEW'].includes(String(body.outcome))) {
       throw new HttpError(400, 'Explicit print outcome is required.');

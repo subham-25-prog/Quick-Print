@@ -7,7 +7,7 @@ import {
   assertVerified,
 } from './provider';
 
-// Source contracts: Cashfree PG API v2023-08-01 / PG Payment Links
+// Source contracts: Cashfree PG API v2025-01-01 / PG Payment Links.
 export class CashfreeProvider implements PaymentProvider {
   readonly name = 'cashfree';
   readonly fingerprint: string;
@@ -22,7 +22,7 @@ export class CashfreeProvider implements PaymentProvider {
     merchantId: string,
     environment: 'sandbox' | 'live',
     secretKey: string,
-    apiVersion = '2023-08-01',
+    apiVersion = '2025-01-01',
     transport: typeof fetch = fetch
   ) {
     this.merchantId = merchantId.trim();
@@ -260,11 +260,12 @@ export class CashfreeProvider implements PaymentProvider {
 
     // Replay attack prevention: timestamp must be within 10 minutes
     const tsNum = Number(timestamp);
-    if (Number.isFinite(tsNum)) {
-      const diffMs = Math.abs(Date.now() - (tsNum > 1e11 ? tsNum : tsNum * 1000));
-      if (diffMs > 600000) {
-        throw new Error('Webhook timestamp expired');
-      }
+    if (!Number.isSafeInteger(tsNum)) {
+      throw new Error('Invalid webhook timestamp');
+    }
+    const diffMs = Math.abs(Date.now() - (tsNum > 1e11 ? tsNum : tsNum * 1000));
+    if (diffMs > 600000) {
+      throw new Error('Webhook timestamp expired');
     }
 
     // Cashfree signature verification: HMAC-SHA256 of (timestamp + rawBody) using secretKey

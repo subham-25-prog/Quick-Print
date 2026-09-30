@@ -24,11 +24,10 @@ afterEach(()=>vi.unstubAllEnvs());
 function checkout(patch:object={}){
   return new NextRequest('https://shop.test/api/orders',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({uploadId:id,uploadToken:'a'.repeat(64),idempotencyKey:id,paperSize:'A4',colorMode:'BW',printSides:'SINGLE',copies:2,...patch})});
 }
-test('browser paid flag, total and page count never create an order or control price',async()=>{
+test('browser paid flag, total and page count are rejected before they can affect checkout',async()=>{
   const res=await POST(checkout({payment_status:'PAID',status:'SUCCESS',totalAmount:0.01,pageCount:1}));
-  expect(res.status).toBe(201);
-  expect(mocks.insert).toHaveBeenCalledOnce();
-  const [table,p]=mocks.insert.mock.calls[0];expect(table).toBe('payments');expect(p.amount).toBe(12);expect(p.status).toBe('PENDING');expect(p.order_id).toBeUndefined();
+  expect(res.status).toBe(400);
+  expect(mocks.insert).not.toHaveBeenCalled();
 });
 test.each([{copies:-1},{copies:0.5},{paperSize:'../../x'},{paymentMethod:'CRYPTO'},{uploadToken:'wrong'}])('tampered checkout fails without writes: %j',async patch=>{
   const res=await POST(checkout(patch));expect(res.status).toBeGreaterThanOrEqual(400);expect(mocks.insert).not.toHaveBeenCalled();

@@ -15,13 +15,13 @@ function safeEqual(left: string, right: string): boolean {
 
 function sessionSecret(): string {
   const secret = process.env.ADMIN_SESSION_SECRET?.trim();
-  if (secret && secret.length >= 16) return secret;
+  if (secret && secret.length >= 32) return secret;
   return process.env.NODE_ENV === 'production' ? '' : DEVELOPMENT_SESSION_SECRET;
 }
 
 export function configuredAdminPin(): string {
   const pin = process.env.ADMIN_PIN?.trim();
-  if (pin && pin.length >= 4) return pin;
+  if (pin && pin.length >= 12) return pin;
   return process.env.NODE_ENV === 'production' ? '' : DEVELOPMENT_PIN;
 }
 

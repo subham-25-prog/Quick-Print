@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
-    requireSameOrigin(req);
+    requireSameOrigin(req, true);
     const body = await readJson(req);
     const retentionDays = Number(body.days) || 3;
 

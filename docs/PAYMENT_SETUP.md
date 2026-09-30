@@ -10,7 +10,7 @@ Read MERCHANT_PROVIDER_SETUP.md first. Do not reuse credentials pasted in chat; 
    - `PAYMENT_ENVIRONMENT=sandbox` (or `live`)
    - `CASHFREE_APP_ID=your_app_id`
    - `CASHFREE_SECRET_KEY=your_secret_key`
-   - `CASHFREE_API_VERSION=2023-08-01`
+   - `CASHFREE_API_VERSION=2025-01-01`
 3. In Cashfree Merchant Dashboard under **Developers > Webhooks**:
    - Webhook URL: `https://YOUR-STABLE-DOMAIN/api/payments/webhook`
    - Subscribe to events: `PAYMENT_SUCCESS_WEBHOOK`, `PAYMENT_FAILED_WEBHOOK`, `PAYMENT_USER_DROPPED_WEBHOOK`, `LINK_STATUS_CHANGE`.

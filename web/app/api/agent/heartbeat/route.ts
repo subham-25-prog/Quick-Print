@@ -3,7 +3,7 @@ import { recordAgentHeartbeat, getPrintAgentInfo } from '@/lib/db';
 import { agentIdentity } from '@/lib/security';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
 import { apiError, HttpError, readJson } from '@/lib/http';
-import { textField } from '@/lib/validation';
+import { onlyFields, textField } from '@/lib/validation';
 
 export async function GET(req: NextRequest) {
   if (!isAdminRequest(req)) {
@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
   try {
     const agentId = agentIdentity(req);
     const body = await readJson(req);
+    onlyFields(body, ['mode', 'printerName', 'systemInfo', 'installedPrinters', 'printerDetails']);
 
     const mode = body.mode;
     if (mode !== 'live' && mode !== 'sandbox') {

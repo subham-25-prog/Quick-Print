@@ -34,7 +34,7 @@ export function configuredProvider(): PaymentProvider {
       }
     }
 
-    const apiVersion = process.env.CASHFREE_API_VERSION?.trim() || '2023-08-01';
+    const apiVersion = process.env.CASHFREE_API_VERSION?.trim() || '2025-01-01';
 
     return new CashfreeProvider(
       process.env.CASHFREE_APP_ID!.trim(),

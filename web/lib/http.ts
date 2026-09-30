@@ -22,8 +22,11 @@ export function apiError(error: unknown) {
     })
   );
 
+  // Do not expose provider, database, filesystem, or implementation details to
+  // an unauthenticated caller. The structured server log above retains them for
+  // operators without becoming an information-disclosure endpoint.
   return NextResponse.json(
-    { error: message || 'The service is temporarily unavailable. Please retry shortly.' },
+    { error: 'The service is temporarily unavailable. Please retry shortly.' },
     { status: 503 }
   );
 }
@@ -80,9 +83,15 @@ export async function readBytes(req: Request, maxBytes: number): Promise<Buffer>
   return Buffer.concat(parts);
 }
 
-export function requireSameOrigin(req: Request) {
+export function requireSameOrigin(req: Request, requireOrigin = false) {
   const origin = req.headers.get('origin');
   const secFetchSite = req.headers.get('sec-fetch-site');
+
+  // Cookie-authenticated endpoints must require an explicit browser origin.
+  // SameSite cookies are useful defense in depth, but are not a CSRF token.
+  if (requireOrigin && !origin) {
+    throw new HttpError(403, 'Origin header is required.');
+  }
 
   if (secFetchSite === 'cross-site' || (origin && origin !== new URL(req.url).origin)) {
     throw new HttpError(403, 'Cross-site request rejected.');

@@ -5,7 +5,7 @@ import { getCurrentShopId } from '@/lib/shop';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
 import { apiError, HttpError, readJson, requireSameOrigin } from '@/lib/http';
 import { rateLimit, hash, equalSecret } from '@/lib/security';
-import { uuid, textField, printOptions } from '@/lib/validation';
+import { onlyFields, uuid, textField, printOptions } from '@/lib/validation';
 import { calculateOrderPrice } from '@/lib/pricing';
 import { computeEffectivePageCount } from '@/lib/pdf-transform';
 import { paymentProvider } from '@/lib/payments';
@@ -45,6 +45,11 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await readJson(req);
+    onlyFields(body, [
+      'uploadId', 'idempotencyKey', 'paymentMethod', 'uploadToken',
+      'paperSize', 'colorMode', 'printSides', 'copies', 'addOns',
+      'advancedConfig', 'customerName', 'customerPhone', 'customerNotes',
+    ]);
     const uploadId = uuid(body.uploadId);
     const idempotencyKey = uuid(body.idempotencyKey);
 
@@ -188,10 +193,6 @@ export async function POST(req: NextRequest) {
 
     // Handle UPI / Online payment flow
     const provider = await paymentProvider();
-    const host = req.headers.get('x-forwarded-host') || req.headers.get('host');
-    const proto = req.headers.get('x-forwarded-proto') || 'https';
-    const requestOrigin = host ? `${proto}://${host}` : req.nextUrl.origin;
-
     // Idempotent checkout retry check
     const { data: previous, error: prevError } = await db
       .from('payments')
@@ -207,7 +208,7 @@ export async function POST(req: NextRequest) {
       if (previous.request_hash !== requestHash) {
         throw new HttpError(409, 'Checkout already exists with different options.');
       }
-      return NextResponse.json(await openPayment(previous, provider, requestOrigin));
+      return NextResponse.json(await openPayment(previous, provider));
     }
 
     const paymentId = randomUUID();
@@ -263,7 +264,7 @@ export async function POST(req: NextRequest) {
           activePayment.owner_hash === owner &&
           activePayment.request_hash === requestHash
         ) {
-          return NextResponse.json(await openPayment(activePayment, provider, requestOrigin));
+          return NextResponse.json(await openPayment(activePayment, provider));
         }
 
         throw new HttpError(

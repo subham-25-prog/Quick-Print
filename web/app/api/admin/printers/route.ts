@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
 import { apiError, HttpError, readJson, requireSameOrigin } from '@/lib/http';
 import { getShopPrinters, setActivePrinter, deleteShopPrinter } from '@/lib/db';
-import { textField } from '@/lib/validation';
+import { onlyFields, textField } from '@/lib/validation';
 import { revalidatePath } from 'next/cache';
 
 export const dynamic = 'force-dynamic';
@@ -31,8 +31,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    requireSameOrigin(req);
+    requireSameOrigin(req, true);
     const body = await readJson(req);
+    onlyFields(body, ['printerName']);
     const printerName = textField(body.printerName, 200);
 
     if (!printerName) {
@@ -70,8 +71,9 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    requireSameOrigin(req);
+    requireSameOrigin(req, true);
     const body = await readJson(req);
+    onlyFields(body, ['printerName']);
     const printerName = textField(body.printerName, 200);
 
     if (!printerName) {

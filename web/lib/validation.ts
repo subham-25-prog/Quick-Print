@@ -26,6 +26,17 @@ export function textField(value: unknown, max: number): string {
   return value.trim();
 }
 
+/** Reject surplus JSON keys so newly added client fields cannot silently gain
+ * authority in a server handler (mass-assignment protection). */
+export function onlyFields(body: Record<string, unknown>, allowed: readonly string[]): void {
+  const permitted = new Set(allowed);
+  for (const key of Object.keys(body)) {
+    if (!permitted.has(key)) {
+      throw new HttpError(400, 'Unexpected request field.');
+    }
+  }
+}
+
 export function printOptions(
   body: Record<string, unknown>,
   pricing: PricingConfig

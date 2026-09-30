@@ -13,19 +13,12 @@ export function equalSecret(a: string, b: string): boolean {
   return x.length > 0 && x.length === y.length && timingSafeEqual(x, y);
 }
 
-export function appOrigin(preferredOrigin?: string): string {
-  if (preferredOrigin) {
-    try {
-      const u = new URL(preferredOrigin);
-      const isLocalDev = process.env.NODE_ENV !== 'production' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
-      if (u.protocol === 'https:' || isLocalDev) {
-        return u.origin;
-      }
-    } catch {}
-  }
-
+export function appOrigin(): string {
+  // Payment return URLs are security-sensitive. Never derive them from Host or
+  // X-Forwarded-Host: those headers can be attacker controlled before a proxy
+  // has explicitly validated them.
   const origin = process.env.NEXT_PUBLIC_APP_URL?.trim();
-  if (origin && !origin.includes('quick-print-pi.vercel.app')) {
+  if (origin) {
     try {
       const u = new URL(origin);
       const isLocalDev = process.env.NODE_ENV !== 'production' && (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
@@ -40,13 +33,6 @@ export function appOrigin(preferredOrigin?: string): string {
   }
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL.trim()}`;
-  }
-
-  if (origin) {
-    try {
-      const u = new URL(origin);
-      return u.origin;
-    } catch {}
   }
 
   throw new HttpError(503, 'The shop URL is not configured.');

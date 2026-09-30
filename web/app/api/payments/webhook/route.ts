@@ -27,9 +27,9 @@ export async function POST(req: NextRequest) {
     try {
       provider = await paymentProvider();
     } catch {
-      // Provider not configured yet on hosting environment:
-      // Return 200 so gateway registration validation passes
-      return NextResponse.json({ success: true, message: 'Webhook endpoint active' });
+      // A receiver without provider credentials cannot authenticate a webhook.
+      // Fail closed; configure the provider before registering this endpoint.
+      throw new HttpError(503, 'Payment webhook is not configured.');
     }
 
     let event: { reference: string; merchantId: string; eventHash: string };

@@ -15,8 +15,7 @@ export type StoredPayment = PaymentContext & {
 
 export async function openPayment(
   payment: StoredPayment,
-  provider: PaymentProvider,
-  preferredOrigin?: string
+  provider: PaymentProvider
 ) {
   const token = createOrderAccessToken(payment.id);
   if (!token) {
@@ -42,7 +41,7 @@ export async function openPayment(
 
     if (lock) {
       try {
-        const origin = appOrigin(preferredOrigin);
+        const origin = appOrigin();
         const returnUrl = `${origin}/payment/${payment.id}?access_token=${encodeURIComponent(token)}`;
         const session = await provider.createPayment(payment, returnUrl);
 

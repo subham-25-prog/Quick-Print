@@ -40,7 +40,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
-    requireSameOrigin(req);
+    requireSameOrigin(req, true);
     const body = await readJson(req);
     const payload = body.pricing || body;
 

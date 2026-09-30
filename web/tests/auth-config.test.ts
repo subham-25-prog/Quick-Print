@@ -7,9 +7,9 @@ afterEach(() => vi.unstubAllEnvs());
 
 test('production admin access fails closed when credentials are missing or too short', () => {
   vi.stubEnv('NODE_ENV', 'production');
-  for (const secret of ['', 'short']) {
+  for (const secret of ['', 'short', 'a'.repeat(31)]) {
     vi.stubEnv('ADMIN_SESSION_SECRET', secret);
-    vi.stubEnv('ADMIN_PIN', '');
+    vi.stubEnv('ADMIN_PIN', 'short');
     expect(isAdminSecurityConfigured()).toBe(false);
     expect(verifyAdminPin('123456')).toBe(false);
     expect(createAdminSession()).toBeNull();
@@ -18,10 +18,10 @@ test('production admin access fails closed when credentials are missing or too s
 
 test('configured production admin credentials still work', () => {
   vi.stubEnv('NODE_ENV', 'production');
-  vi.stubEnv('ADMIN_SESSION_SECRET', 'test-secret-that-is-long-enough');
-  vi.stubEnv('ADMIN_PIN', '975310');
+  vi.stubEnv('ADMIN_SESSION_SECRET', 'a'.repeat(32));
+  vi.stubEnv('ADMIN_PIN', 'correct-horse-battery-staple');
   expect(isAdminSecurityConfigured()).toBe(true);
-  expect(verifyAdminPin('975310')).toBe(true);
+  expect(verifyAdminPin('correct-horse-battery-staple')).toBe(true);
   expect(createAdminSession()).not.toBeNull();
 });
 

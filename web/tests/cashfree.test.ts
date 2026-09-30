@@ -216,6 +216,19 @@ test('forged webhook signature is rejected; valid HMAC webhook is accepted', asy
   expect(event.eventHash).toBeTruthy();
 });
 
+test('a correctly signed webhook with a malformed timestamp is rejected', async () => {
+  const f = fixture();
+  const rawBody = JSON.stringify({ type: 'PAYMENT_SUCCESS_WEBHOOK', data: { order: { order_id: 'QP_ref123' } } });
+  const timestamp = 'not-a-timestamp';
+  const signature = createHmac('sha256', 'test-secret-key').update(timestamp + rawBody).digest('base64');
+  const req = new Request('https://test/api/payments/webhook', {
+    method: 'POST',
+    headers: { 'x-webhook-signature': signature, 'x-webhook-timestamp': timestamp },
+    body: rawBody,
+  });
+  await expect(f.provider.handleWebhook(req)).rejects.toThrow('timestamp');
+});
+
 test('webhook probe events are acknowledged without failing', async () => {
   const f = fixture();
   const secretKey = 'test-secret-key';

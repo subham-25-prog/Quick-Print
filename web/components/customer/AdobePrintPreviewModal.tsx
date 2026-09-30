@@ -47,12 +47,15 @@ let cachedPdfJsPromise: Promise<any> | null = null;
 export function getPdfJs() {
   if (cachedPdfJs) return Promise.resolve(cachedPdfJs);
   if (!cachedPdfJsPromise) {
-    cachedPdfJsPromise = Promise.all([
-      import('pdfjs-dist/legacy/build/pdf.js'),
-      // @ts-expect-error worker entry does not have type declarations
-      import('pdfjs-dist/legacy/build/pdf.worker.entry.js'),
-    ]).then(([mod]) => {
-      cachedPdfJs = mod.default || mod;
+    cachedPdfJsPromise = import('pdfjs-dist/legacy/build/pdf.mjs').then((mod) => {
+      cachedPdfJs = mod;
+      // Keep PDF parsing in a dedicated browser worker. Resolving this module
+      // URL lets Next bundle the PDF.js 6 ESM worker instead of executing an
+      // old CommonJS worker-entry module in the page context.
+      cachedPdfJs.GlobalWorkerOptions.workerSrc = new URL(
+        'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
+        import.meta.url
+      ).toString();
       return cachedPdfJs;
     });
   }

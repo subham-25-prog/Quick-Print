@@ -3,15 +3,16 @@ import { database } from '@/lib/db';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
 import { apiError, HttpError, readJson, requireSameOrigin } from '@/lib/http';
 import { getCurrentShopId } from '@/lib/shop';
-import { uuid } from '@/lib/validation';
+import { onlyFields, uuid } from '@/lib/validation';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   if (!isAdminRequest(req)) return adminUnauthorizedResponse();
   try {
-    requireSameOrigin(req);
+    requireSameOrigin(req, true);
     const body = await readJson(req);
+    onlyFields(body, ['orderId', 'action']);
     const reference = uuid(body.orderId);
     if (body.action !== 'ACCEPT' && body.action !== 'REJECT') {
       throw new HttpError(400, 'Choose ACCEPT or REJECT.');

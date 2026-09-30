@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    requireSameOrigin(req);
+    requireSameOrigin(req, true);
     await rateLimit(req, 'admin-login', 5, 300);
     const body = await readJson(req);
     const { pin, action } = body;
@@ -60,7 +60,15 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(req: NextRequest) {
+  if (!isAdminRequest(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  try {
+    requireSameOrigin(req, true);
+  } catch (error) {
+    return apiError(error);
+  }
   const response = NextResponse.json({ success: true, message: 'Locked successfully.' });
   response.cookies.delete(ADMIN_SESSION_COOKIE);
   return response;
