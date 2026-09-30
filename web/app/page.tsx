@@ -132,33 +132,36 @@ export default function CustomerHomePage() {
   const [cashPaymentEnabled, setCashPaymentEnabled] = useState<boolean | undefined>(undefined);
   const [paymentErrorNotice, setPaymentErrorNotice] = useState<string | null>(null);
 
-  // Restore client draft from localStorage for offline resiliency
+  // Restore only non-personal print preferences from localStorage.
   useEffect(() => {
     try {
       const saved = localStorage.getItem('quickprint_customer_draft');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.customerName && typeof parsed.customerName === 'string') setCustomerName(parsed.customerName);
-        if (parsed.customerPhone && typeof parsed.customerPhone === 'string') setCustomerPhone(parsed.customerPhone);
-        if (parsed.customerNotes && typeof parsed.customerNotes === 'string') setCustomerNotes(parsed.customerNotes);
-        if (parsed.copies && typeof parsed.copies === 'number') setCopies(parsed.copies);
-        if (parsed.paperSize && typeof parsed.paperSize === 'string') setPaperSize(parsed.paperSize);
-        if (parsed.colorMode && typeof parsed.colorMode === 'string') setColorMode(parsed.colorMode);
-        if (parsed.printSides && typeof parsed.printSides === 'string') setPrintSides(parsed.printSides);
-        if (parsed.addOns && typeof parsed.addOns === 'object') setAddOns(parsed.addOns);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          // Clear identifiers that an earlier version may have stored.
+          delete parsed.customerName;
+          delete parsed.customerPhone;
+          localStorage.setItem('quickprint_customer_draft', JSON.stringify(parsed));
+
+          if (parsed.customerNotes && typeof parsed.customerNotes === 'string') setCustomerNotes(parsed.customerNotes);
+          if (parsed.copies && typeof parsed.copies === 'number') setCopies(parsed.copies);
+          if (parsed.paperSize && typeof parsed.paperSize === 'string') setPaperSize(parsed.paperSize);
+          if (parsed.colorMode && typeof parsed.colorMode === 'string') setColorMode(parsed.colorMode);
+          if (parsed.printSides && typeof parsed.printSides === 'string') setPrintSides(parsed.printSides);
+          if (parsed.addOns && typeof parsed.addOns === 'object') setAddOns(parsed.addOns);
+        }
       }
     } catch {}
   }, []);
 
-  // Debounced draft synchronization
+  // Persist only non-personal print preferences.
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
         localStorage.setItem(
           'quickprint_customer_draft',
           JSON.stringify({
-            customerName,
-            customerPhone,
             customerNotes,
             paperSize,
             colorMode,
@@ -170,7 +173,7 @@ export default function CustomerHomePage() {
       } catch {}
     }, 500);
     return () => clearTimeout(timer);
-  }, [customerName, customerPhone, customerNotes, paperSize, colorMode, printSides, copies, addOns]);
+  }, [customerNotes, paperSize, colorMode, printSides, copies, addOns]);
 
   // Fetch shop pricing on mount & listen for live admin updates
   useEffect(() => {
