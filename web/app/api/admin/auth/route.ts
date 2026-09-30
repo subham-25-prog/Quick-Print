@@ -34,7 +34,10 @@ export async function POST(req: NextRequest) {
 
     if (!isAdminSecurityConfigured()) {
       return NextResponse.json(
-        { error: 'Administrator security is not configured. Set ADMIN_PIN and ADMIN_SESSION_SECRET.' },
+        {
+          error:
+            'Administrator security is not configured. Set ADMIN_PIN (at least 6 characters) and ADMIN_SESSION_SECRET (at least 32 characters) in the server environment, then restart or redeploy.',
+        },
         { status: 503 }
       );
     }

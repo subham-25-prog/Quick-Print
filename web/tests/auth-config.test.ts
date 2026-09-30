@@ -25,6 +25,14 @@ test('configured production admin credentials still work', () => {
   expect(createAdminSession()).not.toBeNull();
 });
 
+test('production admin access accepts a six-character PIN', () => {
+  vi.stubEnv('NODE_ENV', 'production');
+  vi.stubEnv('ADMIN_SESSION_SECRET', 'a'.repeat(32));
+  vi.stubEnv('ADMIN_PIN', '123456');
+  expect(isAdminSecurityConfigured()).toBe(true);
+  expect(verifyAdminPin('123456')).toBe(true);
+});
+
 test('agent authentication requires an explicitly configured secret', () => {
   vi.stubEnv('PRINT_AGENT_SECRET', '');
   expect(() => agentIdentity(new Request('https://shop.test', {

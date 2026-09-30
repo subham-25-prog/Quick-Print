@@ -4,6 +4,7 @@ import { getCurrentShopId } from './shop';
 
 export const ADMIN_SESSION_COOKIE = 'qp_admin_session';
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
+const MIN_ADMIN_PIN_LENGTH = 6;
 const DEVELOPMENT_SESSION_SECRET = 'quickprint-development-session-secret-change-before-launch';
 const DEVELOPMENT_PIN = '123456';
 
@@ -21,7 +22,7 @@ function sessionSecret(): string {
 
 export function configuredAdminPin(): string {
   const pin = process.env.ADMIN_PIN?.trim();
-  if (pin && pin.length >= 12) return pin;
+  if (pin && pin.length >= MIN_ADMIN_PIN_LENGTH) return pin;
   return process.env.NODE_ENV === 'production' ? '' : DEVELOPMENT_PIN;
 }
 
