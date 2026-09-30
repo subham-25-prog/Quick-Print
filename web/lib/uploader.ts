@@ -18,6 +18,7 @@ export interface UploadOptions {
 }
 
 const CHUNK_SIZE = 3 * 1024 * 1024;
+const PARALLEL_CHUNK_UPLOADS = 3;
 const CHUNK_UPLOAD_TIMEOUT_MS = 180000;
 // The server allows five minutes for the final chunk to assemble, validate and
 // store a large document. Keep the browser alive a little longer so it receives
@@ -95,8 +96,29 @@ export async function uploadDocumentFile(
   if (totalChunks > 1) {
     const uploadId = generateUUID();
     const uploadToken = generateToken();
+    const uploadedChunkBytes = new Array<number>(totalChunks).fill(0);
+    type ChunkResult = {
+      success: boolean;
+      chunkReceived?: number;
+      fileInfo?: {
+        uploadId: string;
+        uploadToken: string;
+        fileName: string;
+        fileType: string;
+        fileSizeBytes: number;
+        pageCount: number;
+        storagePath: string;
+        signedUrl: string;
+      };
+    };
 
-    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+    const reportProgress = (stage: 'uploading' | 'processing') => {
+      const uploadedBytes = uploadedChunkBytes.reduce((total, bytes) => total + bytes, 0);
+      const percent = Math.min(Math.round((uploadedBytes / file.size) * 88), 88);
+      onProgress?.(percent, stage);
+    };
+
+    const uploadChunk = async (chunkIndex: number): Promise<ChunkResult> => {
       const start = chunkIndex * CHUNK_SIZE;
       const end = Math.min(start + CHUNK_SIZE, file.size);
       const chunkBlob = file.slice(start, end, file.type || 'application/pdf');
@@ -114,29 +136,14 @@ export async function uploadDocumentFile(
         onProgress?.(88, 'processing');
       }
 
-      const chunkResult = await new Promise<{
-        success: boolean;
-        chunkReceived?: number;
-        fileInfo?: {
-          uploadId: string;
-          uploadToken: string;
-          fileName: string;
-          fileType: string;
-          fileSizeBytes: number;
-          pageCount: number;
-          storagePath: string;
-          signedUrl: string;
-        };
-      }>((resolve, reject) => {
+      return new Promise<ChunkResult>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         onXhrCreated?.(xhr);
 
         xhr.upload.onprogress = (event) => {
           if (event.lengthComputable) {
-            const chunkBase = (chunkIndex / totalChunks) * 88;
-            const chunkFraction = (event.loaded / event.total) * (88 / totalChunks);
-            const percent = Math.min(Math.round(chunkBase + chunkFraction), 88);
-            onProgress?.(percent, percent >= 85 ? 'processing' : 'uploading');
+            uploadedChunkBytes[chunkIndex] = event.loaded;
+            reportProgress(chunkIndex === totalChunks - 1 ? 'processing' : 'uploading');
           }
         };
 
@@ -161,15 +168,32 @@ export async function uploadDocumentFile(
         xhr.open('POST', '/api/upload');
         xhr.send(chunkFormData);
       });
+    };
 
-      if (chunkIndex === totalChunks - 1) {
-        if (!chunkResult.fileInfo) {
-          throw new Error('Upload finalized but file information was not returned.');
-        }
-        onProgress?.(100, 'processing');
-        resultFileInfo = chunkResult.fileInfo;
+    // Upload the saved chunks concurrently to hide network round-trip time.
+    // The last chunk remains separate because it triggers assembly/finalization
+    // on the server and must run only after all prior chunks have arrived.
+    let nextChunkIndex = 0;
+    const finalChunkIndex = totalChunks - 1;
+    const uploadWorker = async () => {
+      while (nextChunkIndex < finalChunkIndex) {
+        const chunkIndex = nextChunkIndex++;
+        await uploadChunk(chunkIndex);
       }
+    };
+    await Promise.all(
+      Array.from(
+        { length: Math.min(PARALLEL_CHUNK_UPLOADS, finalChunkIndex) },
+        () => uploadWorker()
+      )
+    );
+
+    const finalResult = await uploadChunk(finalChunkIndex);
+    if (!finalResult.fileInfo) {
+      throw new Error('Upload finalized but file information was not returned.');
     }
+    onProgress?.(100, 'processing');
+    resultFileInfo = finalResult.fileInfo;
   } else {
     // Single request upload for <= 3 MB
     const formData = new FormData();
