@@ -73,17 +73,51 @@ export default function CustomerHomePage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
-  // Preload the large preview renderer when user uploads files.
+  // Build a multi-file document shortly after the list settles. Preview and
+  // checkout then reuse this exact promise instead of making Cash wait for the
+  // entire merge on its first tap.
   useEffect(() => {
-    if (uploadedFile || batchFiles.length > 0) {
-      import('@/components/customer/AdobePrintPreviewModal')
-        .then((mod) => {
-          if (typeof mod.getPdfJs === 'function') {
-            mod.getPdfJs().catch(() => {});
-          }
+    if (batchFiles.length < 2) return;
+
+    let cancelled = false;
+    const signature = getBatchSignature(batchFiles);
+    const timer = window.setTimeout(() => {
+      setIsProcessingBatch(true);
+      void checkoutPreparation
+        .prepareDocument(batchFiles)
+        .then((compiledFile) => {
+          if (cancelled) return;
+          setBatchPreviewFile(compiledFile);
+          lastCompiledBatchSig.current = signature;
+
+          // Only warm PDF.js after the CPU-heavy merge has completed. This
+          // keeps file selection responsive and makes the later Preview tap
+          // faster without eagerly loading the renderer for every upload.
+          void import('@/components/customer/AdobePrintPreviewModal')
+            .then((mod) => mod.getPdfJs?.())
+            .catch(() => {});
         })
-        .catch(() => {});
-    }
+        .catch(() => {
+          // The explicit Preview/checkout path will show a user-facing error.
+        })
+        .finally(() => {
+          if (!cancelled) setIsProcessingBatch(false);
+        });
+    }, 500);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [batchFiles, checkoutPreparation]);
+
+  // The payment selector is small, but it is code-split. Fetch it after a
+  // document is selected so Confirm & Pay opens immediately without loading
+  // the heavyweight PDF preview renderer unnecessarily.
+  useEffect(() => {
+    if (!uploadedFile && batchFiles.length === 0) return;
+
+    void import('@/components/customer/PaymentModal').catch(() => {});
   }, [uploadedFile, batchFiles.length]);
 
   // Payment modal & order submission

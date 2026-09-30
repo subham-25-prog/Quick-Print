@@ -240,18 +240,30 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
       validFiles.push(file);
     }
 
-    const newBatchItems: BatchFileItem[] = [];
-    for (const file of validFiles) {
-      const pageCount = await detectFilePageCount(file);
-      newBatchItems.push({
+    // PDF parsing is CPU intensive. Parse a small number concurrently rather
+    // than serialising a long batch, while avoiding a memory spike from opening
+    // every large PDF at once.
+    const pageCounts = new Array<number>(validFiles.length);
+    let nextFileIndex = 0;
+    const workers = Array.from({ length: Math.min(2, validFiles.length) }, async () => {
+      while (nextFileIndex < validFiles.length) {
+        const index = nextFileIndex++;
+        pageCounts[index] = await detectFilePageCount(validFiles[index]);
+      }
+    });
+    await Promise.all(workers);
+
+    const newBatchItems: BatchFileItem[] = validFiles.map((file, index) => {
+      const pageCount = pageCounts[index];
+      return {
         id: generateUUID(),
         file,
         name: file.name,
         size: file.size,
         pageCount,
         copies: 1,
-      });
-    }
+      };
+    });
 
     const updatedBatch = [...batchFiles, ...newBatchItems];
     onBatchFilesChange?.(updatedBatch);

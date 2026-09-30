@@ -1,6 +1,67 @@
 import { PDFDocument } from 'pdf-lib';
 import { BatchFileItem } from '@/types';
 
+export const MAX_COMPILED_BATCH_SIZE_BYTES = 100 * 1024 * 1024;
+
+type BatchWorkerResult = {
+  type: 'success';
+  bytes: ArrayBuffer;
+  fileName: string;
+  totalPages: number;
+} | {
+  type: 'error';
+  message: string;
+};
+
+function batchFileName(items: BatchFileItem[], totalPages: number): string {
+  return items.length === 1
+    ? items[0].name
+    : `Batch_${items.length}_Documents_${totalPages}_Pages.pdf`;
+}
+
+function assertBatchSize(size: number) {
+  if (size > MAX_COMPILED_BATCH_SIZE_BYTES) {
+    throw new Error('The combined batch is larger than 100 MB. Remove some images or use smaller files before payment.');
+  }
+}
+
+async function compileBatchPdfInWorker(items: BatchFileItem[]): Promise<{ file: File; totalPages: number }> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL('./batch-compiler.worker.ts', import.meta.url));
+    let settled = false;
+
+    const stop = () => worker.terminate();
+    const fail = (error: Error) => {
+      if (settled) return;
+      settled = true;
+      stop();
+      reject(error);
+    };
+
+    worker.onerror = () => fail(new Error('Unable to prepare this batch for printing. Please try again.'));
+    worker.onmessage = (event: MessageEvent<BatchWorkerResult>) => {
+      if (settled) return;
+      const result = event.data;
+      if (result.type === 'error') {
+        fail(new Error(result.message));
+        return;
+      }
+
+      settled = true;
+      stop();
+      assertBatchSize(result.bytes.byteLength);
+      resolve({
+        file: new File([result.bytes], result.fileName, { type: 'application/pdf' }),
+        totalPages: result.totalPages,
+      });
+    };
+
+    worker.postMessage({
+      items: items.map(({ file, name, copies }) => ({ file, name, copies })),
+    });
+  });
+}
+
 /**
  * Rapidly detect the page count of a PDF file using pdf-lib client-side.
  * Images (JPG, PNG) are treated as 1 page.
@@ -52,9 +113,18 @@ export async function compileBatchPdf(
     };
   }
 
+  // Merging many camera images is CPU-heavy. Keep it off the main thread so
+  // the preview controls and payment buttons remain responsive on phones.
+  if (typeof window !== 'undefined' && typeof Worker !== 'undefined') {
+    return compileBatchPdfInWorker(items);
+  }
+
   const mergedPdf = await PDFDocument.create();
 
   for (const item of items) {
+    // Let the browser paint progress and handle input between expensive source
+    // documents. This preserves the print output while avoiding a frozen UI.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
     const isPdf =
       item.file.type === 'application/pdf' || item.name.toLowerCase().endsWith('.pdf');
     const isPng =
@@ -114,13 +184,9 @@ export async function compileBatchPdf(
 
   const totalPages = mergedPdf.getPageCount();
   const mergedBytes = await mergedPdf.save();
+  assertBatchSize(mergedBytes.byteLength);
 
-  const fileName =
-    items.length === 1
-      ? items[0].name
-      : `Batch_${items.length}_Documents_${totalPages}_Pages.pdf`;
-
-  const compiledFile = new File([mergedBytes.buffer as ArrayBuffer], fileName, {
+  const compiledFile = new File([mergedBytes.buffer as ArrayBuffer], batchFileName(items, totalPages), {
     type: 'application/pdf',
   });
 
