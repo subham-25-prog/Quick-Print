@@ -10,10 +10,13 @@ import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Printer,Download } from '@/components/ui/Icons';
 
 export default function ShopWallPosterPage() {
+  const initialPricing = useInitialPricing();
   const [activeUrl, setActiveUrl] = useState<string>('');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [rawShopName, setRawShopName] = useState(useInitialPricing().shop_name);
-  const [shopAddress, setShopAddress] = useState(shopConfig.address);
+  const [rawShopName, setRawShopName] = useState(initialPricing.shop_name);
+  // Use the server snapshot first. Fetching pricing after hydration should not
+  // briefly replace the saved address with an environment fallback.
+  const [shopAddress, setShopAddress] = useState(initialPricing.shop_address || shopConfig.address);
   const shopName = useShopName(rawShopName);
 
   useEffect(() => {
