@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Check, Sparkles, Copy, CheckCircle2, RotateCcw } from '@/components/ui/Icons';
+import { formatCurrency } from '@/lib/utils';
 
 interface WelcomePrintCompleteAnimationProps {
   orderNumber?: string;
@@ -10,6 +11,9 @@ interface WelcomePrintCompleteAnimationProps {
   totalPages?: number;
   paperSize?: string;
   colorMode?: string;
+  totalAmount?: number;
+  paymentMethod?: string;
+  printSides?: string;
 }
 
 interface Particle {
@@ -45,6 +49,9 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
   totalPages = 1,
   paperSize = 'A4',
   colorMode = 'B&W',
+  totalAmount,
+  paymentMethod,
+  printSides,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [copied, setCopied] = useState(false);
@@ -65,7 +72,6 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
     const particles: Particle[] = [];
     const count = 65;
 
-    // Dual-cannon burst from left and right
     for (let i = 0; i < count; i++) {
       const isLeft = i % 2 === 0;
       particles.push({
@@ -158,7 +164,7 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
     <div
       role="region"
       aria-label="Thank You and Print Complete Celebration"
-      className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900/98 to-slate-950 border border-emerald-500/40 p-5 sm:p-7 text-white shadow-2xl space-y-5 transition-all duration-300 animate-in fade-in zoom-in-95 contain-layout"
+      className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900/98 to-slate-950 border border-emerald-500/40 p-5 sm:p-6 text-white shadow-2xl space-y-4 transition-all duration-300 animate-in fade-in zoom-in-95 contain-layout"
     >
       {/* Celebration Confetti Canvas overlay */}
       <canvas
@@ -190,7 +196,7 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
       </div>
 
       {/* Hero Welcome & Thank You Centerpiece */}
-      <div className="relative z-10 flex flex-col items-center text-center space-y-3.5 py-1">
+      <div className="relative z-10 flex flex-col items-center text-center space-y-2.5 py-0.5">
         {/* Animated Golden-Emerald Crest with Expanding Sonar Waves */}
         <div className="relative flex items-center justify-center">
           <span className="absolute w-20 h-20 rounded-full bg-emerald-400/20 animate-ping [animation-duration:2.4s] pointer-events-none" />
@@ -211,48 +217,89 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
           <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-white to-amber-200 tracking-tight leading-tight">
             Thank You!
           </h2>
-          <p className="text-sm font-bold text-emerald-300">
+          <p className="text-xs sm:text-sm font-bold text-emerald-300">
             Your prints are ready at the counter tray
-          </p>
-          <p className="text-xs text-slate-300 font-medium leading-relaxed pt-0.5">
-            Please pick up your <span className="text-white font-bold">{totalPages} {totalPages === 1 ? 'page' : 'pages'}</span> ({paperSize} • {colorMode === 'COLOR' ? 'Color' : 'B&W'}) from the counter.
           </p>
         </div>
       </div>
 
-      {/* Sleek Token Card */}
-      <div className="relative z-10 rounded-2xl bg-slate-950/80 border border-slate-800/90 p-3.5 sm:p-4 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block select-none">
-            Order Pickup Token
-          </span>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="font-mono text-base font-extrabold text-amber-300 tracking-wider truncate">
-              {orderNumber ? `#${orderNumber}` : 'READY'}
+      {/* Sleek Token Card with Details Below the Order Number */}
+      <div className="relative z-10 rounded-2xl bg-slate-950/85 border border-slate-800/90 p-4 space-y-3 backdrop-blur-md">
+        {/* Order Number Header Row */}
+        <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block select-none">
+              Order Number
             </span>
-            {orderNumber && (
-              <button
-                type="button"
-                onClick={handleCopyOrder}
-                className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-[10px] font-semibold text-slate-300 flex items-center gap-1 transition-colors cursor-pointer select-none active:scale-95 shrink-0"
-              >
-                {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                <span>{copied ? 'Copied' : 'Copy'}</span>
-              </button>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="font-mono text-base sm:text-lg font-extrabold text-amber-300 tracking-wider truncate">
+                {orderNumber ? `#${orderNumber}` : 'READY'}
+              </span>
+              {orderNumber && (
+                <button
+                  type="button"
+                  onClick={handleCopyOrder}
+                  className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-[10px] font-semibold text-slate-300 flex items-center gap-1 transition-colors cursor-pointer select-none active:scale-95 shrink-0"
+                >
+                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
+                </button>
+              )}
+            </div>
+            {fileName && (
+              <span className="text-[11px] text-slate-400 block truncate max-w-[220px] mt-0.5">
+                {fileName}
+              </span>
             )}
           </div>
-          {fileName && (
-            <span className="text-[10px] text-slate-400 block truncate max-w-[220px] mt-0.5">
-              {fileName}
+
+          <div className="shrink-0">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-md shadow-emerald-700/30">
+              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+              <span>Ready at Counter</span>
             </span>
-          )}
+          </div>
         </div>
 
-        <div className="shrink-0">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-md shadow-emerald-700/30">
-            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-            <span>Ready at Counter</span>
-          </span>
+        {/* Printing Details below the Order Number: Color, Pages, Size, Price */}
+        <div className="grid grid-cols-4 gap-2 text-center text-xs pt-0.5">
+          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90">
+            <span className="text-[9px] uppercase font-bold text-slate-400 block">Color</span>
+            <span className="font-bold text-slate-100 mt-0.5 block truncate">
+              {colorMode === 'COLOR' ? 'Color' : 'B&W'}
+            </span>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90">
+            <span className="text-[9px] uppercase font-bold text-slate-400 block">Pages</span>
+            <span className="font-bold text-slate-100 mt-0.5 block truncate">
+              {totalPages} {totalPages === 1 ? 'Page' : 'Pages'}
+            </span>
+            {printSides && (
+              <span className="text-[9px] text-slate-400 block mt-0.5 truncate">
+                {printSides === 'DOUBLE' ? '2-Sided' : '1-Sided'}
+              </span>
+            )}
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90">
+            <span className="text-[9px] uppercase font-bold text-slate-400 block">Size</span>
+            <span className="font-bold text-slate-100 mt-0.5 block truncate">
+              {paperSize}
+            </span>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
+            <span className="text-[9px] uppercase font-bold text-emerald-400 block">Price</span>
+            <span className="font-black text-emerald-300 mt-0.5 block truncate">
+              {typeof totalAmount === 'number' ? formatCurrency(totalAmount) : 'Paid'}
+            </span>
+            {paymentMethod && (
+              <span className="text-[8px] font-semibold text-emerald-400 block mt-0.5 truncate">
+                {paymentMethod === 'CASH' ? 'Cash' : 'Online'}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 

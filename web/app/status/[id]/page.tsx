@@ -289,94 +289,99 @@ export default function OrderStatusPage() {
                 orderNumber={data.order.order_number}
                 paperSize={data.order.paper_size}
                 colorMode={data.order.color_mode}
+                totalAmount={data.order.total_amount}
+                paymentMethod={data.order.payment_method}
+                printSides={data.order.print_sides}
               />
             )}
 
-            {/* 2. Order Reference & Receipt Card */}
-            <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4 contain-layout">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block select-none">
-                    Order Number
-                  </span>
-                  <span className="font-mono text-base font-extrabold text-slate-900 tracking-tight">
-                    {data.order.order_number}
-                  </span>
+            {/* 2. Order Reference & Receipt Card (hidden when printed, as all specs and price are directly inside the Thank You card) */}
+            {!isPrinted && (
+              <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4 contain-layout">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block select-none">
+                      Order Number
+                    </span>
+                    <span className="font-mono text-base font-extrabold text-slate-900 tracking-tight">
+                      {data.order.order_number}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyOrderId}
+                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active-press cursor-pointer select-none"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copied ? 'Copied' : 'Copy'}</span>
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={copyOrderId}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active-press cursor-pointer select-none"
-                >
-                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
-              </div>
 
-              {/* Document Overview */}
-              <div className="flex items-start gap-3.5 pt-1">
-                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5" />
+                {/* Document Overview */}
+                <div className="flex items-start gap-3.5 pt-1">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-slate-900 truncate">
+                      {data.order.file_name}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      {data.order.page_count} {data.order.page_count === 1 ? 'page' : 'pages'} · {data.order.copies} {data.order.copies === 1 ? 'copy' : 'copies'}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-slate-900 truncate">
-                    {data.order.file_name}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    {data.order.page_count} {data.order.page_count === 1 ? 'page' : 'pages'} · {data.order.copies} {data.order.copies === 1 ? 'copy' : 'copies'}
-                  </p>
-                </div>
-              </div>
 
-              {/* Specs Pills */}
-              <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1 select-none">
-                <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Paper</span>
-                  <span className="font-bold text-slate-800">{data.order.paper_size}</span>
+                {/* Specs Pills */}
+                <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1 select-none">
+                  <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block uppercase font-bold">Paper</span>
+                    <span className="font-bold text-slate-800">{data.order.paper_size}</span>
+                  </div>
+                  <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block uppercase font-bold">Color</span>
+                    <span className="font-bold text-slate-800">
+                      {data.order.color_mode === 'COLOR' ? 'Full Color' : 'Black & White'}
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block uppercase font-bold">Sides</span>
+                    <span className="font-bold text-slate-800">
+                      {data.order.print_sides === 'DOUBLE' ? '2-Sided' : '1-Sided'}
+                    </span>
+                  </div>
                 </div>
-                <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Color</span>
-                  <span className="font-bold text-slate-800">
-                    {data.order.color_mode === 'COLOR' ? 'Full Color' : 'Black & White'}
-                  </span>
-                </div>
-                <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Sides</span>
-                  <span className="font-bold text-slate-800">
-                    {data.order.print_sides === 'DOUBLE' ? '2-Sided' : '1-Sided'}
-                  </span>
-                </div>
-              </div>
 
-              {/* Price Total */}
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-600 select-none">
-                  {isAwaitingVerification ? 'Amount Due' : 'Total Paid'}
-                </span>
-                <div className="text-right">
-                  <span className="text-xl font-black text-emerald-700">
-                    {formatCurrency(data.order.total_amount)}
+                {/* Price Total */}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <span className="text-sm font-bold text-slate-600 select-none">
+                    {isAwaitingVerification ? 'Amount Due' : 'Total Paid'}
                   </span>
-                  <span className={`text-[10px] block font-semibold select-none ${isAwaitingVerification ? 'text-amber-600' : 'text-emerald-600'}`}>
-                    {isAwaitingVerification ? '⏳ Cash – Pay at Counter' : data.order.payment_method === 'CASH' ? '✓ Cash Verified' : '✓ Paid Online'}
-                  </span>
+                  <div className="text-right">
+                    <span className="text-xl font-black text-emerald-700">
+                      {formatCurrency(data.order.total_amount)}
+                    </span>
+                    <span className={`text-[10px] block font-semibold select-none ${isAwaitingVerification ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {isAwaitingVerification ? '⏳ Cash – Pay at Counter' : data.order.payment_method === 'CASH' ? '✓ Cash Verified' : '✓ Paid Online'}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            )}
           </>
         )}
 
         {/* Action Button: Print Another Document */}
         <Link
           href="/"
-          className="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-center font-bold text-sm shadow-md transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active-press select-none"
+          className="w-full py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-center font-bold text-sm shadow-md transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active-press select-none"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Print Another Document</span>
         </Link>
 
         {/* Developer Attribution Card */}
-        <DeveloperBadge className="mt-3" />
+        <DeveloperBadge className="mt-2" />
       </main>
     </div>
   );

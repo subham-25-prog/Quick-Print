@@ -26,6 +26,9 @@ interface LivePrintVisualizerProps {
   orderNumber?: string;
   paperSize?: string;
   colorMode?: string;
+  totalAmount?: number;
+  paymentMethod?: string;
+  printSides?: string;
 }
 
 export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.memo(({
@@ -40,6 +43,9 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
   orderNumber,
   paperSize = 'A4',
   colorMode = 'B&W',
+  totalAmount,
+  paymentMethod,
+  printSides,
 }) => {
   const activeShopName = useShopName(shopName);
 
@@ -195,6 +201,9 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
         totalPages={totalPages}
         paperSize={paperSize}
         colorMode={colorMode}
+        totalAmount={totalAmount}
+        paymentMethod={paymentMethod}
+        printSides={printSides}
       />
     );
   }
