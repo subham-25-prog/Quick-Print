@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Check, Sparkles, Copy, CheckCircle2, RotateCcw } from '@/components/ui/Icons';
+import { Check, Sparkles, Copy, RotateCcw } from '@/components/ui/Icons';
 import { formatCurrency } from '@/lib/utils';
 
 interface WelcomePrintCompleteAnimationProps {
@@ -227,38 +227,34 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
       <div className="relative z-10 rounded-2xl bg-slate-950/85 border border-slate-800/90 p-4 space-y-3 backdrop-blur-md">
         {/* Order Number Header Row */}
         <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block select-none">
               Order Number
             </span>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="font-mono text-base sm:text-lg font-extrabold text-amber-300 tracking-wider truncate">
+              <span className="font-mono text-base sm:text-lg font-extrabold text-amber-300 tracking-wider select-all">
                 {orderNumber ? `#${orderNumber}` : 'READY'}
               </span>
-              {orderNumber && (
-                <button
-                  type="button"
-                  onClick={handleCopyOrder}
-                  className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-[10px] font-semibold text-slate-300 flex items-center gap-1 transition-colors cursor-pointer select-none active:scale-95 shrink-0"
-                >
-                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
-              )}
             </div>
             {fileName && (
-              <span className="text-[11px] text-slate-400 block truncate max-w-[220px] mt-0.5">
+              <span className="text-[11px] text-slate-400 block truncate mt-0.5">
                 {fileName}
               </span>
             )}
           </div>
 
-          <div className="shrink-0">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-md shadow-emerald-700/30">
-              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-              <span>Ready at Counter</span>
-            </span>
-          </div>
+          {orderNumber && (
+            <div className="shrink-0">
+              <button
+                type="button"
+                onClick={handleCopyOrder}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer select-none active:scale-95 border border-slate-700/80 shadow-xs"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-300" />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Printing Details below the Order Number: Color, Pages, Size, Price */}

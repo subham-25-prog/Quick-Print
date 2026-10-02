@@ -364,7 +364,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
       <div className="relative z-10 rounded-2xl bg-slate-950/85 border border-slate-800/90 p-4 space-y-3 backdrop-blur-md">
         {/* Order Number Header Row */}
         <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block select-none">
               Order Number
             </span>
@@ -384,7 +384,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
               )}
             </div>
             {fileName && (
-              <span className="text-[11px] text-slate-400 block truncate max-w-[220px] mt-0.5">
+              <span className="text-[11px] text-slate-400 block truncate mt-0.5">
                 {fileName}
               </span>
             )}
