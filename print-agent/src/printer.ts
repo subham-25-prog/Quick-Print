@@ -118,8 +118,8 @@ export class WindowsPrinterService {
     if (process.platform !== 'win32') return [];
 
     const now = Date.now();
-    // Cache valid scan for 3s (unless forceRescan) so newly plugged or changed printers appear promptly
-    if (!forceRescan && this.cachedPrinters.length > 0 && now - this.lastScanTime < 3000) {
+    // Cache valid scan for 1s (unless forceRescan) so newly plugged or changed printers appear promptly
+    if (!forceRescan && this.cachedPrinters.length > 0 && now - this.lastScanTime < 1000) {
       return this.cachedPrinters;
     }
 

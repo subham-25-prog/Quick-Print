@@ -56,8 +56,8 @@ export function loadConfig(): AgentConfig {
     agentId,
     printerName,
     mode: 'live',
-    pollIntervalMs: parseDuration(process.env.POLL_INTERVAL_MS, 5000),
-    heartbeatIntervalMs: parseDuration(process.env.HEARTBEAT_INTERVAL_MS, 5000),
+    pollIntervalMs: parseDuration(process.env.POLL_INTERVAL_MS, 1500),
+    heartbeatIntervalMs: parseDuration(process.env.HEARTBEAT_INTERVAL_MS, 1500),
     downloadDir: path.resolve(process.env.DOWNLOAD_DIR || './temp_jobs'),
     stateDir: path.resolve(process.env.STATE_DIR || './state'),
   };

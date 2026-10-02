@@ -189,7 +189,7 @@ export default function AdminPrintingSettingsPage() {
       .catch((err) => console.error('Failed to initialize printing settings:', err))
       .finally(() => { if (!disposed) setLoading(false); });
     const refresh = () => { if (!document.hidden) void loadPrinters(); };
-    const interval = window.setInterval(refresh, selectionPending ? 1500 : 3000);
+    const interval = window.setInterval(refresh, 1500);
     document.addEventListener('visibilitychange', refresh);
     return () => {
       disposed = true;

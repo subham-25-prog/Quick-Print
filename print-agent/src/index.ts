@@ -111,17 +111,22 @@ async function main() {
         typeof error?.response?.data === 'string'
           ? error.response.data
           : (error?.response?.data as { error?: string })?.error;
-      console.error(
-        JSON.stringify({
-          event: 'agent_unavailable',
-          retryInMs: backoffMs,
-          status: error?.response?.status,
-          code: error?.code,
-          message: error?.message,
-          error: responseData,
-        })
-      );
-      backoffMs = Math.min(60000, backoffMs * 2);
+      const isPrinterOffline = Boolean(error?.message?.includes('offline') || error?.message?.includes('No printer'));
+      if (!isPrinterOffline) {
+        console.error(
+          JSON.stringify({
+            event: 'agent_unavailable',
+            retryInMs: backoffMs,
+            status: error?.response?.status,
+            code: error?.code,
+            message: error?.message,
+            error: responseData,
+          })
+        );
+        backoffMs = Math.min(60000, backoffMs * 2);
+      } else {
+        backoffMs = config.pollIntervalMs;
+      }
     }
 
     if (!stopping) {

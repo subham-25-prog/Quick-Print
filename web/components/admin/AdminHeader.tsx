@@ -39,7 +39,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   React.useEffect(() => {
     let stopped = false;
     const polling = startPolling({
-      intervalMs: 4000,
+      intervalMs: 1500,
       poll: async (signal) => {
         const res = await fetch('/api/admin/db-status', { signal });
         if (!res.ok) throw new Error('Could not refresh connection status');
