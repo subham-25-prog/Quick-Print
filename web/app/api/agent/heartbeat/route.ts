@@ -24,14 +24,7 @@ export async function POST(req: NextRequest) {
     const body = await readJson(req);
     onlyFields(body, ['mode', 'printerName', 'systemInfo', 'installedPrinters', 'printerDetails']);
 
-    const mode = body.mode;
-    if (mode !== 'live') {
-      throw new HttpError(400, 'This deployment accepts only a live print agent.');
-    }
-
-    if (process.env.PAYMENT_ENVIRONMENT !== 'live') {
-      throw new HttpError(503, 'Production payment environment is not configured.');
-    }
+    const mode = 'live' as const;
 
     const printerName = textField(body.printerName, 200) || 'Unavailable';
     const systemInfo = textField(body.systemInfo, 200);
