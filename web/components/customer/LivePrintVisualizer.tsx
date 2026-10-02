@@ -185,6 +185,20 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
     },
   ];
 
+  // When printing is complete, replace the pipeline clutter with the dedicated, compact Thank You animation card
+  if (currentStep >= 5) {
+    return (
+      <WelcomePrintCompleteAnimation
+        orderNumber={orderNumber}
+        shopName={activeShopName}
+        fileName={fileName}
+        totalPages={totalPages}
+        paperSize={paperSize}
+        colorMode={colorMode}
+      />
+    );
+  }
+
   return (
     <div className="relative w-full overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-5 sm:p-7 text-white space-y-6 transition-all duration-300 contain-layout">
       {/* Ambient background glow */}
@@ -451,20 +465,6 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
           </div>
         </div>
       </div>
-
-      {/* Welcome & Celebration Animation on Print Completion */}
-      {currentStep >= 5 && (
-        <div className="pt-2">
-          <WelcomePrintCompleteAnimation
-            orderNumber={orderNumber}
-            shopName={activeShopName}
-            fileName={fileName}
-            totalPages={totalPages}
-            paperSize={paperSize}
-            colorMode={colorMode}
-          />
-        </div>
-      )}
     </div>
   );
 });

@@ -57,25 +57,24 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas dimensions to match container
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * (window.devicePixelRatio || 1);
     canvas.height = rect.height * (window.devicePixelRatio || 1);
     ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
 
     const particles: Particle[] = [];
-    const count = 70;
+    const count = 65;
 
-    // Dual-cannon burst from left and right edges
+    // Dual-cannon burst from left and right
     for (let i = 0; i < count; i++) {
       const isLeft = i % 2 === 0;
       particles.push({
-        x: isLeft ? rect.width * 0.15 : rect.width * 0.85,
+        x: isLeft ? rect.width * 0.12 : rect.width * 0.88,
         y: rect.height * 0.35,
-        vx: (isLeft ? 1 : -1) * (Math.random() * 8 + 3) + (Math.random() - 0.5) * 4,
-        vy: -(Math.random() * 9 + 4),
-        w: Math.random() * 8 + 5,
-        h: Math.random() * 12 + 6,
+        vx: (isLeft ? 1 : -1) * (Math.random() * 7 + 3) + (Math.random() - 0.5) * 4,
+        vy: -(Math.random() * 8 + 4),
+        w: Math.random() * 7 + 4,
+        h: Math.random() * 10 + 5,
         color: CELEBRATION_COLORS[Math.floor(Math.random() * CELEBRATION_COLORS.length)],
         rotation: Math.random() * Math.PI * 2,
         rotationSpeed: (Math.random() - 0.5) * 0.25,
@@ -86,7 +85,7 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
     }
 
     let startTime = performance.now();
-    const duration = 3200; // ms
+    const duration = 2800;
 
     const render = (now: number) => {
       const elapsed = now - startTime;
@@ -94,11 +93,10 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
 
       let alive = false;
       for (const p of particles) {
-        // Physics update
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.28; // gravity
-        p.vx *= 0.985; // drag
+        p.vy += 0.26;
+        p.vx *= 0.985;
         p.rotation += p.rotationSpeed;
         p.wobble += p.wobbleSpeed;
 
@@ -134,10 +132,9 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
   }, []);
 
   useEffect(() => {
-    // Initial celebration burst after mount with a micro-delay for smooth layout entrance
     const timer = setTimeout(() => {
       triggerConfetti();
-    }, 150);
+    }, 120);
 
     return () => {
       clearTimeout(timer);
@@ -160,8 +157,8 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
   return (
     <div
       role="region"
-      aria-label="Print Complete Welcome Card"
-      className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900/95 to-slate-950 border border-emerald-500/40 p-6 sm:p-8 text-white shadow-2xl space-y-6 transition-all duration-500 animate-in fade-in zoom-in-95"
+      aria-label="Thank You and Print Complete Celebration"
+      className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900/98 to-slate-950 border border-emerald-500/40 p-5 sm:p-7 text-white shadow-2xl space-y-5 transition-all duration-300 animate-in fade-in zoom-in-95 contain-layout"
     >
       {/* Celebration Confetti Canvas overlay */}
       <canvas
@@ -170,32 +167,21 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
       />
 
       {/* Radiant Iridescent Background Glows */}
-      <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 bg-gradient-to-r from-emerald-500/30 via-amber-400/25 to-teal-400/30 blur-3xl pointer-events-none rounded-full" />
-      <div className="absolute -bottom-20 right-10 w-64 h-36 bg-emerald-600/20 blur-2xl pointer-events-none rounded-full" />
+      <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-80 h-36 bg-gradient-to-r from-emerald-500/25 via-amber-400/20 to-teal-400/25 blur-3xl pointer-events-none rounded-full" />
+      <div className="absolute -bottom-16 right-8 w-52 h-28 bg-emerald-600/15 blur-2xl pointer-events-none rounded-full" />
 
-      {/* Decorative Golden Starbursts in Background */}
-      <div className="absolute top-4 left-6 text-amber-300/40 text-sm select-none pointer-events-none animate-pulse">
-        ✦
-      </div>
-      <div className="absolute top-8 right-8 text-emerald-300/50 text-base select-none pointer-events-none animate-pulse [animation-delay:1s]">
-        ✨
-      </div>
-      <div className="absolute bottom-12 left-8 text-amber-200/40 text-xs select-none pointer-events-none animate-pulse [animation-delay:1.5s]">
-        ✦
-      </div>
-
-      {/* Top Welcome Ribbon / Status Pill */}
-      <div className="relative z-10 flex items-center justify-between gap-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[11px] font-extrabold tracking-wider uppercase shadow-xs">
+      {/* Top Header Pill & Celebrate Button */}
+      <div className="relative z-10 flex items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[11px] font-extrabold tracking-wider uppercase">
           <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin [animation-duration:8s]" />
-          <span>Welcome to Pickup</span>
+          <span>Printing Complete</span>
         </div>
 
         <button
           type="button"
           onClick={handleReplay}
           disabled={isReplaying}
-          title="Replay Celebration Animation"
+          title="Replay Celebration"
           className="text-slate-400 hover:text-amber-300 text-xs flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 transition-colors cursor-pointer select-none active:scale-95"
         >
           <RotateCcw className={`w-3 h-3 ${isReplaying ? 'animate-spin' : ''}`} />
@@ -203,101 +189,81 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
         </button>
       </div>
 
-      {/* Hero Welcome Seal: Animated Golden-Emerald Crest with Expanding Sonar Waves */}
-      <div className="relative z-10 flex flex-col items-center text-center space-y-4 pt-2">
+      {/* Hero Welcome & Thank You Centerpiece */}
+      <div className="relative z-10 flex flex-col items-center text-center space-y-3.5 py-1">
+        {/* Animated Golden-Emerald Crest with Expanding Sonar Waves */}
         <div className="relative flex items-center justify-center">
-          {/* Sonar Pulse Wave 1 */}
-          <span className="absolute w-24 h-24 rounded-full bg-emerald-400/20 animate-ping [animation-duration:2.5s] pointer-events-none" />
-          {/* Sonar Pulse Wave 2 */}
-          <span className="absolute w-20 h-20 rounded-full bg-amber-400/25 animate-ping [animation-duration:3.2s] [animation-delay:0.7s] pointer-events-none" />
+          <span className="absolute w-20 h-20 rounded-full bg-emerald-400/20 animate-ping [animation-duration:2.4s] pointer-events-none" />
+          <span className="absolute w-16 h-16 rounded-full bg-amber-400/25 animate-ping [animation-duration:3s] [animation-delay:0.6s] pointer-events-none" />
 
-          {/* Golden Rotating Ring */}
-          <div className="relative w-20 h-20 rounded-full bg-gradient-to-tr from-emerald-600 via-teal-400 to-amber-300 p-0.75 shadow-lg shadow-emerald-500/30">
+          <div className="relative w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-600 via-teal-400 to-amber-300 p-0.75 shadow-lg shadow-emerald-500/30">
             <div className="w-full h-full rounded-full bg-slate-950 flex items-center justify-center relative overflow-hidden">
-              {/* Inner ambient shine */}
               <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/20 to-amber-400/20 animate-pulse [animation-duration:3s]" />
               <div className="relative flex items-center justify-center text-emerald-400">
-                <Check className="w-9 h-9 stroke-[3] text-emerald-300 drop-shadow-[0_2px_8px_rgba(16,185,129,0.7)] animate-in zoom-in-50 duration-500" />
+                <Check className="w-8 h-8 stroke-[3] text-emerald-300 drop-shadow-[0_2px_8px_rgba(16,185,129,0.7)] animate-in zoom-in-50 duration-300" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Welcome Greeting Titles */}
-        <div className="space-y-1.5 max-w-md mx-auto">
+        {/* Thank You & Welcome Typography */}
+        <div className="space-y-1 max-w-sm mx-auto">
           <h2 className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-200 via-white to-amber-200 tracking-tight leading-tight">
-            Welcome! Your Prints are Ready
+            Thank You!
           </h2>
-          <p className="text-xs sm:text-sm text-slate-300 font-medium leading-relaxed">
-            All <strong className="text-emerald-300 font-bold">{totalPages} {totalPages === 1 ? 'page' : 'pages'}</strong> have been freshly printed at <strong className="text-white font-bold">{shopName}</strong>. Step to the counter output tray to collect your copies.
+          <p className="text-sm font-bold text-emerald-300">
+            Your prints are ready at the counter tray
+          </p>
+          <p className="text-xs text-slate-300 font-medium leading-relaxed pt-0.5">
+            Please pick up your <span className="text-white font-bold">{totalPages} {totalPages === 1 ? 'page' : 'pages'}</span> ({paperSize} • {colorMode === 'COLOR' ? 'Color' : 'B&W'}) from the counter.
           </p>
         </div>
       </div>
 
-      {/* Order Collection Ticket / Counter Token Badge */}
-      <div className="relative z-10 rounded-2xl bg-slate-950/80 border border-slate-800 p-4 sm:p-5 space-y-3.5 backdrop-blur-md">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
-          <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block select-none">
-              Counter Pickup Token
+      {/* Sleek Token Card */}
+      <div className="relative z-10 rounded-2xl bg-slate-950/80 border border-slate-800/90 p-3.5 sm:p-4 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block select-none">
+            Order Pickup Token
+          </span>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="font-mono text-base font-extrabold text-amber-300 tracking-wider truncate">
+              {orderNumber ? `#${orderNumber}` : 'READY'}
             </span>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="font-mono text-lg font-black text-amber-300 tracking-wider">
-                {orderNumber ? `#${orderNumber}` : 'READY-AT-COUNTER'}
-              </span>
-              {orderNumber && (
-                <button
-                  type="button"
-                  onClick={handleCopyOrder}
-                  className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-300 flex items-center gap-1 transition-colors cursor-pointer select-none active:scale-95"
-                >
-                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
-              )}
-            </div>
+            {orderNumber && (
+              <button
+                type="button"
+                onClick={handleCopyOrder}
+                className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-[10px] font-semibold text-slate-300 flex items-center gap-1 transition-colors cursor-pointer select-none active:scale-95 shrink-0"
+              >
+                {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
+            )}
           </div>
-
-          <div className="flex items-center gap-2 self-start sm:self-center">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-600/90 text-white font-bold text-xs shadow-md shadow-emerald-700/30">
-              <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-              <span>Counter 1 Collection</span>
+          {fileName && (
+            <span className="text-[10px] text-slate-400 block truncate max-w-[220px] mt-0.5">
+              {fileName}
             </span>
-          </div>
+          )}
         </div>
 
-        {/* Document Specifications Summary */}
-        <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800">
-            <span className="text-[9px] uppercase font-bold text-slate-400 block">Pages</span>
-            <span className="font-bold text-slate-200 mt-0.5 block">{totalPages} {totalPages === 1 ? 'Page' : 'Pages'}</span>
-          </div>
-          <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800">
-            <span className="text-[9px] uppercase font-bold text-slate-400 block">Size</span>
-            <span className="font-bold text-slate-200 mt-0.5 block">{paperSize}</span>
-          </div>
-          <div className="p-2 rounded-xl bg-slate-900/90 border border-slate-800">
-            <span className="text-[9px] uppercase font-bold text-slate-400 block">Color</span>
-            <span className="font-bold text-slate-200 mt-0.5 block">{colorMode === 'COLOR' ? 'Full Color' : 'Black & White'}</span>
-          </div>
+        <div className="shrink-0">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-md shadow-emerald-700/30">
+            <CheckCircle2 className="w-3.5 h-3.5 text-white" />
+            <span>Ready at Counter</span>
+          </span>
         </div>
-
-        {fileName && (
-          <div className="text-[11px] text-slate-400 flex items-center gap-1.5 truncate pt-0.5">
-            <span className="text-slate-500">Document:</span>
-            <span className="font-medium text-slate-300 truncate">{fileName}</span>
-          </div>
-        )}
       </div>
 
       {/* Courteous Shopkeeper Sign-off */}
-      <div className="relative z-10 flex items-center justify-between text-[11px] text-slate-400 pt-1 select-none">
-        <span className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          <span>Inspected and ready in output tray</span>
+      <div className="relative z-10 flex items-center justify-between text-[11px] text-slate-400 pt-0.5 border-t border-slate-800/60 select-none">
+        <span className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span>Output tray verified</span>
         </span>
-        <span className="font-medium text-slate-400">
-          Thank you for printing!
+        <span className="font-medium text-slate-300">
+          Thank you for choosing {shopName}!
         </span>
       </div>
     </div>
