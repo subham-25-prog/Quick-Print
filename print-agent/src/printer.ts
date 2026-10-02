@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
-import { print, getPrinters } from 'pdf-to-printer';
+import { print, getPrinters, getDefaultPrinter } from 'pdf-to-printer';
 import { ClaimedJob } from './client';
 
 const execute = promisify(execFile);
@@ -190,6 +190,10 @@ export class WindowsPrinterService {
     return [];
   }
 
+
+  async getDefaultPrinterName(): Promise<string> {
+    return process.platform === 'win32' ? (await getDefaultPrinter())?.name || '' : '';
+  }
 
   async ensureReady(): Promise<void> {
     if (process.platform !== 'win32') {

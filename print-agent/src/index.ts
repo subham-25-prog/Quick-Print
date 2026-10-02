@@ -53,6 +53,16 @@ async function main() {
         const detected = await printer.getDetectedPrinters();
         const installed = detected.map((p) => p.name);
 
+        if (!printer.getConfiguredPrinter()) {
+          const defaultName = await printer.getDefaultPrinterName();
+          const initial = detected.find((p) => p.name === defaultName && p.status === 'ONLINE')
+            || detected.find((p) => p.status === 'ONLINE');
+          if (initial) {
+            printer.setConfiguredPrinter(initial.name);
+            config.printerName = initial.name;
+          }
+        }
+
         const activeName = printer.getConfiguredPrinter() || 'Unavailable';
         const hb = await client.sendHeartbeat(activeName, installed, detected);
         if (hb.activePrinter && !/^Unavailable$/i.test(hb.activePrinter) && hb.activePrinter !== printer.getConfiguredPrinter()) {
