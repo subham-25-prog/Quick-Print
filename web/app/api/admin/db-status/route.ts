@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { database } from '@/lib/db';
+import { database, getShopPrinters } from '@/lib/db';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
 import { getCurrentShopId } from '@/lib/shop';
 
@@ -48,13 +48,22 @@ export async function GET(req: NextRequest) {
       agent?.last_heartbeat &&
       Date.now() - new Date(agent.last_heartbeat).getTime() < 90000;
 
+    const shopPrinters = await getShopPrinters().catch(() => null);
+    const active = shopPrinters?.printers.find(
+      (p) => p.name.toLowerCase() === (shopPrinters.activePrinter || '').toLowerCase()
+    );
+    const isPrinterOnline = Boolean(active && active.status === 'ONLINE' && shopPrinters?.agentOnline);
+    const printerName = shopPrinters?.activePrinter || null;
+
     return NextResponse.json({
       connected: true,
       mode: 'SUPABASE',
       message: 'Database connected.',
       shopName,
       agentOnline: Boolean(isAgentOnline),
-      agentName: agent?.printer_name || agent?.agent_id || null,
+      printerOnline: isPrinterOnline,
+      printerName,
+      agentName: isPrinterOnline ? printerName : null,
     });
   } catch {
     return NextResponse.json({

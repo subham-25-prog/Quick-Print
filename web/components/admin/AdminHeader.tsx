@@ -32,6 +32,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
     shopName?: string;
     agentOnline?: boolean;
     agentName?: string | null;
+    printerOnline?: boolean;
+    printerName?: string | null;
   } | null>(null);
 
   React.useEffect(() => {
@@ -110,18 +112,29 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             {/* Print Agent Status & 1-Click Launch Button */}
             {dbStatus && (
               dbStatus.agentOnline ? (
-                <Link
-                  href="/admin/printing"
-                  title={`Active Printer: ${dbStatus.agentName || 'Online'}. Click to manage printers.`}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <span className="truncate max-w-[120px] sm:max-w-[160px]">
-                    {dbStatus.agentName && dbStatus.agentName !== 'agent-main-pc'
-                      ? dbStatus.agentName
-                      : 'Printer Online'}
-                  </span>
-                </Link>
+                dbStatus.printerOnline ? (
+                  <Link
+                    href="/admin/printing"
+                    title={`Active Printer: ${dbStatus.printerName || 'Online'}. Click to manage printers.`}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span className="truncate max-w-[120px] sm:max-w-[160px]">
+                      {dbStatus.printerName || 'Printer Online'}
+                    </span>
+                  </Link>
+                ) : (
+                  <Link
+                    href="/admin/printing"
+                    title={dbStatus.printerName ? `${dbStatus.printerName} is offline. Click to check connection.` : 'No printer connected. Click to manage printers.'}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                    <span className="truncate max-w-[120px] sm:max-w-[160px]">
+                      {dbStatus.printerName ? `${dbStatus.printerName} (Offline)` : 'Printer Offline'}
+                    </span>
+                  </Link>
+                )
               ) : (
                 <button
                   type="button"
