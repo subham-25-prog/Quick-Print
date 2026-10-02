@@ -263,7 +263,7 @@ export class WindowsPrinterService {
       paperSize: mappedPaperSize,
       side: job.print_sides === 'DOUBLE' ? 'duplexlong' : 'simplex',
       scale: 'fit',
-      silent: false,
+      silent: true,
     });
   }
 }

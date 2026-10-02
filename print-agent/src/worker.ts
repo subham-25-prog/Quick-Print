@@ -53,6 +53,7 @@ export class AgentWorker {
 
         await this.client.startJob(job);
         await this.printer.printDocument(tempFile, job);
+        this.journal.append({ job, state: 'REPORT', outcome: 'SUBMITTED' });
       } catch (err: unknown) {
         console.error(
           JSON.stringify({

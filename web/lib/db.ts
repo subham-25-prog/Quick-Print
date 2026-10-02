@@ -364,8 +364,7 @@ export async function recordAgentHeartbeat(
   const { data: existingPrinters, error: previousError } = await db
     .from('printers')
     .select('id, name, system_identifier, last_seen')
-    .eq('shop_id', shopId)
-    .eq('agent_id', agentId);
+    .eq('shop_id', shopId);
   if (previousError) throw previousError;
 
   const existingMap = new Map<string, any>(
@@ -417,7 +416,6 @@ export async function recordAgentHeartbeat(
         .from('printers')
         .update({ status: 'OFFLINE', updated_at: nowIso })
         .eq('shop_id', shopId)
-        .eq('agent_id', agentId)
         .in('id', missing);
       if (error) throw error;
     }
