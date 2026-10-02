@@ -14,6 +14,7 @@ const BUCKET_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 const MAX_CONTENT_LENGTH_BYTES = 105 * 1024 * 1024; // 105 MB multipart overhead
+const CHUNK_ASSEMBLY_CONCURRENCY = 3;
 
 // The final chunk reassembles the document, validates its PDF structure, uploads
 // the finished PDF and writes its record. Scanned, 100+ page documents can take
@@ -308,25 +309,40 @@ export async function POST(req: NextRequest) {
         { length: totalChunks - 1 },
         (_, index) => `orders/chunks/${chunkOwner}/${index}.pdf`
       );
-      // Download all previously saved parts concurrently. Downloading 30+ parts
-      // one-by-one made the final request exceed its duration for large PDFs.
-      const buffers = await Promise.all(partPaths.map(async (partPath, index) => {
-        const { data: blob, error } = await db.storage.from('shop-documents').download(partPath);
-        if (error || !blob) {
-          throw new HttpError(500, `Missing chunk ${index}: ${error?.message || 'Download failed'}. Please retry upload.`);
+      // A 100 MB upload can have 34 chunks. Holding every downloaded Blob,
+      // Buffer and the final Buffer simultaneously creates a memory spike that
+      // can terminate the function. Copy small ordered groups into one exact
+      // output allocation instead.
+      const completeRawBuffer = Buffer.allocUnsafe(declaredSize);
+      let writeOffset = 0;
+      for (let start = 0; start < partPaths.length; start += CHUNK_ASSEMBLY_CONCURRENCY) {
+        const group = partPaths.slice(start, start + CHUNK_ASSEMBLY_CONCURRENCY);
+        const buffers = await Promise.all(group.map(async (partPath, offset) => {
+          const index = start + offset;
+          const { data: blob, error } = await db.storage.from('shop-documents').download(partPath);
+          if (error || !blob) {
+            throw new HttpError(500, `Missing chunk ${index}: ${error?.message || 'Download failed'}. Please retry upload.`);
+          }
+          if (blob.size > 10 * 1024 * 1024) {
+            throw new HttpError(413, 'Upload exceeds its declared size.');
+          }
+          return Buffer.from(await blob.arrayBuffer());
+        }));
+        for (const buffer of buffers) {
+          if (writeOffset + buffer.length > declaredSize) {
+            throw new HttpError(413, 'Upload exceeds its declared size.');
+          }
+          buffer.copy(completeRawBuffer, writeOffset);
+          writeOffset += buffer.length;
         }
-        if (blob.size > 10 * 1024 * 1024) {
-          throw new HttpError(413, 'Upload exceeds its declared size.');
-        }
-        return Buffer.from(await blob.arrayBuffer());
-      }));
-      const assembledSize = chunkBuffer.length + buffers.reduce((size, buffer) => size + buffer.length, 0);
-      if (assembledSize > declaredSize || assembledSize > MAX_FILE_SIZE_BYTES) {
+      }
+      if (writeOffset + chunkBuffer.length > declaredSize) {
         throw new HttpError(413, 'Upload exceeds its declared size.');
       }
-      if (assembledSize !== declaredSize) throw new HttpError(400, 'Upload size does not match. Upload again.');
-      buffers.push(chunkBuffer);
-      const completeRawBuffer = Buffer.concat(buffers);
+      if (writeOffset + chunkBuffer.length !== declaredSize) {
+        throw new HttpError(400, 'Upload size does not match. Upload again.');
+      }
+      chunkBuffer.copy(completeRawBuffer, writeOffset);
 
       const result = await finalizeDocument({
         db,

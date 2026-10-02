@@ -114,12 +114,11 @@ export class WindowsPrinterService {
     return (await this.getDetectedPrinters()).map((p) => p.name);
   }
 
-  async getDetectedPrinters(): Promise<DetectedPrinter[]> {
+  async getDetectedPrinters(forceRescan = false): Promise<DetectedPrinter[]> {
     if (process.platform !== 'win32') return [];
 
-    const now = Date.now();
-    // Refresh within one heartbeat cycle so USB/Wi-Fi disconnects are not shown as stale online queues.
-    if (this.cachedPrinters.length > 0 && now - this.lastScanTime < 10000) {
+    // Cache valid scan for 3s (unless forceRescan) so newly plugged or changed printers appear promptly
+    if (!forceRescan && this.cachedPrinters.length > 0 && now - this.lastScanTime < 3000) {
       return this.cachedPrinters;
     }
 

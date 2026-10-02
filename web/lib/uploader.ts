@@ -91,7 +91,7 @@ export async function uploadDocumentFile(
     pageCount: number;
     storagePath: string;
     signedUrl: string;
-  } | null = null;
+  } | null;
 
   if (totalChunks > 1) {
     const uploadId = generateUUID();

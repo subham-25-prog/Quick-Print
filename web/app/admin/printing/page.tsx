@@ -75,7 +75,7 @@ const PrinterCard = React.memo<PrinterCardProps>(({
               ? !isOnline
                 ? 'Default printer (currently offline — jobs will wait for connection)'
                 : selectionPending
-                  ? 'Waiting for agent confirmation'
+                  ? 'Default printer • Syncing with print agent...'
                   : 'Default printer for customer print jobs'
               : isOnline
                 ? 'Ready • Click to set as default printer'
@@ -88,7 +88,10 @@ const PrinterCard = React.memo<PrinterCardProps>(({
         {isSelected ? (
           <span className="px-3 py-1 rounded-xl text-[10px] font-extrabold bg-indigo-600 text-white flex items-center gap-1.5 shadow-2xs">
             <CheckCircle2 className="w-3.5 h-3.5 text-white" />
-            <span>{selectionPending ? 'Pending' : 'Default Printer'}</span>
+            <span>Default Printer</span>
+            {selectionPending && (
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-300 animate-pulse" title="Syncing with print agent..." />
+            )}
           </span>
         ) : (
           <button
@@ -186,7 +189,7 @@ export default function AdminPrintingSettingsPage() {
       .catch((err) => console.error('Failed to initialize printing settings:', err))
       .finally(() => { if (!disposed) setLoading(false); });
     const refresh = () => { if (!document.hidden) void loadPrinters(); };
-    const interval = window.setInterval(refresh, 5000);
+    const interval = window.setInterval(refresh, selectionPending ? 1500 : 3000);
     document.addEventListener('visibilitychange', refresh);
     return () => {
       disposed = true;
@@ -194,11 +197,15 @@ export default function AdminPrintingSettingsPage() {
       window.clearInterval(interval);
       document.removeEventListener('visibilitychange', refresh);
     };
-  }, [loadPrinters]);
+  }, [loadPrinters, selectionPending]);
 
   const handleSelectPrinter = useCallback(async (printerName: string) => {
     if (!printerName.trim() || printerBusy.current) return;
     const target = printerName.trim();
+    // Instant optimistic update: reflect selected printer card immediately
+    setForm((prev) => ({ ...prev, selected_printer: target }));
+    setPrinters((prev) => prev.map((p) => ({ ...p, is_selected: p.name.toLowerCase() === target.toLowerCase() })));
+    setSelectionPending(true);
     printerBusy.current = true;
     printerRequest.current++;
     setSwitchingPrinter(true);
@@ -215,7 +222,7 @@ export default function AdminPrintingSettingsPage() {
         setForm((prev) => ({ ...prev, selected_printer: data.activePrinter }));
         setPrinters((prev) => prev.map((p) => ({ ...p, is_selected: p.name === data.activePrinter })));
         setSelectionPending(true);
-        showToast(`Saved "${target}". Waiting for the print agent to apply it.`, 'success');
+        showToast(`Saved "${target}" as default printer.`, 'success');
       } else {
         const data = await res.json();
         showToast(data.error || 'Failed to switch printer', 'error');

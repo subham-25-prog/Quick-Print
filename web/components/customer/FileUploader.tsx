@@ -8,6 +8,11 @@ import { uploadDocumentFile, UploadedFileState, formatFileSize } from '@/lib/upl
 
 export type { UploadedFileState };
 
+const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024;
+const MAX_BATCH_FILE_COUNT = 60;
+const MAX_BATCH_SOURCE_BYTES = 150 * 1024 * 1024;
+const LARGE_PDF_BYTES = 12 * 1024 * 1024;
+
 interface FileUploaderProps {
   onFileUploaded: (fileData: UploadedFileState | null) => void;
   uploadedFile: UploadedFileState | null;
@@ -23,7 +28,8 @@ const DocumentPreviewBox = React.memo<{
   pageCount?: number;
   fallbackUrl?: string;
   className?: string;
-}>(({ file, name, pageCount = 1, fallbackUrl, className = '' }) => {
+  renderImagePreview?: boolean;
+}>(({ file, name, pageCount = 1, fallbackUrl, className = '', renderImagePreview = true }) => {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
 
   const isPdf =
@@ -33,7 +39,7 @@ const DocumentPreviewBox = React.memo<{
 
   // Generate object URL for image preview
   useEffect(() => {
-    if (!isImg) return;
+    if (!isImg || !renderImagePreview) return;
     if (file instanceof Blob) {
       const url = URL.createObjectURL(file);
       setImgUrl(url);
@@ -43,7 +49,7 @@ const DocumentPreviewBox = React.memo<{
     } else if (fallbackUrl) {
       setImgUrl(fallbackUrl);
     }
-  }, [file, isImg, fallbackUrl]);
+  }, [file, isImg, fallbackUrl, renderImagePreview]);
 
   return (
     <div
@@ -51,7 +57,7 @@ const DocumentPreviewBox = React.memo<{
       title={name}
     >
       {isImg ? (
-        imgUrl ? (
+        renderImagePreview && imgUrl ? (
           <img
             src={imgUrl}
             alt={name}
@@ -114,7 +120,12 @@ const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies,
     >
       {/* Left: Small preview box */}
       <div className="flex items-center gap-3 min-w-0 flex-1 select-none">
-        <DocumentPreviewBox file={item.file} name={item.name} pageCount={item.pageCount} />
+        <DocumentPreviewBox
+          file={item.file}
+          name={item.name}
+          pageCount={item.pageCount}
+          renderImagePreview={false}
+        />
         <div className="min-w-0 flex-1">
           <div className="text-xs font-semibold text-slate-800 truncate" title={item.name}>
             <span className="text-slate-400 font-normal mr-1">#{idx + 1}</span>
@@ -195,6 +206,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
   const [currentFileName, setCurrentFileName] = useState('');
   const [currentFileSize, setCurrentFileSize] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [isInspectingBatch, setIsInspectingBatch] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeXhr = useRef<XMLHttpRequest | null>(null);
 
@@ -219,11 +231,18 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
 
   // Process files when multiple file mode is active
   const processMultipleFiles = async (selectedFiles: FileList | File[]) => {
+    if (isInspectingBatch) return;
     setError(null);
     const filesArray = Array.from(selectedFiles);
     if (!filesArray.length) return;
 
+    if (batchFiles.length + filesArray.length > MAX_BATCH_FILE_COUNT) {
+      setError(`A batch can contain up to ${MAX_BATCH_FILE_COUNT} files. Split this selection into two print jobs.`);
+      return;
+    }
+
     const validFiles: File[] = [];
+    let addedBytes = 0;
     for (const file of filesArray) {
       if (!isValidFileType(file)) {
         setError(`"${file.name}" is not supported. Please choose PDF or JPG/PNG files.`);
@@ -233,41 +252,52 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
         setError(`"${file.name}" is empty. Please choose a valid document.`);
         return;
       }
-      if (file.size > 100 * 1024 * 1024) {
+      if (file.size > MAX_FILE_SIZE_BYTES) {
         setError(`"${file.name}" exceeds 100 MB limit.`);
         return;
       }
+      addedBytes += file.size;
       validFiles.push(file);
     }
 
-    // PDF parsing is CPU intensive. Parse a small number concurrently rather
-    // than serialising a long batch, while avoiding a memory spike from opening
-    // every large PDF at once.
-    const pageCounts = new Array<number>(validFiles.length);
-    let nextFileIndex = 0;
-    const workers = Array.from({ length: Math.min(2, validFiles.length) }, async () => {
-      while (nextFileIndex < validFiles.length) {
-        const index = nextFileIndex++;
-        pageCounts[index] = await detectFilePageCount(validFiles[index]);
-      }
-    });
-    await Promise.all(workers);
+    const existingBytes = batchFiles.reduce((total, item) => total + item.size, 0);
+    if (existingBytes + addedBytes > MAX_BATCH_SOURCE_BYTES) {
+      setError(`This batch is ${formatFileSize(existingBytes + addedBytes)}. Keep the selected source files below ${formatFileSize(MAX_BATCH_SOURCE_BYTES)} for reliable processing.`);
+      return;
+    }
 
-    const newBatchItems: BatchFileItem[] = validFiles.map((file, index) => {
-      const pageCount = pageCounts[index];
-      return {
+    setIsInspectingBatch(true);
+    try {
+      // Page counting reads each PDF into memory. Large documents are scanned
+      // one at a time; small selections retain limited parallelism.
+      const containsLargePdf = validFiles.some((file) =>
+        file.size > LARGE_PDF_BYTES && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
+      );
+      const pageCounts = new Array<number>(validFiles.length);
+      let nextFileIndex = 0;
+      const workers = Array.from({ length: Math.min(containsLargePdf ? 1 : 2, validFiles.length) }, async () => {
+        while (nextFileIndex < validFiles.length) {
+          const index = nextFileIndex++;
+          pageCounts[index] = await detectFilePageCount(validFiles[index]);
+        }
+      });
+      await Promise.all(workers);
+
+      const newBatchItems: BatchFileItem[] = validFiles.map((file, index) => ({
         id: generateUUID(),
         file,
         name: file.name,
         size: file.size,
-        pageCount,
+        pageCount: pageCounts[index],
         copies: 1,
-      };
-    });
-
-    const updatedBatch = [...batchFiles, ...newBatchItems];
-    onBatchFilesChange?.(updatedBatch);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+      }));
+      onBatchFilesChange?.([...batchFiles, ...newBatchItems]);
+    } catch {
+      setError('We could not inspect these files. Try adding fewer documents at a time.');
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setIsInspectingBatch(false);
+    }
   };
 
   // Handle single file upload (standard legacy mode)
@@ -285,7 +315,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
       return;
     }
 
-    if (file.size > 100 * 1024 * 1024) {
+    if (file.size > MAX_FILE_SIZE_BYTES) {
       setError('File size must be less than 100 MB');
       return;
     }
@@ -326,7 +356,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
   const handleFilesSelected = (files: FileList | null) => {
     if (!files || files.length === 0) return;
     if (allowMultiple) {
-      processMultipleFiles(files);
+      void processMultipleFiles(files);
     } else {
       processSingleFile(files[0]);
     }
@@ -353,7 +383,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    if (!isInspectingBatch && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       handleFilesSelected(e.dataTransfer.files);
     }
   };
@@ -401,6 +431,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           id="quickprint-file-input"
           onChange={handleFileChange}
           multiple
+          disabled={isInspectingBatch}
         />
 
         {error && (
@@ -420,8 +451,8 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-all duration-200 card-hover-lift ${
+            onClick={() => !isInspectingBatch && fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-200 card-hover-lift ${isInspectingBatch ? 'cursor-wait opacity-75' : 'cursor-pointer'} ${
               isDragging
                 ? 'border-indigo-500 bg-indigo-50/70 scale-[1.01] shadow-lg shadow-indigo-500/10'
                 : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
@@ -432,10 +463,12 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                 <FileText className="w-5 h-5 text-slate-400" />
               </div>
               <h4 className="text-sm font-bold text-slate-800 mb-0.5">
-                Tap or Drop Files Here
+                {isInspectingBatch ? 'Checking documents…' : 'Tap or Drop Files Here'}
               </h4>
               <p className="text-[11px] text-slate-400">
-                Upload multiple documents/images & customize copies per file
+                {isInspectingBatch
+                  ? 'Counting pages with memory-safe processing'
+                  : `Up to ${MAX_BATCH_FILE_COUNT} files · ${formatFileSize(MAX_BATCH_SOURCE_BYTES)} source batch`}
               </p>
             </div>
           </div>
@@ -458,8 +491,9 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             <div className="pt-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="py-2.5 px-3.5 rounded-xl border border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] hover:shadow-xs"
+                onClick={() => !isInspectingBatch && fileInputRef.current?.click()}
+                disabled={isInspectingBatch}
+                className="py-2.5 px-3.5 rounded-xl border border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] hover:shadow-xs disabled:cursor-wait disabled:opacity-60"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add More Files</span>
@@ -478,6 +512,12 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
               <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-800 text-xs flex items-center gap-2">
                 <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
                 <span>Preparing and compiling print batch document...</span>
+              </div>
+            )}
+            {isInspectingBatch && (
+              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs flex items-center gap-2">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                <span>Checking page counts before adding this batch…</span>
               </div>
             )}
           </div>

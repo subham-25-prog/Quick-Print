@@ -37,6 +37,8 @@ const PaymentModal = dynamic(
   { ssr: false }
 );
 
+const EAGER_BATCH_PREPARATION_LIMIT_BYTES = 24 * 1024 * 1024;
+
 export default function CustomerHomePage() {
   const router = useRouter();
 
@@ -78,6 +80,11 @@ export default function CustomerHomePage() {
   // entire merge on its first tap.
   useEffect(() => {
     if (batchFiles.length < 2) return;
+    const batchSourceBytes = batchFiles.reduce((total, item) => total + item.size, 0);
+    // Preparing a large selection just because it was added wastes battery,
+    // memory and network if the customer keeps editing the batch. It will be
+    // prepared on the explicit Preview action instead.
+    if (batchSourceBytes > EAGER_BATCH_PREPARATION_LIMIT_BYTES) return;
 
     let cancelled = false;
     const signature = getBatchSignature(batchFiles);
@@ -357,6 +364,8 @@ export default function CustomerHomePage() {
 
   useEffect(() => {
     if (!hasBatch) return;
+    const batchSourceBytes = batchFiles.reduce((total, item) => total + item.size, 0);
+    if (batchSourceBytes > EAGER_BATCH_PREPARATION_LIMIT_BYTES) return;
     const timer = window.setTimeout(() => {
       void checkoutPreparation.prepareUpload(batchFiles).catch(() => {});
     }, 400);
@@ -645,7 +654,7 @@ export default function CustomerHomePage() {
                       type="text"
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="e.g. Shubhamoy"
+                      placeholder="Enter your name"
                       className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
                     />
                     <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
