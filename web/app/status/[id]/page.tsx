@@ -172,46 +172,50 @@ export default function OrderStatusPage() {
         : 'PENDING');
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-3">
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-16">
       <Header shopName={shopName} />
 
-      <main className="max-w-xl mx-auto w-full px-3.5 pt-2 sm:pt-3 space-y-2.5 contain-layout">
-        {/* Top Connectivity & Live Indicator (displayed during in-progress pipeline) */}
-        {!isPrinted && (
-          <div className="flex items-center justify-between px-2 text-xs select-none">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span
-                  className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                    isAwaitingVerification
-                      ? 'bg-amber-400'
-                      : 'bg-indigo-400'
-                  }`}
-                />
-                <span
-                  className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                    isAwaitingVerification
-                      ? 'bg-amber-500'
-                      : 'bg-indigo-500'
-                  }`}
-                />
-              </span>
-              <span className="font-semibold text-slate-700">
-                {isAwaitingVerification
-                  ? 'Awaiting Cash Verification at Counter'
-                  : isHardwarePrinting
-                  ? 'Printing on Counter Hardware...'
-                  : data?.agentOnline
-                  ? 'Shop Printer Connected & Live'
-                  : 'Shop Agent Offline (Order Queued)'}
-              </span>
-            </div>
-            <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              {isOfflineCached ? 'Cached Offline' : 'Live Sync'}
+      <main className="max-w-xl mx-auto w-full px-4 pt-5 space-y-4 contain-layout">
+        {/* Top Connectivity & Live Indicator */}
+        <div className="flex items-center justify-between px-2 text-xs select-none">
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2.5 w-2.5">
+              <span
+                className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                  isAwaitingVerification
+                    ? 'bg-amber-400'
+                    : isPrinted
+                    ? 'bg-emerald-400'
+                    : 'bg-indigo-400'
+                }`}
+              />
+              <span
+                className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                  isAwaitingVerification
+                    ? 'bg-amber-500'
+                    : isPrinted
+                    ? 'bg-emerald-500'
+                    : 'bg-indigo-500'
+                }`}
+              />
+            </span>
+            <span className="font-semibold text-slate-700">
+              {isAwaitingVerification
+                ? 'Awaiting Cash Verification at Counter'
+                : isPrinted
+                ? 'Document Printed & Ready at Counter'
+                : isHardwarePrinting
+                ? 'Printing on Counter Hardware...'
+                : data?.agentOnline
+                ? 'Shop Printer Connected & Live'
+                : 'Shop Agent Offline (Order Queued)'}
             </span>
           </div>
-        )}
+          <span className="text-[11px] text-slate-400 font-medium flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            {isOfflineCached ? 'Cached Offline' : 'Live Sync'}
+          </span>
+        </div>
 
         {/* Loading placeholder */}
         {loading && !data && (
@@ -234,6 +238,7 @@ export default function OrderStatusPage() {
 
         {data && (
           <>
+
             {/* Awaiting Cash Verification Card OR Live Animated 5-Step Print Status Pipeline */}
             {isAwaitingVerification ? (
               <section className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 rounded-3xl p-6 sm:p-7 text-white shadow-lg space-y-4 relative overflow-hidden animate-fade-in-scale">
@@ -287,112 +292,91 @@ export default function OrderStatusPage() {
               />
             )}
 
-            {/* 2. Order Reference & Receipt Card (compact when printed) */}
-            {isPrinted ? (
-              <section className="bg-white rounded-2xl p-3 sm:p-3.5 border border-slate-200 shadow-xs flex items-center justify-between gap-3 text-xs contain-layout">
+            {/* 2. Order Reference & Receipt Card */}
+            <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4 contain-layout">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block select-none">
-                    Total Paid
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block select-none">
+                    Order Number
                   </span>
-                  <span className="text-lg font-black text-emerald-700">
+                  <span className="font-mono text-base font-extrabold text-slate-900 tracking-tight">
+                    {data.order.order_number}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={copyOrderId}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active-press cursor-pointer select-none"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+
+              {/* Document Overview */}
+              <div className="flex items-start gap-3.5 pt-1">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-slate-900 truncate">
+                    {data.order.file_name}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {data.order.page_count} {data.order.page_count === 1 ? 'page' : 'pages'} · {data.order.copies} {data.order.copies === 1 ? 'copy' : 'copies'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Specs Pills */}
+              <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1 select-none">
+                <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Paper</span>
+                  <span className="font-bold text-slate-800">{data.order.paper_size}</span>
+                </div>
+                <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Color</span>
+                  <span className="font-bold text-slate-800">
+                    {data.order.color_mode === 'COLOR' ? 'Full Color' : 'Black & White'}
+                  </span>
+                </div>
+                <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+                  <span className="text-[10px] text-slate-400 block uppercase font-bold">Sides</span>
+                  <span className="font-bold text-slate-800">
+                    {data.order.print_sides === 'DOUBLE' ? '2-Sided' : '1-Sided'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Price Total */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-sm font-bold text-slate-600 select-none">
+                  {isAwaitingVerification ? 'Amount Due' : 'Total Paid'}
+                </span>
+                <div className="text-right">
+                  <span className="text-xl font-black text-emerald-700">
                     {formatCurrency(data.order.total_amount)}
                   </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-[11px] font-bold text-emerald-600 block select-none">
-                    {data.order.payment_method === 'CASH' ? '✓ Cash Verified' : '✓ Paid Online'}
-                  </span>
-                  <span className="text-[10px] text-slate-400">
-                    {data.order.print_sides === 'DOUBLE' ? '2-Sided' : '1-Sided'} · {data.order.copies} {data.order.copies === 1 ? 'copy' : 'copies'}
+                  <span className={`text-[10px] block font-semibold select-none ${isAwaitingVerification ? 'text-amber-600' : 'text-emerald-600'}`}>
+                    {isAwaitingVerification ? '⏳ Cash – Pay at Counter' : data.order.payment_method === 'CASH' ? '✓ Cash Verified' : '✓ Paid Online'}
                   </span>
                 </div>
-              </section>
-            ) : (
-              <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-xs space-y-4 contain-layout">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block select-none">
-                      Order Number
-                    </span>
-                    <span className="font-mono text-base font-extrabold text-slate-900 tracking-tight">
-                      {data.order.order_number}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={copyOrderId}
-                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active-press cursor-pointer select-none"
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
-                  </button>
-                </div>
-
-                {/* Document Overview */}
-                <div className="flex items-start gap-3.5 pt-1">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-slate-900 truncate">
-                      {data.order.file_name}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {data.order.page_count} {data.order.page_count === 1 ? 'page' : 'pages'} · {data.order.copies} {data.order.copies === 1 ? 'copy' : 'copies'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Specs Pills */}
-                <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1 select-none">
-                  <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-                    <span className="text-[10px] text-slate-400 block uppercase font-bold">Paper</span>
-                    <span className="font-bold text-slate-800">{data.order.paper_size}</span>
-                  </div>
-                  <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-                    <span className="text-[10px] text-slate-400 block uppercase font-bold">Color</span>
-                    <span className="font-bold text-slate-800">
-                      {data.order.color_mode === 'COLOR' ? 'Full Color' : 'Black & White'}
-                    </span>
-                  </div>
-                  <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-                    <span className="text-[10px] text-slate-400 block uppercase font-bold">Sides</span>
-                    <span className="font-bold text-slate-800">
-                      {data.order.print_sides === 'DOUBLE' ? '2-Sided' : '1-Sided'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Price Total */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-600 select-none">
-                    {isAwaitingVerification ? 'Amount Due' : 'Total Paid'}
-                  </span>
-                  <div className="text-right">
-                    <span className="text-xl font-black text-emerald-700">
-                      {formatCurrency(data.order.total_amount)}
-                    </span>
-                    <span className={`text-[10px] block font-semibold select-none ${isAwaitingVerification ? 'text-amber-600' : 'text-emerald-600'}`}>
-                      {isAwaitingVerification ? '⏳ Cash – Pay at Counter' : data.order.payment_method === 'CASH' ? '✓ Cash Verified' : '✓ Paid Online'}
-                    </span>
-                  </div>
-                </div>
-              </section>
-            )}
+              </div>
+            </section>
           </>
         )}
 
         {/* Action Button: Print Another Document */}
         <Link
           href="/"
-          className="w-full py-2.5 sm:py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-center font-bold text-xs sm:text-sm shadow-sm transition-all duration-150 flex items-center justify-center gap-1.5 cursor-pointer active-press select-none"
+          className="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-center font-bold text-sm shadow-md transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer active-press select-none"
         >
-          <ArrowLeft className="w-3.5 h-3.5" />
+          <ArrowLeft className="w-4 h-4" />
           <span>Print Another Document</span>
         </Link>
 
         {/* Developer Attribution Card */}
-        <DeveloperBadge className="mt-1" />
+        <DeveloperBadge className="mt-3" />
       </main>
     </div>
   );
