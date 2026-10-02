@@ -361,35 +361,64 @@ export async function recordAgentHeartbeat(
     discoveredNames.add(printerName.trim());
   }
 
+  const { data: existingPrinters, error: previousError } = await db
+    .from('printers')
+    .select('id, name, system_identifier, last_seen')
+    .eq('shop_id', shopId)
+    .eq('agent_id', agentId);
+  if (previousError) throw previousError;
+
+  const existingMap = new Map<string, any>(
+    (existingPrinters || []).map((p: any) => [p.name.toLowerCase(), p])
+  );
+
   if (discoveredNames.size > 0) {
-    const { error: printerError } = await db.from('printers').upsert(
-      [...discoveredNames].map((name) => {
-        const detail = printerDetails?.find((p) => p.name === name);
+    const printersToUpsert = [...discoveredNames]
+      .map((name) => {
+        const detail = printerDetails?.find((p) => p.name.toLowerCase() === name.toLowerCase());
+        const status = detail?.status || 'ONLINE';
+        const existing = existingMap.get(name.toLowerCase());
+
+        // If the printer was removed/forgotten and is currently OFFLINE, do not recreate it
+        if (!existing && status !== 'ONLINE') {
+          return null;
+        }
+
         return {
           shop_id: shopId,
           agent_id: agentId,
           name,
-          system_identifier: detail?.id || name,
-          status: detail?.status || 'ONLINE',
-          last_seen: nowIso,
+          system_identifier: detail?.id || existing?.system_identifier || name,
+          status,
+          // Only update last_seen when the printer is actually online
+          last_seen: status === 'ONLINE' ? nowIso : (existing?.last_seen || nowIso),
           updated_at: nowIso,
         };
-      }),
-      { onConflict: 'shop_id,system_identifier' }
-    );
-    if (printerError) throw printerError;
+      })
+      .filter((p): p is NonNullable<typeof p> => p !== null);
+
+    if (printersToUpsert.length > 0) {
+      const { error: printerError } = await db.from('printers').upsert(
+        printersToUpsert,
+        { onConflict: 'shop_id,system_identifier' }
+      );
+      if (printerError) throw printerError;
+    }
   }
 
   // A complete successful scan retires missing devices from this agent only.
   // Keep their last_seen unchanged so the UI can show when they disappeared.
   if (Array.isArray(installedPrinters)) {
-    const { data: previous, error: previousError } = await db.from('printers')
-      .select('id, name').eq('shop_id', shopId).eq('agent_id', agentId);
-    if (previousError) throw previousError;
-    const missing = (previous || []).filter((p) => !discoveredNames.has(p.name)).map((p) => p.id);
+    const missing = (existingPrinters || [])
+      .filter((p: any) => !discoveredNames.has(p.name))
+      .map((p: any) => p.id);
     if (missing.length) {
-      const { error } = await db.from('printers').update({ status: 'OFFLINE', updated_at: nowIso })
-        .eq('shop_id', shopId).eq('agent_id', agentId).in('id', missing);
+      const { error } = await db
+        .from('printers')
+        .update({ status: 'OFFLINE', updated_at: nowIso })
+        .eq('shop_id', shopId)
+        .eq('agent_id', agentId)
+        .in('id', missing);
       if (error) throw error;
     }
   }

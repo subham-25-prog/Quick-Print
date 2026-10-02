@@ -123,7 +123,7 @@ export class WindowsPrinterService {
       return this.cachedPrinters;
     }
 
-    // 1. Fast native Get-Printer (takes 100-300ms)
+    // 1. Authoritative Win32_Printer check (reports true WorkOffline, PrinterStatus and PortName in ~400ms)
     try {
       const { stdout } = await execute(
         'powershell.exe',
@@ -131,7 +131,7 @@ export class WindowsPrinterService {
           '-NoProfile',
           '-NonInteractive',
           '-Command',
-          '$ErrorActionPreference = "Stop"; Get-Printer | Select-Object Name,PortName,DriverName,PrinterStatus | ConvertTo-Json -Compress',
+          '$ErrorActionPreference = "Stop"; Get-CimInstance Win32_Printer | Select-Object Name,PortName,DriverName,WorkOffline,PrinterStatus,DetectedErrorState | ConvertTo-Json -Compress',
         ],
         { windowsHide: true, timeout: 5000 }
       );
@@ -142,7 +142,7 @@ export class WindowsPrinterService {
       this.lastScanTime = now;
       return printers;
     } catch {
-      // Fall through to fast pdf-to-printer fallback
+      // Fall through to fast fallback
     }
 
     // 2. Fast pdf-to-printer native fallback (~100ms)
@@ -212,7 +212,7 @@ export class WindowsPrinterService {
           '-NoProfile',
           '-NonInteractive',
           '-Command',
-          `Get-Printer -Name '${escaped}' -ErrorAction SilentlyContinue | Select-Object Name,PrinterStatus | ConvertTo-Json -Compress`,
+          `Get-CimInstance Win32_Printer -Filter "Name = '${escaped}'" -ErrorAction SilentlyContinue | Select-Object Name,WorkOffline,PrinterStatus,DetectedErrorState | ConvertTo-Json -Compress`,
         ],
         { windowsHide: true, timeout: 4000 }
       );
