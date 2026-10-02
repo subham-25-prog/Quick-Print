@@ -256,7 +256,7 @@ test('webhook probe events are acknowledged without failing', async () => {
 
 test('factory initializes CashfreeProvider when PAYMENT_PROVIDER=cashfree', async () => {
   vi.stubEnv('PAYMENT_PROVIDER', 'cashfree');
-  vi.stubEnv('PAYMENT_ENVIRONMENT', 'sandbox');
+  vi.stubEnv('PAYMENT_ENVIRONMENT', 'live');
   vi.stubEnv('CASHFREE_APP_ID', 'my-cf-app');
   vi.stubEnv('CASHFREE_SECRET_KEY', 'my-cf-secret');
 
@@ -264,7 +264,7 @@ test('factory initializes CashfreeProvider when PAYMENT_PROVIDER=cashfree', asyn
   const provider = configuredProvider();
   expect(provider.name).toBe('cashfree');
   expect(provider.merchantId).toBe('my-cf-app');
-  expect(provider.environment).toBe('sandbox');
+  expect(provider.environment).toBe('live');
 
   vi.unstubAllEnvs();
 });
