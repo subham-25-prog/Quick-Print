@@ -75,6 +75,14 @@ async function main() {
             })
           );
         }
+        console.log(
+          JSON.stringify({
+            event: 'heartbeat_sent',
+            printer: activeName,
+            detectedCount: detected.length,
+            time: new Date().toLocaleTimeString(),
+          })
+        );
         health.updatePrinters(installed, printer.getConfiguredPrinter());
         health.recordHeartbeat();
         heartbeatAt = Date.now();
