@@ -1,19 +1,15 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Order } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import {
-  FileText,
   AlertCircle,
-  Copy,
-  Check,
   ArrowLeft,
   RefreshCw,
-
 } from '@/components/ui/Icons';
 import { LivePrintVisualizer } from '@/components/customer/LivePrintVisualizer';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
@@ -27,7 +23,6 @@ export default function OrderStatusPage() {
   const shopName = useShopName();
 
   const router = useRouter();
-  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const [data, setData] = useState<{
     order: Order;
@@ -37,7 +32,6 @@ export default function OrderStatusPage() {
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
   const [isOfflineCached, setIsOfflineCached] = useState(false);
 
   // Restore order state from local cache instantly (0ms latency / offline-first)
@@ -64,7 +58,6 @@ export default function OrderStatusPage() {
 
   useEffect(() => {
     setError('');
-    setCopied(false);
     if (!token) {
       setLoading(false);
       setError('This order link is missing an access token.');
@@ -133,19 +126,6 @@ export default function OrderStatusPage() {
     };
   }, [id, token, router]);
 
-  useEffect(() => () => clearTimeout(copyTimer.current), []);
-
-  const copyOrderId = useCallback(async () => {
-    if (!data?.order?.order_number) return;
-    try {
-      await navigator.clipboard.writeText(data.order.order_number);
-      setCopied(true);
-      clearTimeout(copyTimer.current);
-      copyTimer.current = setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setError('Unable to copy. Please select and copy the order number manually.');
-    }
-  }, [data?.order?.order_number]);
 
   const isAwaitingVerification =
     data?.order?.payment_status === 'AWAITING_VERIFICATION' ||
@@ -277,6 +257,7 @@ export default function OrderStatusPage() {
                 </div>
               </section>
             ) : (
+              /* Live Print Visualizer includes all order specs, price, and copyable order token */
               <LivePrintVisualizer
                 jobStatus={jobState}
                 orderStatus={data.order.order_status}
@@ -293,80 +274,6 @@ export default function OrderStatusPage() {
                 paymentMethod={data.order.payment_method}
                 printSides={data.order.print_sides}
               />
-            )}
-
-            {/* 2. Order Reference & Receipt Card (hidden when printed, as all specs and price are directly inside the Thank You card) */}
-            {!isPrinted && (
-              <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4 contain-layout">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div>
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block select-none">
-                      Order Number
-                    </span>
-                    <span className="font-mono text-base font-extrabold text-slate-900 tracking-tight">
-                      {data.order.order_number}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={copyOrderId}
-                    className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active-press cursor-pointer select-none"
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copied ? 'Copied' : 'Copy'}</span>
-                  </button>
-                </div>
-
-                {/* Document Overview */}
-                <div className="flex items-start gap-3.5 pt-1">
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold text-slate-900 truncate">
-                      {data.order.file_name}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {data.order.page_count} {data.order.page_count === 1 ? 'page' : 'pages'} · {data.order.copies} {data.order.copies === 1 ? 'copy' : 'copies'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Specs Pills */}
-                <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1 select-none">
-                  <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-                    <span className="text-[10px] text-slate-400 block uppercase font-bold">Paper</span>
-                    <span className="font-bold text-slate-800">{data.order.paper_size}</span>
-                  </div>
-                  <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-                    <span className="text-[10px] text-slate-400 block uppercase font-bold">Color</span>
-                    <span className="font-bold text-slate-800">
-                      {data.order.color_mode === 'COLOR' ? 'Full Color' : 'Black & White'}
-                    </span>
-                  </div>
-                  <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
-                    <span className="text-[10px] text-slate-400 block uppercase font-bold">Sides</span>
-                    <span className="font-bold text-slate-800">
-                      {data.order.print_sides === 'DOUBLE' ? '2-Sided' : '1-Sided'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Price Total */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-sm font-bold text-slate-600 select-none">
-                    {isAwaitingVerification ? 'Amount Due' : 'Total Paid'}
-                  </span>
-                  <div className="text-right">
-                    <span className="text-xl font-black text-emerald-700">
-                      {formatCurrency(data.order.total_amount)}
-                    </span>
-                    <span className={`text-[10px] block font-semibold select-none ${isAwaitingVerification ? 'text-amber-600' : 'text-emerald-600'}`}>
-                      {isAwaitingVerification ? '⏳ Cash – Pay at Counter' : data.order.payment_method === 'CASH' ? '✓ Cash Verified' : '✓ Paid Online'}
-                    </span>
-                  </div>
-                </div>
-              </section>
             )}
           </>
         )}

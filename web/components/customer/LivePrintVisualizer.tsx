@@ -9,9 +9,11 @@ import {
   Sparkles,
   Cloud,
   Check,
-  AlertTriangle
+  AlertTriangle,
+  Copy,
 } from '@/components/ui/Icons';
 import { useShopName } from '@/lib/shop-sync';
+import { formatCurrency } from '@/lib/utils';
 import { WelcomePrintCompleteAnimation } from '@/components/customer/WelcomePrintCompleteAnimation';
 
 interface LivePrintVisualizerProps {
@@ -48,6 +50,14 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
   printSides,
 }) => {
   const activeShopName = useShopName(shopName);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyOrder = () => {
+    if (!orderNumber) return;
+    navigator.clipboard.writeText(orderNumber);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // Normalize status flags accurately
   // In QuickPrint backend, SUBMITTED is the terminal completion outcome from Windows print spooler
@@ -209,270 +219,253 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
   }
 
   return (
-    <div className="relative w-full overflow-hidden rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl p-5 sm:p-7 text-white space-y-6 transition-all duration-300 contain-layout">
+    <div
+      role="region"
+      aria-label="Live Print Progress Status"
+      className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900/98 to-slate-950 border border-slate-800 p-5 sm:p-6 text-white shadow-2xl space-y-4 transition-all duration-300 contain-layout"
+    >
       {/* Ambient background glow */}
-      <div className={`absolute top-0 right-1/4 w-72 h-32 blur-3xl pointer-events-none rounded-full transition-all duration-700 ${
-        currentStep >= 5 ? 'bg-emerald-500/25' : 'bg-indigo-600/15'
-      }`} />
-      <div className={`absolute bottom-0 left-1/4 w-72 h-32 blur-3xl pointer-events-none rounded-full transition-all duration-700 ${
-        currentStep >= 5 ? 'bg-teal-500/20' : 'bg-emerald-600/10'
-      }`} />
+      <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-80 h-36 bg-gradient-to-r from-indigo-500/20 via-cyan-400/15 to-emerald-400/20 blur-3xl pointer-events-none rounded-full" />
+      <div className="absolute -bottom-16 right-8 w-52 h-28 bg-indigo-600/15 blur-2xl pointer-events-none rounded-full" />
 
-      {/* Top Header: Shop Station Branding & Live Stage Pill */}
-      <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-bold tracking-widest text-indigo-400 uppercase">
-              {activeShopName || 'QuickPrint'} Live Print Station
-            </span>
-          </div>
-          <h3 className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5 transition-all duration-300">
-            {currentStep >= 5
-              ? 'Document Printed & Ready!'
-              : currentStep === 4
-              ? `Printing Live at Counter (${printedPages}/${totalPages})`
-              : (currentStep === 3 && !isReview && !isFailed)
-              ? 'Sent to Shop Printer'
-              : currentStep === 2
-              ? 'Preparing Document Pages'
-              : isReview
-              ? 'Awaiting Counter Approval'
-              : isFailed
-              ? 'Printer Attention Needed'
-              : 'Order Verified & Queued'}
-          </h3>
+      {/* Top Header Pill & Stage Indicator */}
+      <div className="relative z-10 flex items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-400/30 text-indigo-300 text-[11px] font-extrabold tracking-wider uppercase">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+          </span>
+          <span>Live Print Station</span>
         </div>
 
-        {/* Live Pulse Indicator Badge */}
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-800/90 border border-slate-700 text-xs font-bold shadow-xs">
-          <span className="relative flex h-2.5 w-2.5">
-            <span
-              className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
-                currentStep >= 5
-                  ? 'bg-emerald-400'
-                  : currentStep === 4
-                  ? 'bg-cyan-400'
-                  : isReview || isFailed
-                  ? 'bg-amber-400'
-                  : 'bg-indigo-400'
-              }`}
-            />
-            <span
-              className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                currentStep >= 5
-                  ? 'bg-emerald-500'
-                  : currentStep === 4
-                  ? 'bg-cyan-400'
-                  : isReview || isFailed
-                  ? 'bg-amber-500'
-                  : 'bg-indigo-500'
-              }`}
-            />
-          </span>
-          <span className="tracking-wide text-slate-200 transition-all duration-300">
-            {currentStep >= 5
-              ? '100% Complete • Ready'
-              : currentStep === 4
-              ? `Step 4 of 5 • Printing Pg ${printedPages}/${totalPages}`
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs text-slate-300 font-semibold select-none">
+          <span className="font-mono text-indigo-300 font-bold">{progressPercentage}%</span>
+          <span className="text-slate-500">•</span>
+          <span>
+            {currentStep === 4
+              ? `Printing Pg ${printedPages}/${totalPages}`
               : (currentStep === 3 && !isReview && !isFailed)
-              ? 'Step 3 of 5 • In Queue'
+              ? 'In Queue'
               : currentStep === 2
-              ? 'Step 2 of 5 • Preparing'
+              ? 'Preparing'
               : isReview
               ? 'Counter Check'
               : isFailed
-              ? 'Attention Required'
+              ? 'Attention'
               : 'In Progress'}
           </span>
         </div>
       </div>
 
-      {/* Modern High-End Progress Bar with Smooth Transitions */}
-      <div className="space-y-2 relative z-10">
-        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
-          <span>Print Pipeline Progress</span>
-          <span className="font-mono text-indigo-300 transition-all duration-300">{progressPercentage}%</span>
+      {/* Hero Print Pipeline & Progress Bar Section */}
+      <div className="relative z-10 space-y-3 py-0.5">
+        {/* Sleek Progress Bar */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
+            <span className="truncate">
+              {currentStep === 4
+                ? `Printing live at counter (${printedPages}/${totalPages})`
+                : (currentStep === 3 && !isReview && !isFailed)
+                ? 'Sent to shop printer queue'
+                : currentStep === 2
+                ? 'Preparing document pages'
+                : isReview
+                ? 'Awaiting counter check'
+                : isFailed
+                ? 'Printer delay detected'
+                : 'Order confirmed & spooled'}
+            </span>
+            <span className="font-mono text-indigo-300 shrink-0 ml-2">{progressPercentage}%</span>
+          </div>
+          <div className="w-full h-2 rounded-full bg-slate-800/90 overflow-hidden relative">
+            <div
+              className="w-full h-full rounded-full transition-transform duration-700 ease-out bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 will-change-transform"
+              style={{
+                transform: `scaleX(${progressPercentage / 100})`,
+                transformOrigin: 'left',
+              }}
+            />
+            {currentStep === 4 && (
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse pointer-events-none" />
+            )}
+          </div>
         </div>
-        <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden relative">
-          <div
-            className={`w-full h-full rounded-full transition-transform duration-700 ease-out bg-gradient-to-r will-change-transform ${
-              currentStep >= 5
-                ? 'from-emerald-500 to-teal-400'
-                : 'from-indigo-600 via-cyan-400 to-emerald-400'
-            }`}
-            style={{
-              transform: `scaleX(${progressPercentage / 100})`,
-              transformOrigin: 'left',
-            }}
-          />
-          {currentStep === 4 && (
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse pointer-events-none" />
-          )}
-        </div>
-      </div>
 
-      {/* The 5-Step Live Status Pipeline */}
-      <div className="relative z-10 grid grid-cols-5 gap-1 sm:gap-2 pt-2">
-        {steps.map((s, idx) => {
-          const Icon = s.icon;
-          const isCurrent = s.isActive;
-          const isDone = s.isDone;
+        {/* The 5-Step Status Pipeline Nodes */}
+        <div className="grid grid-cols-5 gap-1 sm:gap-2 pt-0.5">
+          {steps.map((s, idx) => {
+            const Icon = s.icon;
+            const isCurrent = s.isActive;
+            const isDone = s.isDone;
 
-          return (
-            <div key={s.step} className="flex flex-col items-center text-center relative group">
-              {/* Connector Line to Next Step */}
-              {idx < steps.length - 1 && (
-                <div className="absolute top-4 left-1/2 w-full h-0.5 -z-1 pointer-events-none">
-                  <div
-                    className={`h-full transition-colors duration-500 ${
-                      isDone
-                        ? 'bg-emerald-500'
-                        : isCurrent
-                        ? 'bg-gradient-to-r from-indigo-500 to-slate-700'
-                        : 'bg-slate-800'
-                    }`}
-                  />
-                </div>
-              )}
-
-              {/* Step Icon Node */}
-              <div
-                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center transition-all duration-500 relative ${
-                  isDone
-                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                    : isCurrent
-                    ? 'bg-indigo-600 text-white ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-600/40 scale-105'
-                    : 'bg-slate-800 text-slate-500 border border-slate-700/80'
-                }`}
-              >
-                {isDone ? (
-                  <Check className="w-4 h-4 text-white stroke-[3] transition-transform duration-300 scale-100" />
-                ) : isCurrent && currentStep === 4 ? (
-                  <Printer className="w-4 h-4 text-cyan-300 animate-pulse" />
-                ) : isCurrent && (currentStep === 2 || (currentStep === 3 && !isReview && !isFailed)) ? (
-                  <RefreshCw className="w-4 h-4 text-indigo-200 animate-spin" />
-                ) : (
-                  <Icon className="w-4 h-4" />
+            return (
+              <div key={s.step} className="flex flex-col items-center text-center relative group">
+                {/* Connector Line to Next Step */}
+                {idx < steps.length - 1 && (
+                  <div className="absolute top-3.5 left-1/2 w-full h-0.5 -z-1 pointer-events-none">
+                    <div
+                      className={`h-full transition-colors duration-500 ${
+                        isDone
+                          ? 'bg-emerald-500'
+                          : isCurrent
+                          ? 'bg-gradient-to-r from-indigo-500 to-slate-700'
+                          : 'bg-slate-800'
+                      }`}
+                    />
+                  </div>
                 )}
 
-                {/* Pulsing halo ring for active step */}
-                {isCurrent && currentStep < 5 && (
-                  <span className="absolute -inset-1 rounded-full border border-indigo-400 animate-ping opacity-30 pointer-events-none" />
-                )}
-              </div>
-
-              {/* Step Label */}
-              <div className="mt-2 space-y-0.5 w-full">
+                {/* Step Icon Node */}
                 <div
-                  className={`text-[10px] sm:text-xs font-bold leading-tight line-clamp-1 transition-colors duration-300 ${
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-500 relative ${
                     isDone
-                      ? 'text-emerald-400'
+                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
                       : isCurrent
-                      ? 'text-white font-black'
-                      : 'text-slate-500'
+                      ? 'bg-indigo-600 text-white ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-600/40 scale-105'
+                      : 'bg-slate-800 text-slate-500 border border-slate-700/80'
                   }`}
                 >
-                  <span className="hidden sm:inline">{s.title}</span>
-                  <span className="sm:hidden">{s.shortTitle}</span>
+                  {isDone ? (
+                    <Check className="w-3.5 h-3.5 text-white stroke-[3]" />
+                  ) : isCurrent && currentStep === 4 ? (
+                    <Printer className="w-3.5 h-3.5 text-cyan-300 animate-pulse" />
+                  ) : isCurrent && (currentStep === 2 || currentStep === 3) ? (
+                    <RefreshCw className="w-3.5 h-3.5 text-indigo-200 animate-spin" />
+                  ) : (
+                    <Icon className="w-3.5 h-3.5" />
+                  )}
+                  {isCurrent && (
+                    <span className="absolute -inset-1 rounded-full border border-indigo-400 animate-ping opacity-30 pointer-events-none" />
+                  )}
                 </div>
-                <div className="text-[9px] text-slate-400 font-medium hidden md:block line-clamp-1">
-                  {s.description}
+
+                {/* Step Label */}
+                <div className="mt-1 space-y-0.5 w-full">
+                  <div
+                    className={`text-[9px] sm:text-[10px] font-bold leading-tight line-clamp-1 transition-colors duration-300 ${
+                      isDone
+                        ? 'text-emerald-400'
+                        : isCurrent
+                        ? 'text-white font-black'
+                        : 'text-slate-500'
+                    }`}
+                  >
+                    <span className="hidden sm:inline">{s.title}</span>
+                    <span className="sm:hidden">{s.shortTitle}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      {/* Live Status Telemetry Console Card */}
-      <div className="relative z-10 rounded-2xl bg-slate-950/90 border border-slate-800/90 p-4 sm:p-5 transition-all duration-300">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            {/* Stage Icon */}
-            <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-300 ${
-                currentStep >= 5
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-xs'
-                  : currentStep === 4
-                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shadow-xs'
-                  : isReview || isFailed
-                  ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                  : 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
-              }`}
-            >
-              {currentStep >= 5 ? (
-                <Sparkles className="w-5 h-5 text-emerald-400" />
-              ) : currentStep === 4 ? (
-                <Printer className="w-5 h-5 text-cyan-400 animate-pulse" />
-              ) : isReview || isFailed ? (
-                <AlertTriangle className="w-5 h-5 text-amber-400" />
-              ) : (
-                <RefreshCw className="w-5 h-5 text-indigo-400 animate-spin" />
+      {/* Sleek Token Card with Details Below the Order Number (Identical structure to Welcome card) */}
+      <div className="relative z-10 rounded-2xl bg-slate-950/85 border border-slate-800/90 p-4 space-y-3 backdrop-blur-md">
+        {/* Order Number Header Row */}
+        <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
+          <div className="min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block select-none">
+              Order Number
+            </span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="font-mono text-base sm:text-lg font-extrabold text-amber-300 tracking-wider truncate">
+                {orderNumber ? `#${orderNumber}` : 'PRINTING'}
+              </span>
+              {orderNumber && (
+                <button
+                  type="button"
+                  onClick={handleCopyOrder}
+                  className="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 text-[10px] font-semibold text-slate-300 flex items-center gap-1 transition-colors cursor-pointer select-none active:scale-95 shrink-0"
+                >
+                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  <span>{copied ? 'Copied' : 'Copy'}</span>
+                </button>
               )}
             </div>
-
-            <div className="space-y-0.5 min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold text-slate-200 transition-all duration-300">
-                  {currentStep >= 5
-                    ? 'Print Completed Successfully'
-                    : currentStep === 4
-                    ? `Printing in Progress (Page ${printedPages} of ${totalPages})`
-                    : (currentStep === 3 && !isReview && !isFailed)
-                    ? 'Ready in Shop Printer Queue'
-                    : currentStep === 2
-                    ? 'Preparing Document Pages'
-                    : isReview
-                    ? 'Awaiting Counter Approval'
-                    : isFailed
-                    ? 'Print Delay Detected'
-                    : 'Preparing Document Pages'}
-                </span>
-                {orderNumber && (
-                  <span className="text-[10px] font-mono font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                    #{orderNumber}
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-slate-400 truncate transition-all duration-300">
-                {currentStep >= 5
-                  ? `All ${totalPages} ${totalPages === 1 ? 'page' : 'pages'} printed • Collect from output tray`
-                  : currentStep === 4
-                  ? `Printing now • Page ${printedPages}/${totalPages} (${paperSize} • ${colorMode})`
-                  : `${fileName ? fileName : 'Document.pdf'} • ${totalPages} ${totalPages === 1 ? 'page' : 'pages'} (${paperSize} • ${colorMode})`}
-              </p>
-            </div>
+            {fileName && (
+              <span className="text-[11px] text-slate-400 block truncate max-w-[220px] mt-0.5">
+                {fileName}
+              </span>
+            )}
           </div>
 
-          {/* Right Action Hint / Live Output Notice */}
-          <div className="text-right shrink-0 w-full sm:w-auto">
-            {currentStep >= 5 ? (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-sm shadow-emerald-600/30 animate-in zoom-in-95 duration-200">
-                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                <span>Ready at Counter</span>
+          <div className="shrink-0">
+            {currentStep === 4 ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600/90 text-white font-extrabold text-xs shadow-md shadow-cyan-600/30 animate-pulse">
+                <Printer className="w-3.5 h-3.5 text-cyan-200" />
+                <span>Printing {printedPages}/{totalPages}</span>
               </span>
-            ) : currentStep === 4 ? (
-              <div className="flex items-center justify-center sm:justify-end gap-1.5 text-xs text-cyan-300 font-bold">
-                {/* Visual animated equalizer bars */}
-                <span className="flex items-end gap-0.5 h-3.5">
-                  <span className="w-1 bg-cyan-400 rounded-full animate-bounce [animation-delay:-0.3s] h-full" />
-                  <span className="w-1 bg-cyan-400 rounded-full animate-bounce [animation-delay:-0.15s] h-2/3" />
-                  <span className="w-1 bg-cyan-400 rounded-full animate-bounce h-4/5" />
-                </span>
-                <span>Feeding Pages…</span>
-              </div>
-            ) : (currentStep === 3 && !isReview && !isFailed) ? (
-              <span className="text-[11px] text-indigo-300 font-mono flex items-center justify-center sm:justify-end gap-1.5">
-                <RefreshCw className="w-3 h-3 animate-spin text-indigo-400" />
-                <span>In Queue</span>
+            ) : currentStep === 3 ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/90 text-white font-extrabold text-xs shadow-md shadow-indigo-600/30">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-200" />
+                <span>In Print Queue</span>
+              </span>
+            ) : isReview ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600/90 text-white font-extrabold text-xs shadow-md shadow-amber-600/30">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-200" />
+                <span>Counter Check</span>
               </span>
             ) : (
-              <span className="text-[11px] text-slate-400 font-mono">
-                Preparing…
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 text-indigo-300 font-extrabold text-xs border border-slate-700">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                <span>Processing</span>
               </span>
             )}
           </div>
         </div>
+
+        {/* Printing Details below the Order Number: Color, Pages, Size, Price */}
+        <div className="grid grid-cols-4 gap-2 text-center text-xs pt-0.5">
+          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90">
+            <span className="text-[9px] uppercase font-bold text-slate-400 block">Color</span>
+            <span className="font-bold text-slate-100 mt-0.5 block truncate">
+              {colorMode === 'COLOR' ? 'Color' : 'B&W'}
+            </span>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90">
+            <span className="text-[9px] uppercase font-bold text-slate-400 block">Pages</span>
+            <span className="font-bold text-slate-100 mt-0.5 block truncate">
+              {totalPages} {totalPages === 1 ? 'Page' : 'Pages'}
+            </span>
+            {printSides && (
+              <span className="text-[9px] text-slate-400 block mt-0.5 truncate">
+                {printSides === 'DOUBLE' ? '2-Sided' : '1-Sided'}
+              </span>
+            )}
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800/90">
+            <span className="text-[9px] uppercase font-bold text-slate-400 block">Size</span>
+            <span className="font-bold text-slate-100 mt-0.5 block truncate">
+              {paperSize}
+            </span>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30">
+            <span className="text-[9px] uppercase font-bold text-emerald-400 block">Price</span>
+            <span className="font-black text-emerald-300 mt-0.5 block truncate">
+              {typeof totalAmount === 'number' ? formatCurrency(totalAmount) : 'Paid'}
+            </span>
+            {paymentMethod && (
+              <span className="text-[8px] font-semibold text-emerald-400 block mt-0.5 truncate">
+                {paymentMethod === 'CASH' ? 'Cash' : 'Online'}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Courteous Shopkeeper Sign-off */}
+      <div className="relative z-10 flex items-center justify-between text-[11px] text-slate-400 pt-0.5 border-t border-slate-800/60 select-none">
+        <span className="flex items-center gap-1.5 text-indigo-400 font-semibold">
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+          <span>Live counter station active</span>
+        </span>
+        <span className="font-medium text-slate-300">
+          {activeShopName || 'QuickPrint'}
+        </span>
       </div>
     </div>
   );
