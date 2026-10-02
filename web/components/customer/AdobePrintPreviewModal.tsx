@@ -420,173 +420,25 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     return Math.min(3.0, Math.max(0.2, (deferredCustomScale || 100) / 100));
   }, [scaleMode, deferredCustomScale]);
 
-  // Fallback realistic vector mockup when document is still parsing
-  const drawFallbackResumeMockup = useCallback(
-    (
-      ctx: CanvasRenderingContext2D,
-      x: number,
-      y: number,
-      width: number,
-      height: number,
-      pageNum: number
-    ) => {
+  const drawPreviewUnavailable = useCallback(
+    (ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number) => {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(x, y, width, height);
-
-      ctx.strokeStyle = '#e2e8f0';
+      ctx.strokeStyle = '#cbd5e1';
       ctx.lineWidth = 1;
       ctx.strokeRect(x, y, width, height);
-
-      const isFirstPage = pageNum === 1;
-
-      if (isFirstPage) {
-        const headerY = y + height * 0.08;
-        const photoRadius = Math.min(width * 0.08, 48);
-        const photoX = x + width * 0.16;
-        const photoY = headerY + photoRadius * 0.8;
-
-        ctx.save();
-        ctx.beginPath();
-        ctx.arc(photoX, photoY, photoRadius, 0, Math.PI * 2);
-        ctx.closePath();
-        ctx.clip();
-        const grad = ctx.createLinearGradient(
-          photoX - photoRadius,
-          photoY - photoRadius,
-          photoX + photoRadius,
-          photoY + photoRadius
-        );
-        if (isBw) {
-          grad.addColorStop(0, '#555555');
-          grad.addColorStop(1, '#999999');
-        } else {
-          grad.addColorStop(0, '#3b82f6');
-          grad.addColorStop(1, '#8b5cf6');
-        }
-        ctx.fillStyle = grad;
-        ctx.fillRect(photoX - photoRadius, photoY - photoRadius, photoRadius * 2, photoRadius * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(photoX, photoY - photoRadius * 0.2, photoRadius * 0.35, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(photoX, photoY + photoRadius * 0.9, photoRadius * 0.65, Math.PI, 0);
-        ctx.fill();
-        ctx.restore();
-
-        ctx.strokeStyle = '#cbd5e1';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(photoX, photoY, photoRadius, 0, Math.PI * 2);
-        ctx.stroke();
-
-        const titleX = x + width * 0.3;
-        ctx.fillStyle = '#111827';
-        ctx.font = `bold ${Math.max(14, Math.round(width * 0.038))}px sans-serif`;
-        const displayName = fileName ? fileName.replace(/\.[^/.]+$/, '').toUpperCase() : 'DOCUMENT PREVIEW';
-        ctx.fillText(displayName.slice(0, 24), titleX, headerY + photoRadius * 0.5);
-
-        ctx.fillStyle = isBw ? '#4b5563' : '#2563eb';
-        ctx.font = `bold ${Math.max(9, Math.round(width * 0.02))}px sans-serif`;
-        ctx.fillText('Official Print Document • Processing', titleX, headerY + photoRadius * 0.95);
-
-        const dividerY = headerY + photoRadius * 1.8;
-        ctx.strokeStyle = '#e5e7eb';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.moveTo(x + width * 0.08, dividerY);
-        ctx.lineTo(x + width * 0.92, dividerY);
-        ctx.stroke();
-
-        const col1X = x + width * 0.08;
-        const col1Width = width * 0.32;
-        const col2X = x + width * 0.44;
-        const col2Width = width * 0.48;
-        let curY1 = dividerY + height * 0.04;
-        let curY2 = dividerY + height * 0.04;
-
-        ctx.fillStyle = '#1f2937';
-        ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
-        ctx.fillText('DETAILS & CONTACT', col1X, curY1);
-        curY1 += height * 0.022;
-
-        for (let i = 0; i < 4; i++) {
-          ctx.fillStyle = '#6b7280';
-          ctx.fillRect(col1X, curY1, col1Width * (0.6 + (i % 3) * 0.15), Math.max(3, height * 0.007));
-          curY1 += height * 0.02;
-        }
-
-        curY1 += height * 0.025;
-        ctx.fillStyle = '#1f2937';
-        ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
-        ctx.fillText('TECHNICAL SKILLS', col1X, curY1);
-        curY1 += height * 0.022;
-
-        for (let i = 0; i < 5; i++) {
-          ctx.fillStyle = '#9ca3af';
-          ctx.fillRect(col1X, curY1, col1Width * (0.5 + (i % 4) * 0.12), Math.max(3, height * 0.007));
-          curY1 += height * 0.018;
-        }
-
-        ctx.fillStyle = '#1f2937';
-        ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
-        ctx.fillText('PROFILE SUMMARY', col2X, curY2);
-        curY2 += height * 0.022;
-
-        for (let i = 0; i < 3; i++) {
-          ctx.fillStyle = '#6b7280';
-          ctx.fillRect(col2X, curY2, col2Width * (0.85 + (i % 2) * 0.1), Math.max(3, height * 0.007));
-          curY2 += height * 0.018;
-        }
-
-        curY2 += height * 0.03;
-        ctx.fillStyle = '#1f2937';
-        ctx.font = `bold ${Math.max(9, Math.round(width * 0.022))}px sans-serif`;
-        ctx.fillText('DOCUMENT CONTENT', col2X, curY2);
-        curY2 += height * 0.022;
-
-        for (let i = 0; i < 6; i++) {
-          ctx.fillStyle = '#9ca3af';
-          ctx.fillRect(col2X, curY2, col2Width * (0.7 + (i % 3) * 0.14), Math.max(3, height * 0.007));
-          curY2 += height * 0.018;
-        }
-      } else {
-        let cy = y + height * 0.08;
-        ctx.fillStyle = '#111827';
-        ctx.font = `bold ${Math.max(11, Math.round(width * 0.028))}px sans-serif`;
-        ctx.fillText(`PAGE ${pageNum} • CONTINUATION`, x + width * 0.08, cy);
-        cy += height * 0.03;
-
-        ctx.strokeStyle = '#e5e7eb';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x + width * 0.08, cy);
-        ctx.lineTo(x + width * 0.92, cy);
-        ctx.stroke();
-        cy += height * 0.04;
-
-        for (let block = 0; block < 4; block++) {
-          ctx.fillStyle = '#374151';
-          ctx.fillRect(x + width * 0.08, cy, width * 0.35, Math.max(4, height * 0.012));
-          cy += height * 0.025;
-          for (let l = 0; l < 4; l++) {
-            ctx.fillStyle = '#9ca3af';
-            ctx.fillRect(x + width * 0.08, cy, width * (0.75 + (l % 3) * 0.08), Math.max(3, height * 0.007));
-            cy += height * 0.018;
-          }
-          cy += height * 0.03;
-        }
-      }
-
-      ctx.fillStyle = '#9ca3af';
-      ctx.font = `${Math.max(8, Math.round(width * 0.016))}px monospace`;
-      ctx.fillText(
-        `Page ${pageNum} of ${totalDocPages} • ${modalPaperSize} • ${isBw ? 'B&W' : 'Color'}`,
-        x + width * 0.08,
-        y + height * 0.96
-      );
+      ctx.fillStyle = '#475569';
+      ctx.font = `600 ${Math.max(12, Math.round(width * 0.028))}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Document preview is unavailable', x + width / 2, y + height / 2 - 10);
+      ctx.fillStyle = '#64748b';
+      ctx.font = `${Math.max(10, Math.round(width * 0.02))}px sans-serif`;
+      ctx.fillText('Your original file will be used for printing.', x + width / 2, y + height / 2 + 16);
+      ctx.textAlign = 'start';
+      ctx.textBaseline = 'alphabetic';
     },
-    [fileName, totalDocPages, modalPaperSize, isBw]
+    []
   );
 
   // Invalidate page raster cache when layout or paper changes
@@ -699,10 +551,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         ctx.drawImage(offCanvas, drawX, drawY, drawW, drawH);
       } catch (err) {
         console.error(`Error rendering PDF page ${pageNum}:`, err);
-        drawFallbackResumeMockup(ctx, x, y, w, h, pageNum);
+        drawPreviewUnavailable(ctx, x, y, w, h);
       }
     },
-    [drawFallbackResumeMockup]
+    [drawPreviewUnavailable]
   );
 
   // --- Main Canvas Render Effect ---
@@ -782,7 +634,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         } else if (pdfDoc && pageToDraw <= pdfDoc.numPages) {
           await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
         } else {
-          drawFallbackResumeMockup(ctx, offsetX, offsetY, scaledW, scaledH, Math.min(pageToDraw, totalDocPages));
+          drawPreviewUnavailable(ctx, offsetX, offsetY, scaledW, scaledH);
         }
 
         // Slot boundary outline for multi-up layout
@@ -840,7 +692,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     activePreviewUrl,
     isImgFile,
     pdfDoc,
-    drawFallbackResumeMockup,
+    drawPreviewUnavailable,
     renderImageSlot,
     renderPdfSlot,
   ]);

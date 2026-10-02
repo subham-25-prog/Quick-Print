@@ -11,8 +11,7 @@ export interface AgentConfig {
   pollIntervalMs: number;
   heartbeatIntervalMs: number;
   downloadDir: string;
-  simulatePrint: boolean;
-  mode: 'live' | 'sandbox';
+  mode: 'live';
   stateDir: string;
 }
 
@@ -32,24 +31,16 @@ export function loadConfig(): AgentConfig {
 
   const agentSecret = process.env.PRINT_AGENT_SECRET || '';
   const agentId = process.env.AGENT_ID || process.env.PRINT_AGENT_ID || 'counter-01';
-  const mode = process.env.AGENT_MODE || (process.env.SIMULATE_PRINT === 'true' ? 'sandbox' : 'live');
-
-  if (agentSecret.length < 32 || !agentId || !['live', 'sandbox'].includes(mode || '')) {
-    throw new Error('Agent ID, 32-character secret and AGENT_MODE are required');
+  if (agentSecret.length < 32 || !agentId || process.env.AGENT_MODE !== 'live') {
+    throw new Error('Agent ID, 32-character secret and AGENT_MODE=live are required');
+  }
+  if (process.env.SIMULATE_PRINT === 'true' || process.argv.includes('--simulate')) {
+    throw new Error('Simulation is not available in the production print agent');
   }
 
-  const simulatePrint =
-    process.argv.includes('--simulate') || process.env.SIMULATE_PRINT === 'true';
-
-  if (simulatePrint && mode !== 'sandbox') {
-    throw new Error('Simulation requires sandbox mode and cannot claim live payments');
-  }
-  if (!simulatePrint && mode !== 'live') {
-    throw new Error('Sandbox jobs must use simulation');
-  }
-
-  const printerName = process.env.PRINTER_NAME || '';
-  // Start discovery even before a printer is selected in the dashboard.
+  // An empty preference is allowed for first-run discovery. The worker will not
+  // claim a job until the dashboard has confirmed a physical printer selection.
+  const printerName = process.env.PRINTER_NAME?.trim() || '';
 
   function parseDuration(value: string | undefined, fallback: number): number {
     const n = Number(value || fallback);
@@ -64,8 +55,7 @@ export function loadConfig(): AgentConfig {
     agentSecret,
     agentId,
     printerName,
-    mode: mode as 'live' | 'sandbox',
-    simulatePrint,
+    mode: 'live',
     pollIntervalMs: parseDuration(process.env.POLL_INTERVAL_MS, 5000),
     heartbeatIntervalMs: parseDuration(process.env.HEARTBEAT_INTERVAL_MS, 15000),
     downloadDir: path.resolve(process.env.DOWNLOAD_DIR || './temp_jobs'),

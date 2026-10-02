@@ -137,7 +137,6 @@ export default function AdminPrintingSettingsPage() {
   const [switchingPrinter, setSwitchingPrinter] = useState(false);
   const [printerError, setPrinterError] = useState('');
   const [selectionPending, setSelectionPending] = useState(false);
-  const [agentMode, setAgentMode] = useState<string | null>(null);
   const printerRequest = useRef(0);
   const printerBusy = useRef(false);
   const printerLoading = useRef(false);
@@ -159,7 +158,6 @@ export default function AdminPrintingSettingsPage() {
       if (request === printerRequest.current) {
         setPrinters(data.printers || []);
         setAgentOnline(Boolean(data.agentOnline));
-        setAgentMode(data.agentMode || null);
         setSelectionPending(Boolean(data.selectionPending));
         setForm((prev) => ({ ...prev, selected_printer: data.activePrinter || null }));
         setPrinterError('');
@@ -379,7 +377,7 @@ export default function AdminPrintingSettingsPage() {
           <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
             Printers are detected by this shop’s local print agent and refreshed automatically. Only printers detected by the agent or previously connected by this shop are shown.
           </p>
-          {agentMode === 'sandbox' && <p role="status" className="text-xs text-amber-700">Simulation mode: physical printing is disabled. Printer discovery and selection are available.</p>}
+
           {selectionPending && <p role="status" className="text-xs text-amber-700">Selection saved. Waiting for the print agent to confirm it.</p>}
           {printerError && <p role="alert" className="text-xs text-rose-700">{printerError}. Displayed printer information may be out of date.</p>}
 

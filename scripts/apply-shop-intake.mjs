@@ -118,9 +118,7 @@ async function main() {
     } else {
       agentEnv += `\nPRINTER_NAME=${intake.printer_name}`;
     }
-    if (intake.simulate_print !== undefined) {
-      agentEnv = agentEnv.replace(/SIMULATE_PRINT=.*/g, `SIMULATE_PRINT=${intake.simulate_print}`);
-    }
+
     await writeFile(printAgentEnvPath, agentEnv);
     console.log(`✅ Updated: print-agent/.env (PRINTER_NAME="${intake.printer_name}")`);
   }

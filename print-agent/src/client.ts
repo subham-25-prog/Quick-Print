@@ -77,8 +77,8 @@ export class ShopApiClient {
       throw new Error('Invalid job contract');
     }
 
-    if (job.is_test !== (this.config.mode === 'sandbox')) {
-      throw new Error('Job environment mismatch');
+    if (job.is_test) {
+      throw new Error('Production agent rejected a test print job');
     }
 
     return job;

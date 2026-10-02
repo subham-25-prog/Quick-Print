@@ -17,7 +17,7 @@ async function main() {
   process.once('exit', releaseLock);
 
   const client = new ShopApiClient(config);
-  const printer = new WindowsPrinterService(config.printerName, config.simulatePrint);
+  const printer = new WindowsPrinterService(config.printerName);
   const health = new AgentHealthServer(config);
   await health.start();
 
@@ -29,7 +29,7 @@ async function main() {
       event: 'agent_started',
       agentId: config.agentId,
       mode: config.mode,
-      simulation: config.simulatePrint,
+
     })
   );
 
@@ -52,15 +52,10 @@ async function main() {
       try {
         const detected = await printer.getDetectedPrinters();
         const installed = detected.map((p) => p.name);
-        if (!printer.getConfiguredPrinter()) {
-          const defaultName = await printer.getDefaultPrinterName();
-          const initial = detected.find((p) => p.name === defaultName && p.status === 'ONLINE')
-            || detected.find((p) => p.status === 'ONLINE');
-          if (initial) printer.setConfiguredPrinter(initial.name);
-        }
+
         const activeName = printer.getConfiguredPrinter() || 'Unavailable';
         const hb = await client.sendHeartbeat(activeName, installed, detected);
-        if (hb.activePrinter && !/^(Unavailable|Sandbox simulation)$/i.test(hb.activePrinter) && hb.activePrinter !== printer.getConfiguredPrinter()) {
+        if (hb.activePrinter && !/^Unavailable$/i.test(hb.activePrinter) && hb.activePrinter !== printer.getConfiguredPrinter()) {
           printer.setConfiguredPrinter(hb.activePrinter);
           config.printerName = hb.activePrinter;
           console.log(

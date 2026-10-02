@@ -13,7 +13,7 @@ import {
   Check,
   ArrowLeft,
   RefreshCw,
-  Sparkles,
+
 } from '@/components/ui/Icons';
 import { LivePrintVisualizer } from '@/components/customer/LivePrintVisualizer';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
@@ -31,7 +31,7 @@ export default function OrderStatusPage() {
 
   const [data, setData] = useState<{
     order: Order;
-    job: { status: string; is_test: boolean; submitted_at?: string };
+    job: { status: string; submitted_at?: string };
     agentOnline: boolean;
   } | null>(null);
 
@@ -238,12 +238,6 @@ export default function OrderStatusPage() {
 
         {data && (
           <>
-            {data.job?.is_test && (
-              <div className="p-3.5 rounded-2xl bg-amber-100/80 border border-amber-300 text-amber-900 text-xs font-semibold flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-700 shrink-0" />
-                <span>Sandbox Test Mode — Simulated print without paper output.</span>
-              </div>
-            )}
 
             {/* Awaiting Cash Verification Card OR Live Animated 5-Step Print Status Pipeline */}
             {isAwaitingVerification ? (
@@ -290,7 +284,7 @@ export default function OrderStatusPage() {
                 pageCount={data.order.page_count}
                 copies={data.order.copies}
                 fileName={data.order.file_name}
-                isTest={data.job?.is_test}
+
                 shopName={shopName}
                 orderNumber={data.order.order_number}
                 paperSize={data.order.paper_size}

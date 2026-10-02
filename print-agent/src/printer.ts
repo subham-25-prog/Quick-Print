@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile } from 'node:fs/promises';
-import { print, getDefaultPrinter, getPrinters } from 'pdf-to-printer';
+import { print, getPrinters } from 'pdf-to-printer';
 import { ClaimedJob } from './client';
 
 const execute = promisify(execFile);
@@ -12,6 +12,49 @@ export interface DetectedPrinter {
   status: 'ONLINE' | 'OFFLINE' | 'ERROR' | 'UNKNOWN';
 }
 
+type WindowsPrinterRecord = {
+  WorkOffline?: boolean;
+  PrinterStatus?: number | string;
+  DetectedErrorState?: number | string;
+};
+
+function statusText(value: unknown): string {
+  return typeof value === 'string' ? value.toLowerCase().replace(/[\s_-]/g, '') : '';
+}
+
+function numericStatus(value: unknown): number {
+  return typeof value === 'number' ? value : Number.NaN;
+}
+
+export function getPrinterStatus(printer: WindowsPrinterRecord | undefined): DetectedPrinter['status'] {
+  if (!printer) return 'UNKNOWN';
+
+  const queueStatus = statusText(printer.PrinterStatus);
+  const errorState = numericStatus(printer.DetectedErrorState);
+  const printerStatus = numericStatus(printer.PrinterStatus);
+
+  if (Boolean(printer.WorkOffline) || [6, 7].includes(printerStatus) || queueStatus === 'offline') {
+    return 'OFFLINE';
+  }
+
+  if (
+    [1, 4, 6, 7, 8, 9, 10, 11].includes(errorState) ||
+    new Set([
+      'error', 'paperjam', 'paperout', 'manualfeed', 'paperproblem', 'outputbinfull',
+      'notavailable', 'userinterventionrequired', 'outofmemory', 'dooropen', 'notoner',
+      'serverunknown', 'stoppedprinting',
+    ]).has(queueStatus)
+  ) {
+    return 'ERROR';
+  }
+
+  if (new Set(['unknown', 'other']).has(queueStatus)) {
+    return 'UNKNOWN';
+  }
+
+  return 'ONLINE';
+}
+
 export function parseDetectedPrinters(raw: unknown): DetectedPrinter[] {
   const list = Array.isArray(raw) ? raw : [raw];
   const virtual = /OneNote|Shared Fax|XPS Document Writer|Microsoft Print to PDF|Root Print Queue|^Fax$/i;
@@ -20,8 +63,7 @@ export function parseDetectedPrinters(raw: unknown): DetectedPrinter[] {
     .map((p) => {
       const item: DetectedPrinter = {
         name: String(p.Name).trim(),
-        status: p.WorkOffline || [6, 7].includes(p.PrinterStatus) ? 'OFFLINE' :
-          printerHasBlockingError(p) ? 'ERROR' : 'ONLINE',
+        status: getPrinterStatus(p),
       };
       if (p.DeviceId || p.id) {
         item.id = String(p.DeviceId || p.id).trim();
@@ -47,22 +89,9 @@ export function parsePdfToPrinterList(raw: Array<{ name?: string; deviceId?: str
     });
 }
 
-export function printerHasBlockingError(
-  printer:
-    | {
-        WorkOffline?: boolean;
-        PrinterStatus?: number;
-        DetectedErrorState?: number;
-      }
-    | undefined
-): boolean {
+export function printerHasBlockingError(printer: WindowsPrinterRecord | undefined): boolean {
   // Microsoft Win32_Printer: DetectedErrorState=2 means NO ERROR, not failure.
-  return (
-    !printer ||
-    Boolean(printer.WorkOffline) ||
-    [6, 7].includes(printer.PrinterStatus || 0) ||
-    [1, 4, 6, 7, 8, 9, 10, 11].includes(printer.DetectedErrorState || 0)
-  );
+  return getPrinterStatus(printer) !== 'ONLINE';
 }
 
 export class WindowsPrinterService {
@@ -70,8 +99,7 @@ export class WindowsPrinterService {
   private lastScanTime = 0;
 
   constructor(
-    private configuredPrinter: string,
-    private simulation = false
+    private configuredPrinter: string
   ) {}
 
   setConfiguredPrinter(printerName: string): void {
@@ -90,8 +118,8 @@ export class WindowsPrinterService {
     if (process.platform !== 'win32') return [];
 
     const now = Date.now();
-    // Cache valid scan for 30s to avoid spamming Windows spooler/WMI on every 5s heartbeat
-    if (this.cachedPrinters.length > 0 && now - this.lastScanTime < 30000) {
+    // Refresh within one heartbeat cycle so USB/Wi-Fi disconnects are not shown as stale online queues.
+    if (this.cachedPrinters.length > 0 && now - this.lastScanTime < 10000) {
       return this.cachedPrinters;
     }
 
@@ -109,11 +137,10 @@ export class WindowsPrinterService {
       );
       const parsed = JSON.parse(stdout.trim() || '[]');
       const printers = parseDetectedPrinters(parsed);
-      if (printers.length > 0) {
-        this.cachedPrinters = printers;
-        this.lastScanTime = now;
-        return printers;
-      }
+      // A successful native scan is authoritative, including when no physical queues remain.
+      this.cachedPrinters = printers;
+      this.lastScanTime = now;
+      return printers;
     } catch {
       // Fall through to fast pdf-to-printer fallback
     }
@@ -163,12 +190,8 @@ export class WindowsPrinterService {
     return [];
   }
 
-  async getDefaultPrinterName(): Promise<string> {
-    return process.platform === 'win32' ? (await getDefaultPrinter())?.name || '' : '';
-  }
 
   async ensureReady(): Promise<void> {
-    if (this.simulation) return;
     if (process.platform !== 'win32') {
       throw new Error('Live printing requires Windows');
     }
@@ -191,7 +214,7 @@ export class WindowsPrinterService {
       );
       if (stdout.trim()) {
         const p = JSON.parse(stdout.trim());
-        if ([6, 7].includes(p.PrinterStatus)) {
+        if (getPrinterStatus(p) !== 'ONLINE') {
           throw new Error('Configured printer is offline or reporting an error');
         }
         return;
@@ -210,10 +233,6 @@ export class WindowsPrinterService {
   }
 
   async printDocument(filePath: string, job: ClaimedJob): Promise<void> {
-    if (this.simulation) {
-      if (!job.is_test) throw new Error('Cannot simulate a live payment');
-      return;
-    }
 
     if (job.is_test) {
       throw new Error('Cannot send test payment to a physical printer');

@@ -38,7 +38,7 @@ export class AgentHealthServer {
           lastHeartbeat: this.lastHeartbeat || null,
           agentId: this.config.agentId,
           mode: this.config.mode,
-          simulation: this.config.simulatePrint,
+
           activePrinter: this.activePrinter,
           printers: this.printers,
         };

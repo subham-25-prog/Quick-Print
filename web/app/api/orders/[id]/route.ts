@@ -116,7 +116,7 @@ export async function GET(
 
     const { data: job, error } = await database()
       .from('print_jobs')
-      .select('status, is_test, submitted_at')
+      .select('status, submitted_at')
       .eq('order_id', resolvedOrderId)
       .eq('shop_id', getCurrentShopId())
       .maybeSingle();

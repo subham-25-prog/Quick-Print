@@ -12,7 +12,7 @@ export class CashfreeProvider implements PaymentProvider {
   readonly name = 'cashfree';
   readonly fingerprint: string;
   readonly merchantId: string;
-  readonly environment: 'sandbox' | 'live';
+  readonly environment: 'live';
   private secretKey: string;
   private apiVersion: string;
   private transport: typeof fetch;
@@ -20,7 +20,7 @@ export class CashfreeProvider implements PaymentProvider {
 
   constructor(
     merchantId: string,
-    environment: 'sandbox' | 'live',
+    environment: 'live',
     secretKey: string,
     apiVersion = '2025-01-01',
     transport: typeof fetch = fetch
@@ -31,10 +31,7 @@ export class CashfreeProvider implements PaymentProvider {
     this.apiVersion = apiVersion.trim();
     this.transport = transport;
 
-    this.baseUrl =
-      environment === 'live'
-        ? 'https://api.cashfree.com/pg'
-        : 'https://sandbox.cashfree.com/pg';
+    this.baseUrl = 'https://api.cashfree.com/pg';
 
     this.fingerprint = createHash('sha256')
       .update(`${this.merchantId}:${this.environment}`)

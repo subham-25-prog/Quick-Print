@@ -18,8 +18,8 @@ export function configuredProvider(): PaymentProvider {
   }
 
   const mode = process.env.PAYMENT_ENVIRONMENT?.trim();
-  if (mode !== 'live' && mode !== 'sandbox') {
-    throw new HttpError(503, 'Payment environment is not configured.');
+  if (mode !== 'live') {
+    throw new HttpError(503, 'Production payment environment is not configured.');
   }
 
   if (providerName === 'cashfree') {

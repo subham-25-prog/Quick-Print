@@ -2,7 +2,7 @@
 
 Use Node 24 LTS on the shop user's Windows account and the official driver for the selected USB/Wi-Fi/network printer. HP, Canon, Epson and Brother are possible via Windows drivers, but **each driver/model must pass installation acceptance**. No physical hardware was tested in this engineering run.
 
-Run `npm ci`, `npm run build`, configure .env, then `npm start` inside print-agent. AGENT_ID must match web PRINT_AGENT_ID and PRINT_AGENT_SECRET must match exactly. BACKEND_URL is the stable HTTPS origin. Sandbox requires SIMULATE_PRINT=true; live rejects simulation, test jobs and an empty PRINTER_NAME. Select the exact Windows printer name, not a filename such as agent.db.
+Run `npm ci`, `npm run build`, configure .env, then `npm start` inside print-agent. AGENT_ID must match web PRINT_AGENT_ID and PRINT_AGENT_SECRET must match exactly. BACKEND_URL is the stable HTTPS origin. The production agent requires AGENT_MODE=live and SIMULATE_PRINT=false. Leave PRINTER_NAME blank only to discover queues; select the detected physical printer in QuickPrint before the agent can claim jobs, then save its exact Windows name for a fixed preference.
 
 The agent posts a heartbeat, checks Windows readiness, atomically claims one shop job, downloads its private PDF with a claim token, writes/fsyncs a local dispatch journal, obtains a server start authorization, calls one print engine and acknowledges SUBMITTED. Claims expire only **before** dispatch. A PRINTING job is never automatically reissued.
 

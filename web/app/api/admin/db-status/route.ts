@@ -30,9 +30,9 @@ export async function GET(req: NextRequest) {
       settings?.pricing?.shop_name ||
       shop?.name ||
       process.env.NEXT_PUBLIC_SHOP_NAME ||
-      'Cyber Cafe';
+      'QuickPrint';
     if (/quickprint/i.test(shopName)) {
-      shopName = process.env.NEXT_PUBLIC_SHOP_NAME || 'Cyber Cafe';
+      shopName = process.env.NEXT_PUBLIC_SHOP_NAME || 'QuickPrint';
     }
 
     const { data: agent } = await db

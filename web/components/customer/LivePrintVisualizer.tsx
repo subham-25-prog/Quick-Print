@@ -20,7 +20,7 @@ interface LivePrintVisualizerProps {
   pageCount?: number;
   copies?: number;
   fileName?: string;
-  isTest?: boolean;
+
   shopName?: string;
   orderNumber?: string;
   paperSize?: string;
@@ -34,7 +34,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
   pageCount = 1,
   copies = 1,
   fileName,
-  isTest = false,
+
   shopName,
   orderNumber,
   paperSize = 'A4',
@@ -199,13 +199,8 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
         <div>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-mono font-bold tracking-widest text-indigo-400 uppercase">
-              {activeShopName || 'Cyber Cafe'} Live Print Station
+              {activeShopName || 'QuickPrint'} Live Print Station
             </span>
-            {isTest && (
-              <span className="text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full">
-                SIMULATION
-              </span>
-            )}
           </div>
           <h3 className="text-base sm:text-lg font-black text-white tracking-tight mt-0.5 transition-all duration-300">
             {currentStep >= 5

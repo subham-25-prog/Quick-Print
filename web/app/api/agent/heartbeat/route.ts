@@ -25,13 +25,12 @@ export async function POST(req: NextRequest) {
     onlyFields(body, ['mode', 'printerName', 'systemInfo', 'installedPrinters', 'printerDetails']);
 
     const mode = body.mode;
-    if (mode !== 'live' && mode !== 'sandbox') {
-      throw new HttpError(400, 'Agent mode is required.');
+    if (mode !== 'live') {
+      throw new HttpError(400, 'This deployment accepts only a live print agent.');
     }
 
-    const expectedEnv = process.env.PAYMENT_ENVIRONMENT || 'sandbox';
-    if (mode !== expectedEnv) {
-      throw new HttpError(409, 'Agent and payment environment must match.');
+    if (process.env.PAYMENT_ENVIRONMENT !== 'live') {
+      throw new HttpError(503, 'Production payment environment is not configured.');
     }
 
     const printerName = textField(body.printerName, 200) || 'Unavailable';

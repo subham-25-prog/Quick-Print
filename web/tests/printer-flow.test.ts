@@ -202,7 +202,7 @@ describe('Printer Flow & Lifecycle Requirements', () => {
     expect(epson?.is_selected).toBe(true);
 
     // Agent behavior: ensureReady throws error if configured printer is offline
-    const service = new WindowsPrinterService('Epson L3150', false);
+    const service = new WindowsPrinterService('Epson L3150');
     // Mock cached printers on the service where Epson is OFFLINE
     (service as any).cachedPrinters = [
       { name: 'Canon LBP2900', status: 'ONLINE' },

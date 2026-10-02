@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       db
         .from('orders')
         .select(
-          'id, order_number, file_name, page_count, copies, paper_size, color_mode, total_amount, order_status, print_jobs!print_job_order_shop_fk(status, is_test)'
+          'id, order_number, file_name, page_count, copies, paper_size, color_mode, total_amount, order_status, print_jobs!print_job_order_shop_fk(status)'
         )
         .eq('shop_id', shopId)
         .not('payment_id', 'is', null)

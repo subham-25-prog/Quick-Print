@@ -9,8 +9,7 @@
   "scripts": {
     "build": "npx tsc",
     "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "test-print": "ts-node src/index.ts --simulate"
+    "dev": "ts-node src/index.ts"
   },
   "dependencies": {
     "axios": "^1.20.0",

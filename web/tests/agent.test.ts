@@ -11,11 +11,12 @@ test('Windows no-error code 2 is ready; actual offline/jam/paper errors block',(
   expect(printerHasBlockingError({PrinterStatus:3,DetectedErrorState:2})).toBe(false);
   for(const code of [4,6,7,8,9,10,11])expect(printerHasBlockingError({DetectedErrorState:code})).toBe(true);
   expect(printerHasBlockingError({WorkOffline:true})).toBe(true);
+  expect(printerHasBlockingError({PrinterStatus:'Offline'})).toBe(true);
+  expect(printerHasBlockingError({PrinterStatus:'Paper Jam'})).toBe(true);
   expect(printerHasBlockingError(undefined)).toBe(true);
 });
-test('simulation cannot accept live jobs and physical driver cannot accept sandbox jobs',async()=>{
-  await expect(new WindowsPrinterService('',true).printDocument('unused',{is_test:false} as ClaimedJob)).rejects.toThrow();
-  await expect(new WindowsPrinterService('',false).printDocument('unused',{is_test:true} as ClaimedJob)).rejects.toThrow();
+test('physical driver rejects test jobs',async()=>{
+  await expect(new WindowsPrinterService('').printDocument('unused',{is_test:true} as ClaimedJob)).rejects.toThrow();
 });
 beforeEach(()=>{dir=mkdtempSync(join(tmpdir(),'quickprint-agent-test-'));});
 afterEach(()=>rmSync(dir,{recursive:true,force:true}));
@@ -40,7 +41,7 @@ test('crash at dispatch boundary becomes REVIEW',async()=>{const f=fixture();f.j
 test('offline printer does not claim; bad download never starts',async()=>{const f=fixture();f.printer.ensureReady.mockRejectedValueOnce(new Error('offline'));const w=new AgentWorker(f.client,f.printer,f.journal,dir);await expect(w.tick()).rejects.toThrow();expect(f.client.claimNextJob).not.toHaveBeenCalled();f.client.downloadDocument.mockRejectedValue(new Error('expired'));await w.tick();expect(f.client.startJob).not.toHaveBeenCalled();expect(f.client.reportJobCompletion).toHaveBeenCalledWith(job,'FAILED');});
 
 test('printer service reports installed printers and supports dynamic switching',async()=>{
-  const service = new WindowsPrinterService('Printer A', true);
+  const service = new WindowsPrinterService('Printer A');
   expect(service.getConfiguredPrinter()).toBe('Printer A');
   service.setConfiguredPrinter('Printer B');
   expect(service.getConfiguredPrinter()).toBe('Printer B');

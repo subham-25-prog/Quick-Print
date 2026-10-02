@@ -12,7 +12,7 @@ export class PhonePeProvider implements PaymentProvider {
   readonly name = 'phonepe';
   readonly fingerprint: string;
   readonly merchantId: string;
-  readonly environment: 'sandbox' | 'live';
+  readonly environment: 'live';
   private clientId: string;
   private clientVersion: string;
   private clientSecret: string;
@@ -24,7 +24,7 @@ export class PhonePeProvider implements PaymentProvider {
 
   constructor(
     merchantId: string,
-    environment: 'sandbox' | 'live',
+    environment: 'live',
     clientId: string,
     clientVersion: string,
     clientSecret: string,
@@ -41,10 +41,7 @@ export class PhonePeProvider implements PaymentProvider {
     this.webhookPassword = webhookPassword.trim();
     this.transport = transport;
 
-    this.baseUrl =
-      environment === 'live'
-        ? 'https://api.phonepe.com/apis/pg'
-        : 'https://api-preprod.phonepe.com/apis/pg-sandbox';
+    this.baseUrl = 'https://api.phonepe.com/apis/pg';
 
     this.fingerprint = createHash('sha256')
       .update(`${this.clientId}:${this.clientVersion}:${this.environment}`)
@@ -56,10 +53,7 @@ export class PhonePeProvider implements PaymentProvider {
       return this.token.value;
     }
 
-    const tokenUrl =
-      this.environment === 'live'
-        ? 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token'
-        : `${this.baseUrl}/v1/oauth/token`;
+    const tokenUrl = 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
 
     const response = await this.transport(tokenUrl, {
       method: 'POST',

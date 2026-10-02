@@ -132,7 +132,9 @@ export async function POST(req: NextRequest) {
       }
 
       const paymentReference = `QP_CASH_${paymentId.replace(/-/g, '').slice(0, 16)}`;
-      const isSandbox = (process.env.PAYMENT_ENVIRONMENT || 'sandbox') === 'sandbox';
+      if (process.env.PAYMENT_ENVIRONMENT !== 'live') {
+        throw new HttpError(503, 'Production payment environment is not configured.');
+      }
 
       const draftOrderData = {
         paper_size: options.paperSize,
@@ -162,7 +164,7 @@ export async function POST(req: NextRequest) {
         request_hash: requestHash,
         provider: 'cash',
         merchant_id: 'cash',
-        environment: isSandbox ? 'sandbox' : 'live',
+        environment: 'live',
         credential_fingerprint: 'cash',
         payment_reference: paymentReference,
         amount: price.totalAmount,
@@ -185,7 +187,7 @@ export async function POST(req: NextRequest) {
           reference: paymentReference,
           status: 'PENDING',
           paymentMethod: 'CASH',
-          environment: isSandbox ? 'sandbox' : 'live',
+          environment: 'live',
         },
         { status: 201 }
       );

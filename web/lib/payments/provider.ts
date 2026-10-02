@@ -8,7 +8,7 @@ export interface PaymentContext {
   currency: string;
   provider: string;
   merchant_id: string;
-  environment: 'sandbox' | 'live';
+  environment: 'live';
   credential_fingerprint: string;
   provider_link_id?: string;
 }
@@ -30,7 +30,7 @@ export interface VerifiedPayment {
 export interface PaymentProvider {
   readonly name: string;
   readonly merchantId: string;
-  readonly environment: 'sandbox' | 'live';
+  readonly environment: 'live';
   readonly fingerprint: string;
 
   createPayment(

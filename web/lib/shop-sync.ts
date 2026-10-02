@@ -10,7 +10,7 @@ export const SHOP_BROADCAST_CHANNEL = 'quickprint_shop_broadcast_channel';
 
 /**
  * Sanitizes any raw shop name, ensuring empty or legacy 'QuickPrint' names
- * are cleanly replaced with the configured brand name (Cyber Cafe).
+ * are cleanly replaced with the configured shop brand.
  */
 export function cleanShopName(raw?: string | null): string {
   if (!raw || typeof raw !== 'string') return shopConfig.name;

@@ -64,7 +64,7 @@ const envConfig = {
   CRON_SECRET: randomBytes(32).toString('hex'),
   DOCUMENT_RETENTION_DAYS: '3',
   PAYMENT_PROVIDER: 'cashfree',
-  PAYMENT_ENVIRONMENT: 'sandbox',
+  PAYMENT_ENVIRONMENT: 'live',
   CASHFREE_APP_ID: '',
   CASHFREE_SECRET_KEY: '',
   CASHFREE_API_VERSION: '2025-01-01',
@@ -91,8 +91,8 @@ const agentEnvConfig = {
   BACKEND_URL: origin.origin,
   AGENT_ID: agentId,
   PRINT_AGENT_SECRET: agentSecret,
-  AGENT_MODE: 'sandbox',
-  SIMULATE_PRINT: 'true',
+  AGENT_MODE: 'live',
+  SIMULATE_PRINT: 'false',
   PRINTER_NAME: '',
   POLL_INTERVAL_MS: '5000',
   HEARTBEAT_INTERVAL_MS: '15000',
@@ -150,9 +150,9 @@ const readme = `QuickPrint Shop Installation - ${name}
 2. Run fresh-install.sql once in its SQL Editor. Do not also run shop.sql.
 3. Fill Supabase credentials in .env.production.local and import into this shop's Vercel Production environment. Never commit the generated folder.
 4. Deploy the repository, then open /admin/settings to configure branding and rates.
-5. When PhonePe credentials arrive, add them to Vercel. Online checkout activates automatically.
-6. Configure the print agent from print-agent.env; start with simulation enabled.
-7. Follow docs/NEW_SHOP_INSTALLATION.md for payment activation, maintenance and acceptance tests.
+5. Add the shop's approved live payment credentials to Vercel. Online checkout activates automatically.
+6. Configure the print agent from print-agent.env with the exact Windows printer name.
+7. Follow docs/NEW_SHOP_INSTALLATION.md for production activation, maintenance and acceptance tests.
 `;
 
 await writeFile(resolve(targetDir, 'README.txt'), readme, { flag: 'wx' });

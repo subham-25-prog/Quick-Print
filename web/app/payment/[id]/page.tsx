@@ -143,11 +143,6 @@ export default function PaymentPage() {
             </p>
           </div>
 
-          {state?.environment === 'sandbox' && (
-            <p className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold">
-              Sandbox Test Mode — No real money or physical print
-            </p>
-          )}
 
           {state && (
             <div className="bg-slate-50 rounded-2xl p-4 space-y-1.5 border border-slate-100">

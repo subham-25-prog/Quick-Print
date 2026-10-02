@@ -297,7 +297,7 @@ export async function recordAgentHeartbeat(
   agentId: string,
   printerName: string,
   systemInfo: string,
-  mode: 'live' | 'sandbox',
+  mode: 'live',
   installedPrinters?: string[],
   printerDetails?: Array<{ id?: string; name: string; status: 'ONLINE' | 'OFFLINE' | 'ERROR' | 'UNKNOWN' }>
 ): Promise<{ activePrinter: string }> {
@@ -403,7 +403,7 @@ export function isVirtualSystemPrinter(name: string | null | undefined): boolean
   if (!lower) return true;
   return (
     lower.includes('onenote') ||
-    lower === 'sandbox simulation' || lower === 'unavailable' ||
+    lower === 'unavailable' ||
     lower.includes('xps document writer') ||
     lower.includes('print to pdf') ||
     lower === 'fax' ||
