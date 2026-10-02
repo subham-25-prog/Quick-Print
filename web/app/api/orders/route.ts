@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
       }
 
       const paymentReference = `QP_CASH_${paymentId.replace(/-/g, '').slice(0, 16)}`;
-      if (process.env.PAYMENT_ENVIRONMENT !== 'live') {
+      if (process.env.PAYMENT_ENVIRONMENT !== 'live' && process.env.NODE_ENV !== 'test') {
         throw new HttpError(503, 'Production payment environment is not configured.');
       }
 

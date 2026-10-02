@@ -403,6 +403,7 @@ export function isVirtualSystemPrinter(name: string | null | undefined): boolean
   if (!lower) return true;
   return (
     lower.includes('onenote') ||
+    lower === 'sandbox simulation' ||
     lower === 'unavailable' ||
     lower.includes('xps document writer') ||
     lower.includes('print to pdf') ||

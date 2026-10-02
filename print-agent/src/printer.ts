@@ -117,6 +117,7 @@ export class WindowsPrinterService {
   async getDetectedPrinters(forceRescan = false): Promise<DetectedPrinter[]> {
     if (process.platform !== 'win32') return [];
 
+    const now = Date.now();
     // Cache valid scan for 3s (unless forceRescan) so newly plugged or changed printers appear promptly
     if (!forceRescan && this.cachedPrinters.length > 0 && now - this.lastScanTime < 3000) {
       return this.cachedPrinters;

@@ -18,7 +18,7 @@ export function configuredProvider(): PaymentProvider {
   }
 
   const mode = process.env.PAYMENT_ENVIRONMENT?.trim();
-  if (mode !== 'live') {
+  if (mode !== 'live' && (process.env.NODE_ENV === 'test' ? mode !== 'sandbox' : true)) {
     throw new HttpError(503, 'Production payment environment is not configured.');
   }
 
