@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
@@ -10,6 +10,9 @@ import {
   AlertCircle,
   ArrowLeft,
   RefreshCw,
+  Copy,
+  Check,
+  FileText,
 } from '@/components/ui/Icons';
 import { LivePrintVisualizer } from '@/components/customer/LivePrintVisualizer';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
@@ -32,7 +35,19 @@ export default function OrderStatusPage() {
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
   const [isOfflineCached, setIsOfflineCached] = useState(false);
+
+  const copyOrderId = useCallback(async () => {
+    if (!data?.order?.order_number) return;
+    try {
+      await navigator.clipboard.writeText(data.order.order_number);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError('Unable to copy. Please select and copy the order number manually.');
+    }
+  }, [data?.order?.order_number]);
 
   // Restore order state from local cache instantly (0ms latency / offline-first)
   useEffect(() => {
@@ -221,41 +236,115 @@ export default function OrderStatusPage() {
 
             {/* Awaiting Cash Verification Card OR Live Animated 5-Step Print Status Pipeline */}
             {isAwaitingVerification ? (
-              <section className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 rounded-3xl p-6 sm:p-7 text-white shadow-lg space-y-4 relative overflow-hidden animate-fade-in-scale">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="relative flex h-3 w-3">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
-                    </span>
-                    <span className="text-xs font-black uppercase tracking-wider text-amber-100">
-                      Awaiting Cash Verification
+              <>
+                <section className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 rounded-3xl p-6 sm:p-7 text-white shadow-lg space-y-4 relative overflow-hidden animate-fade-in-scale">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-white" />
+                      </span>
+                      <span className="text-xs font-black uppercase tracking-wider text-amber-100">
+                        Awaiting Cash Verification
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-extrabold bg-white/20 backdrop-blur-xs px-2.5 py-1 rounded-full">
+                      Pay at Counter
                     </span>
                   </div>
-                  <span className="text-[11px] font-extrabold bg-white/20 backdrop-blur-xs px-2.5 py-1 rounded-full">
-                    Pay at Counter
-                  </span>
-                </div>
 
-                <div className="space-y-1">
-                  <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
-                    Pay {formatCurrency(data.order.total_amount)} at the counter
-                  </h2>
-                  <p className="text-xs sm:text-sm text-amber-100 font-medium leading-relaxed">
-                    Please visit the counter and show your order number. Once verified by the shopkeeper, printing starts automatically on this screen.
-                  </p>
-                </div>
+                  <div className="space-y-1">
+                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                      Pay {formatCurrency(data.order.total_amount)} at the counter
+                    </h2>
+                    <p className="text-xs sm:text-sm text-amber-100 font-medium leading-relaxed">
+                      Please visit the counter and show your order number. Once verified by the shopkeeper, printing starts automatically on this screen.
+                    </p>
+                  </div>
 
-                <div className="p-3.5 rounded-2xl bg-black/15 backdrop-blur-xs flex items-center justify-between text-xs">
-                  <span className="text-amber-100 font-medium flex items-center gap-2">
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
-                    Listening live for verification...
-                  </span>
-                  <span className="font-mono font-bold text-white bg-white/20 px-2.5 py-0.5 rounded-md">
-                    {data.order.order_number}
-                  </span>
-                </div>
-              </section>
+                  <div className="p-3.5 rounded-2xl bg-black/15 backdrop-blur-xs flex items-center justify-between text-xs">
+                    <span className="text-amber-100 font-medium flex items-center gap-2">
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
+                      Listening live for verification...
+                    </span>
+                    <span className="font-mono font-bold text-white bg-white/20 px-2.5 py-0.5 rounded-md">
+                      {data.order.order_number}
+                    </span>
+                  </div>
+                </section>
+
+                {/* Order Reference & Receipt Card for Cash Verification */}
+                <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4 contain-layout">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block select-none">
+                        Order Number
+                      </span>
+                      <span className="font-mono text-base font-extrabold text-slate-900 tracking-tight">
+                        {data.order.order_number}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={copyOrderId}
+                      className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 active-press cursor-pointer select-none"
+                    >
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copied ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+
+                  {/* Document Overview */}
+                  <div className="flex items-start gap-3.5 pt-1">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-slate-900 truncate">
+                        {data.order.file_name}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {data.order.page_count} {data.order.page_count === 1 ? 'page' : 'pages'} · {data.order.copies} {data.order.copies === 1 ? 'copy' : 'copies'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Specs Pills */}
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1 select-none">
+                    <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Paper</span>
+                      <span className="font-bold text-slate-800">{data.order.paper_size}</span>
+                    </div>
+                    <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Color</span>
+                      <span className="font-bold text-slate-800">
+                        {data.order.color_mode === 'COLOR' ? 'Full Color' : 'Black & White'}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-100">
+                      <span className="text-[10px] text-slate-400 block uppercase font-bold">Sides</span>
+                      <span className="font-bold text-slate-800">
+                        {data.order.print_sides === 'DOUBLE' ? '2-Sided' : '1-Sided'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Price Total */}
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-600 select-none">
+                      Amount Due
+                    </span>
+                    <div className="text-right">
+                      <span className="text-xl font-black text-amber-600">
+                        {formatCurrency(data.order.total_amount)}
+                      </span>
+                      <span className="text-[10px] block font-semibold text-amber-600 select-none">
+                        ⏳ Cash – Pay at Counter
+                      </span>
+                    </div>
+                  </div>
+                </section>
+              </>
             ) : (
               /* Live Print Visualizer includes all order specs, price, and copyable order token */
               <LivePrintVisualizer
