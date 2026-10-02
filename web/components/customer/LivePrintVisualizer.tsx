@@ -12,6 +12,7 @@ import {
   AlertTriangle
 } from '@/components/ui/Icons';
 import { useShopName } from '@/lib/shop-sync';
+import { WelcomePrintCompleteAnimation } from '@/components/customer/WelcomePrintCompleteAnimation';
 
 interface LivePrintVisualizerProps {
   jobStatus: string;
@@ -451,17 +452,17 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
         </div>
       </div>
 
-      {/* Completion Notification Banner */}
+      {/* Welcome & Celebration Animation on Print Completion */}
       {currentStep >= 5 && (
-        <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-3.5 flex items-center justify-between gap-3 text-emerald-300 text-xs animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <div className="flex items-center gap-2.5">
-            <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-              <Check className="w-3.5 h-3.5 text-emerald-400 stroke-[3]" />
-            </div>
-            <span className="font-bold text-emerald-200">
-              Printing finished! Please pick up your document from the counter output tray.
-            </span>
-          </div>
+        <div className="pt-2">
+          <WelcomePrintCompleteAnimation
+            orderNumber={orderNumber}
+            shopName={activeShopName}
+            fileName={fileName}
+            totalPages={totalPages}
+            paperSize={paperSize}
+            colorMode={colorMode}
+          />
         </div>
       )}
     </div>
