@@ -53,8 +53,15 @@ export class AgentWorker {
 
         await this.client.startJob(job);
         await this.printer.printDocument(tempFile, job);
-        this.journal.append({ job, state: 'REPORT', outcome: 'SUBMITTED' });
-      } catch {
+      } catch (err: unknown) {
+        console.error(
+          JSON.stringify({
+            event: 'job_execution_failed',
+            jobId: job.job_id,
+            error: (err as Error)?.message || String(err),
+            stack: (err as Error)?.stack,
+          })
+        );
         this.journal.append({ job, state: 'REPORT', outcome: started ? 'REVIEW' : 'FAILED' });
       } finally {
         await fs.unlink(tempFile).catch(() => {});
