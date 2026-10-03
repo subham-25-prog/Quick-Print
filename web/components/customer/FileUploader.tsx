@@ -470,7 +470,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                 <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shadow-xs">
                   <div className="w-2 h-2 rounded-full bg-slate-400" />
                 </div>
-                <TapGesture aria-hidden="true" className="pointer-events-none -ml-2 h-18 w-18 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
+                <TapGesture aria-hidden="true" className="pointer-events-none -ml-2 h-24 w-24 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
               </div>
               <div>
                 <h4 className="text-sm font-bold text-slate-800 mb-1">
@@ -630,7 +630,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                   <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shadow-xs">
                     <div className="w-2 h-2 rounded-full bg-slate-400" />
                   </div>
-                  <TapGesture aria-hidden="true" className="pointer-events-none -ml-2 h-18 w-18 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
+                  <TapGesture aria-hidden="true" className="pointer-events-none -ml-2 h-24 w-24 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-800 mb-1">
