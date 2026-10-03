@@ -72,6 +72,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
         {allowOnline && (
           <button
             type="button"
+            data-guide-target="payment"
             onClick={() => void onConfirmPayment('UPI')}
             disabled={submitting}
             className="w-full text-left p-4 sm:p-5 rounded-2xl bg-indigo-50/50 border-2 border-indigo-200 hover:border-indigo-500 hover:bg-indigo-50 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer touch-manipulation"
@@ -94,6 +95,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
         {allowCash && (
           <button
             type="button"
+            data-guide-target="payment"
             onClick={() => void onConfirmPayment('CASH')}
             disabled={submitting}
             className="w-full text-left p-4 sm:p-5 rounded-2xl bg-slate-50 border-2 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer touch-manipulation"

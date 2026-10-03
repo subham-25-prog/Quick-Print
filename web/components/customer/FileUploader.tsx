@@ -448,6 +448,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
 
         {batchFiles.length === 0 ? (
           <div
+            data-guide-target="upload"
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -553,6 +554,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
 
       {!uploadedFile ? (
         <div
+          data-guide-target="upload"
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
