@@ -647,7 +647,7 @@ export default function CustomerHomePage() {
             <h2 className="text-sm font-bold text-slate-900">
               1. Upload Document{allowMultiple ? 's' : ''}
             </h2>
-            <span className="text-[10px] font-bold text-slate-400 tracking-wider">
+            <span className="text-[10px] font-extrabold text-slate-500 tracking-widest uppercase">
               PDF / JPG / PNG
             </span>
           </div>

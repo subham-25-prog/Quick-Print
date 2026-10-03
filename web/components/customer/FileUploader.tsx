@@ -452,27 +452,36 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => !isInspectingBatch && fileInputRef.current?.click()}
-            className={`relative overflow-hidden border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-200 card-hover-lift ${isInspectingBatch ? 'cursor-wait opacity-75' : 'cursor-pointer'} ${
+            className={`relative overflow-hidden border-2 border-dashed rounded-2xl py-8 px-6 text-center transition-all duration-200 ${
+              isInspectingBatch ? 'cursor-wait opacity-75' : 'cursor-pointer'
+            } ${
               isDragging
-                ? 'border-indigo-500 bg-indigo-50/70 scale-[1.01] shadow-lg shadow-indigo-500/10'
-                : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
+                ? 'border-indigo-400 bg-indigo-50/60 scale-[1.01] shadow-lg shadow-indigo-500/10'
+                : 'border-slate-300 bg-slate-50/60 hover:bg-white hover:border-slate-400'
             }`}
           >
-            <div className="flex flex-col items-center">
-              <div className="mb-2 flex items-center justify-center gap-1.5">
-                <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 transition-transform group-hover:scale-105">
+            <div className="flex flex-col items-center gap-3">
+              {/* Icon cluster: dashed doc box + record dot + tap hand */}
+              <div className="relative flex items-center justify-center">
+                <div className="w-12 h-14 border-2 border-dashed border-slate-400/80 rounded-lg flex items-center justify-center text-slate-400 bg-white/70 shadow-inner">
                   <FileText className="w-5 h-5 text-slate-400" />
                 </div>
-                <TapGesture aria-hidden="true" className="pointer-events-none -ml-1 h-16 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
+                {/* Record-style overlay dot */}
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shadow-xs">
+                  <div className="w-2 h-2 rounded-full bg-slate-400" />
+                </div>
+                <TapGesture aria-hidden="true" className="pointer-events-none -ml-2 h-18 w-18 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
               </div>
-              <h4 className="mb-0.5 text-sm font-bold text-slate-800">
-                {isInspectingBatch ? 'Checking documents…' : 'Tap or Drop Files Here'}
-              </h4>
-              <p className="text-[11px] text-slate-400">
-                {isInspectingBatch
-                  ? 'Counting pages with memory-safe processing'
-                  : `Up to ${MAX_BATCH_FILE_COUNT} files · ${formatFileSize(MAX_BATCH_SOURCE_BYTES)} source batch`}
-              </p>
+              <div>
+                <h4 className="text-sm font-bold text-slate-800 mb-1">
+                  {isInspectingBatch ? 'Checking documents…' : 'Tap or Drop Files Here'}
+                </h4>
+                <p className="text-[11px] text-slate-400 font-medium">
+                  {isInspectingBatch
+                    ? 'Counting pages with memory-safe processing'
+                    : `Up to ${MAX_BATCH_FILE_COUNT} files · ${formatFileSize(MAX_BATCH_SOURCE_BYTES)} source batch`}
+                </p>
+              </div>
             </div>
           </div>
         ) : (
@@ -560,10 +569,10 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => !uploading && fileInputRef.current?.click()}
-          className={`relative overflow-hidden border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all duration-200 card-hover-lift ${
+          className={`relative overflow-hidden border-2 border-dashed rounded-2xl py-8 px-6 text-center cursor-pointer transition-all duration-200 ${
             isDragging
-              ? 'border-indigo-500 bg-indigo-50/70 scale-[1.01] shadow-lg shadow-indigo-500/10'
-              : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
+              ? 'border-indigo-400 bg-indigo-50/60 scale-[1.01] shadow-lg shadow-indigo-500/10'
+              : 'border-slate-300 bg-slate-50/60 hover:bg-white hover:border-slate-400'
           }`}
         >
           {uploading ? (
@@ -611,19 +620,26 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             </div>
           ) : (
             <>
-              <div className="flex flex-col items-center">
-                <div className="mb-2 flex items-center justify-center gap-1.5">
-                  <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 transition-transform group-hover:scale-105">
+              <div className="flex flex-col items-center gap-3">
+                {/* Icon cluster: dashed doc box + record dot + tap hand */}
+                <div className="relative flex items-center justify-center">
+                  <div className="w-12 h-14 border-2 border-dashed border-slate-400/80 rounded-lg flex items-center justify-center text-slate-400 bg-white/70 shadow-inner">
                     <FileText className="w-5 h-5 text-slate-400" />
                   </div>
-                  <TapGesture aria-hidden="true" className="pointer-events-none -ml-1 h-16 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
+                  {/* Record-style overlay dot */}
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shadow-xs">
+                    <div className="w-2 h-2 rounded-full bg-slate-400" />
+                  </div>
+                  <TapGesture aria-hidden="true" className="pointer-events-none -ml-2 h-18 w-18 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
                 </div>
-                <h4 className="mb-0.5 text-sm font-bold text-slate-800">
-                  Tap or Drop Document Here
-                </h4>
-                <p className="text-[11px] text-slate-400">
-                  Auto-detects page count instantly · Large files supported
-                </p>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-800 mb-1">
+                    Tap or Drop Files Here
+                  </h4>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    Auto-detects page count instantly · Large files supported
+                  </p>
+                </div>
               </div>
             </>
           )}
