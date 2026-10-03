@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import dynamic from 'next/dynamic';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
@@ -15,32 +14,10 @@ import {
   Check,
   FileText,
 } from '@/components/ui/Icons';
+import { LivePrintVisualizer } from '@/components/customer/LivePrintVisualizer';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { startPolling } from '@/lib/polling';
 import { useShopName } from '@/lib/shop-sync';
-
-const LivePrintVisualizer = dynamic(
-  () => import('@/components/customer/LivePrintVisualizer').then((module) => module.LivePrintVisualizer),
-  { ssr: false }
-);
-
-type CashHandoff = { amount: number; reference?: string };
-
-function takeCashHandoff(id: string | undefined): CashHandoff | null {
-  if (!id || typeof window === 'undefined') return null;
-  try {
-    const key = `quickprint_cash_handoff_${id}`;
-    const raw = sessionStorage.getItem(key);
-    sessionStorage.removeItem(key);
-    if (!raw) return null;
-    const value = JSON.parse(raw);
-    return typeof value?.amount === 'number' && Number.isFinite(value.amount)
-      ? { amount: value.amount, reference: typeof value.reference === 'string' ? value.reference : undefined }
-      : null;
-  } catch {
-    return null;
-  }
-}
 
 export default function OrderStatusPage() {
   const { id } = useParams<{ id: string }>();
@@ -60,7 +37,6 @@ export default function OrderStatusPage() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [isOfflineCached, setIsOfflineCached] = useState(false);
-  const [cashHandoff] = useState<CashHandoff | null>(() => takeCashHandoff(id));
 
   const copyOrderId = useCallback(async () => {
     if (!data?.order?.order_number) return;
@@ -237,17 +213,7 @@ export default function OrderStatusPage() {
         </div>
 
         {/* Loading placeholder */}
-        {loading && !data && cashHandoff && (
-          <section className="bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 rounded-3xl p-6 text-white shadow-lg space-y-3 animate-fade-in-scale">
-            <span className="text-xs font-black uppercase tracking-wider text-amber-100">Cash order ready</span>
-            <p className="text-xl font-black">Pay {formatCurrency(cashHandoff.amount)} at the counter</p>
-            {cashHandoff.reference && (
-              <span className="inline-flex rounded-lg bg-white/20 px-2.5 py-1 font-mono text-xs font-bold">{cashHandoff.reference}</span>
-            )}
-          </section>
-        )}
-
-        {loading && !data && !cashHandoff && (
+        {loading && !data && (
           <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xs text-center space-y-3 animate-pulse">
             <RefreshCw className="w-8 h-8 animate-spin text-indigo-600 mx-auto" />
             <p className="text-sm font-semibold text-slate-700">Loading verified order…</p>
