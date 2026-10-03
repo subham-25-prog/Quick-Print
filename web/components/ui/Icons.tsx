@@ -24,18 +24,26 @@ export const FileText: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props 
 
 /** A game-style hand prompt for areas that can be tapped or clicked. */
 export const TapGesture: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" fill="none" className={className} {...props}>
-    <path
-      d="M61.6 46.1c-5-1.8-8.3-5.9-11.5-10.8l-4.2-6.5c-1.4-2.2-3.5-3.9-6-4.8l-25.2-9c-3.4-1.2-6.4-.4-7.3 1.8-.8 2.1.9 4.3 4.2 5.5l14 5-9.1.8c-2.8.2-4.3 2-3.7 4.1.5 1.9 2.6 3.1 5.2 3.1h10.5c3.8 0 6.7 1.2 9.5 3.9l5.5 5.4c2.5 2.4 5.8 3.8 9.3 3.8h8.8Z"
-      fill="#F8FAFC"
-      stroke="#94A3B8"
-      strokeWidth="1.4"
-      strokeLinejoin="round"
-    />
-    <path d="m23 14.8 9.1-6.7c2-1.4 4.5-1 5.4.9.7 1.5.1 3.2-1.3 4.1l-5.6 3.8" fill="#F8FAFC" stroke="#94A3B8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="m31.9 15.8 8.7-4.1c2-1 4.2-.2 4.7 1.7.4 1.5-.5 3-2.2 3.7l-5.6 2.4" fill="#F8FAFC" stroke="#94A3B8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="m40.5 19.1 6.8-1.7c1.9-.5 3.7.5 4 2.1.2 1.4-.7 2.6-2.3 3l-5.3 1.2" fill="#F8FAFC" stroke="#94A3B8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M9.8 7.8 7.5 5.5M7.3 12H4M14.4 5.4l-.1-3.2" stroke="#CBD5E1" strokeWidth="1.7" strokeLinecap="round" />
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56" fill="none" className={className} {...props}>
+    <defs>
+      <linearGradient id="upload-hand-fill" x1="20" y1="8" x2="62" y2="52" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#FFFFFF" />
+        <stop offset="1" stopColor="#E2E8F0" />
+      </linearGradient>
+    </defs>
+    <g stroke="#94A3B8" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round">
+      {/* Palm and wrist */}
+      <path d="M76 54H59c-5.2 0-9.4-2.5-12.3-6.6l-5.3-7.6c-2.7-3.9-6.3-6.2-11.2-7.1l-9.2-1.8c-3.4-.7-5.7-2.7-5.1-4.9.6-2.1 3.3-3 6.5-2.3l12.5 2.5-25-9.9C6.3 14.9 4.8 12 5.9 9.8c1.1-2.2 4.1-2.7 7.5-1.2l25.5 11.2c1.8.8 3.9 1.4 6 1.6l5.8.7c5.2.6 9.5 3.7 11.6 8.5l3.5 8c1.8 4.2 5.4 7.9 10.2 10.4Z" fill="url(#upload-hand-fill)" />
+      {/* Long pointing index finger */}
+      <path d="m36 26.1-26-10.3c-3.5-1.4-5-4.1-3.7-6.3 1.3-2.1 4.3-2.5 7.5-1.1l28 12.2" fill="url(#upload-hand-fill)" />
+      {/* Curled middle, ring, and little fingers */}
+      <path d="m42.8 22.4-18-13.7c-2.8-2.1-3.2-5.1-1.5-6.7 1.8-1.7 4.7-1.1 7.2.9L48 16" fill="url(#upload-hand-fill)" />
+      <path d="m50 22.3-14-13.6c-2.2-2.1-2.3-4.8-.7-6.1 1.8-1.4 4.3-.7 6.3 1.3L55 17.6" fill="url(#upload-hand-fill)" />
+      <path d="m56 25-9.7-11.3c-1.7-2-1.5-4.4.1-5.3 1.8-1 4 .1 5.6 2l9 10.2" fill="url(#upload-hand-fill)" />
+      {/* Thumb folded under the palm */}
+      <path d="m40.7 35-12.9 2.8c-3.2.7-5.8-.6-6.2-2.7-.4-2.2 1.6-4 4.6-4.5l10.2-1.9" fill="url(#upload-hand-fill)" />
+    </g>
+    <path d="M14.7 5.8 12.1 3M10.8 10.6H7M20 4.7l.2-3.5" stroke="#CBD5E1" strokeWidth="1.8" strokeLinecap="round" />
   </svg>
 );
 
