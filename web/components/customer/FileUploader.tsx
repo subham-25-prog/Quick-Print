@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Plus, Minus } from '@/components/ui/Icons';
+import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Plus, Minus, Upload } from '@/components/ui/Icons';
 import { BatchFileItem } from '@/types';
 import { detectFilePageCount, calculateBatchTotalPages } from '@/lib/batch-compiler';
 import { uploadDocumentFile, UploadedFileState, formatFileSize } from '@/lib/uploader';
@@ -557,10 +557,10 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => !uploading && fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all duration-200 card-hover-lift ${
+          className={`group border-2 border-dashed rounded-3xl p-6 text-center cursor-pointer transition-all duration-200 card-hover-lift select-none ${
             isDragging
               ? 'border-indigo-500 bg-indigo-50/70 scale-[1.01] shadow-lg shadow-indigo-500/10'
-              : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
+              : 'border-slate-300/80 bg-gradient-to-b from-slate-50/60 to-white hover:bg-indigo-50/30 hover:border-indigo-400 shadow-2xs'
           }`}
         >
           {uploading ? (
@@ -608,20 +608,30 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             </div>
           ) : (
             <div className="flex flex-col items-center">
-              <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5 transition-transform group-hover:scale-105">
-                <FileText className="w-5 h-5 text-slate-400" />
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-3 transition-transform group-hover:scale-105 shadow-2xs">
+                <Upload className="w-6 h-6" />
               </div>
-              <h4 className="text-sm font-bold text-slate-800 mb-0.5">
-                Tap or Drop Document Here
+              <h4 className="text-sm font-bold text-slate-800 mb-1">
+                Tap to Choose Document
               </h4>
-              <p className="text-[11px] text-slate-400">
-                Auto-detects page count instantly · Large files supported
+              <p className="text-xs text-slate-500 mb-3 max-w-xs">
+                or drag & drop your file anywhere into this box
               </p>
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs transition-colors mb-3 active-press">
+                <Upload className="w-3.5 h-3.5" />
+                <span>Browse & Select File</span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap justify-center text-[10px] text-slate-400 font-medium">
+                <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200/80 font-bold text-slate-600">PDF</span>
+                <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200/80 font-bold text-slate-600">JPG</span>
+                <span className="px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200/80 font-bold text-slate-600">PNG</span>
+                <span>· Max 100 MB</span>
+              </div>
             </div>
           )}
         </div>
       ) : (
-        <div className="animate-fade-in-scale p-3.5 rounded-2xl border border-emerald-300 bg-emerald-50/40 flex items-center justify-between gap-3 shadow-xs">
+        <div className="animate-fade-in-scale p-3.5 rounded-2xl border border-emerald-300 bg-gradient-to-r from-emerald-50/50 via-white to-emerald-50/30 flex items-center justify-between gap-3 shadow-2xs">
           {/* Left: Small preview box where user can see uploaded image or PDF content */}
           <div className="flex items-center gap-3 min-w-0 flex-1 select-none">
             <DocumentPreviewBox
@@ -635,11 +645,11 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                 {uploadedFile.fileName}
               </div>
               <div className="text-[11px] text-emerald-700 font-medium mt-1 flex items-center gap-2 flex-wrap">
-                <span>
-                  Detected: {uploadedFile.pageCount} {uploadedFile.pageCount === 1 ? 'page' : 'pages'}
+                <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold">
+                  ✓ {uploadedFile.pageCount} {uploadedFile.pageCount === 1 ? 'page' : 'pages'}
                 </span>
                 {uploadedFile.fileSizeBytes > 0 && (
-                  <span className="text-slate-400">
+                  <span className="text-slate-500 font-medium">
                     · {formatFileSize(uploadedFile.fileSizeBytes)}
                   </span>
                 )}
@@ -647,13 +657,24 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             </div>
           </div>
 
-          <button
-            onClick={handleRemoveSingle}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all shrink-0 cursor-pointer"
-            title="Remove document"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="py-1.5 px-2.5 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 text-slate-600 hover:text-indigo-600 text-xs font-semibold transition-all cursor-pointer select-none"
+              title="Replace document"
+            >
+              Change
+            </button>
+            <button
+              type="button"
+              onClick={handleRemoveSingle}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all cursor-pointer"
+              title="Remove document"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>
