@@ -134,6 +134,7 @@ export async function POST(req: NextRequest) {
       const paymentReference = `QP_CASH_${paymentId.replace(/-/g, '').slice(0, 16)}`;
 
       const draftOrderData = {
+        file_name: file.file_name,
         paper_size: options.paperSize,
         color_mode: options.colorMode,
         print_sides: options.printSides,

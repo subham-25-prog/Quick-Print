@@ -125,7 +125,8 @@ export default function CustomerHomePage() {
     if (!uploadedFile && batchFiles.length === 0) return;
 
     void import('@/components/customer/PaymentModal').catch(() => {});
-  }, [uploadedFile, batchFiles.length]);
+    router.prefetch('/status/pending');
+  }, [uploadedFile, batchFiles.length, router]);
 
   // Payment modal & order submission
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -138,6 +139,25 @@ export default function CustomerHomePage() {
   const [onlinePaymentEnabled, setOnlinePaymentEnabled] = useState<boolean | undefined>(undefined);
   const [cashPaymentEnabled, setCashPaymentEnabled] = useState<boolean | undefined>(undefined);
   const [paymentErrorNotice, setPaymentErrorNotice] = useState<string | null>(null);
+
+  // Prefetch status route as soon as modal opens for near-zero navigation latency
+  useEffect(() => {
+    if (isPaymentModalOpen) {
+      router.prefetch('/status/pending');
+    }
+  }, [isPaymentModalOpen, router]);
+
+  // Cleanly restore checkout state when user returns or presses back
+  useEffect(() => {
+    const handlePageShow = () => {
+      setIsPaymentModalOpen(false);
+      setSubmitting(false);
+      setSelectedPaymentMethod(null);
+      checkoutRequest.current = false;
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
 
   // Restore only non-personal print preferences from localStorage.
   useEffect(() => {
@@ -455,8 +475,41 @@ export default function CustomerHomePage() {
         }
         if (method === 'CASH' || data.paymentMethod === 'CASH') {
           const statusUrl = `/status/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
-          setIsPaymentModalOpen(false);
+          if (typeof window !== 'undefined' && data.paymentId) {
+            try {
+              const orderSnapshot = {
+                order: {
+                  id: data.paymentId,
+                  order_number: `QP-${data.paymentId.replace(/-/g, '').slice(0, 8).toUpperCase()}`,
+                  created_at: new Date().toISOString(),
+                  file_name: targetFile.fileName || 'document.pdf',
+                  page_count: targetFile.pageCount || 1,
+                  paper_size: paperSize,
+                  color_mode: colorMode,
+                  print_sides: printSides,
+                  copies: isMultiFileBatch ? 1 : effectiveCopies,
+                  total_amount: priceBreakdown.totalAmount,
+                  currency: 'INR',
+                  payment_method: 'CASH',
+                  payment_status: 'AWAITING_VERIFICATION',
+                  order_status: 'PAYMENT_VERIFICATION_PENDING',
+                  customer_name: customerName,
+                  customer_phone: customerPhone,
+                  customer_notes: customerNotes,
+                },
+                job: { status: 'PENDING' },
+                agentOnline: true,
+              };
+              localStorage.setItem(`quickprint_cached_status_${data.paymentId}`, JSON.stringify(orderSnapshot));
+            } catch {}
+          }
           router.push(statusUrl);
+          setTimeout(() => {
+            setIsPaymentModalOpen(false);
+            setSubmitting(false);
+            setSelectedPaymentMethod(null);
+            checkoutRequest.current = false;
+          }, 3000);
           return;
         }
         const statusUrl = `/payment/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
@@ -468,10 +521,15 @@ export default function CustomerHomePage() {
         router.push(statusUrl);
       } catch (e) {
         setCheckoutError(e instanceof Error ? e.message : 'Unable to start payment. Please retry.');
-      } finally {
         checkoutRequest.current = false;
         setSubmitting(false);
         setSelectedPaymentMethod(null);
+      } finally {
+        if (method !== 'CASH') {
+          checkoutRequest.current = false;
+          setSubmitting(false);
+          setSelectedPaymentMethod(null);
+        }
       }
     },
     [

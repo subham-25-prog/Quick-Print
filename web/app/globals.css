@@ -161,6 +161,18 @@
   }
 }
 
+@keyframes cashProgress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(80%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+
 /* Premium Animation Utility Classes */
 .animate-fade-in-up {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -178,6 +190,11 @@
 
 .animate-float-gentle {
   animation: floatGentle 3s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-cash-progress {
+  animation: cashProgress 1.4s infinite ease-in-out;
   will-change: transform;
 }
 
