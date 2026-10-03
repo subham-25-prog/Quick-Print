@@ -455,8 +455,18 @@ export default function CustomerHomePage() {
         }
         if (method === 'CASH' || data.paymentMethod === 'CASH') {
           const statusUrl = `/status/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;
+          try {
+            sessionStorage.setItem(
+              `quickprint_cash_handoff_${data.paymentId}`,
+              JSON.stringify({ amount: data.amount, reference: data.reference })
+            );
+          } catch {}
+          // Start loading the protected status route before closing the modal.
+          // The route is replaced rather than pushed, so Back never returns a
+          // customer to a submitted payment choice.
+          router.prefetch(statusUrl);
           setIsPaymentModalOpen(false);
-          router.push(statusUrl);
+          router.replace(statusUrl);
           return;
         }
         const statusUrl = `/payment/${data.paymentId}?access_token=${encodeURIComponent(data.accessToken)}`;

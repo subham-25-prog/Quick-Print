@@ -90,7 +90,7 @@ export const WelcomePrintCompleteAnimation: React.FC<WelcomePrintCompleteAnimati
       });
     }
 
-    let startTime = performance.now();
+    const startTime = performance.now();
     const duration = 2800;
 
     const render = (now: number) => {
