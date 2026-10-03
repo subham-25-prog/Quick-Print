@@ -535,14 +535,12 @@ export default function CustomerHomePage() {
     enabledAddons.lamination !== false ||
     customAddons.length > 0;
 
-  const hasFile = hasBatch ? batchFiles.length > 0 : Boolean(uploadedFile);
-
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
       {/* 1. Header */}
       <Header shopName={pricing.shop_name} />
 
-      <main className="max-w-xl mx-auto w-full px-4 pt-4 pb-6 space-y-4">
+      <main className="max-w-xl mx-auto w-full px-4 pt-4 pb-4 space-y-4">
         {!priceBreakdown && (
           <p role="alert" className="rounded-xl bg-amber-50 p-4 text-amber-900">
             Pricing is unavailable for this selection. Choose another print option or contact the shopkeeper.
@@ -582,77 +580,14 @@ export default function CustomerHomePage() {
           </p>
         )}
 
-        {/* Quick 3-Step Process Indicator */}
-        <div className="bg-white/80 backdrop-blur-md rounded-2xl p-3 border border-slate-200/80 shadow-2xs select-none">
-          <div className="grid grid-cols-3 gap-1.5 text-center">
-            {/* Step 1: Upload */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2">
-              <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  hasFile
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-indigo-600 text-white ring-4 ring-indigo-50 shadow-xs'
-                }`}
-              >
-                {hasFile ? '✓' : '1'}
-              </div>
-              <div className="text-left hidden sm:block">
-                <div className="text-[11px] font-bold text-slate-900 leading-tight">1. Upload</div>
-                <div className="text-[9px] text-slate-400">PDF or Images</div>
-              </div>
-              <span className="text-[11px] font-bold text-slate-800 sm:hidden">1. Upload</span>
-            </div>
-
-            {/* Step 2: Configure */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2">
-              <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                  hasFile
-                    ? 'bg-indigo-600 text-white ring-4 ring-indigo-50 shadow-xs'
-                    : 'bg-slate-100 text-slate-500'
-                }`}
-              >
-                2
-              </div>
-              <div className="text-left hidden sm:block">
-                <div className="text-[11px] font-bold text-slate-900 leading-tight">2. Configure</div>
-                <div className="text-[9px] text-slate-400">Color, Sides & Size</div>
-              </div>
-              <span className="text-[11px] font-bold text-slate-800 sm:hidden">2. Options</span>
-            </div>
-
-            {/* Step 3: Preview & Print */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2">
-              <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-xs font-bold">
-                3
-              </div>
-              <div className="text-left hidden sm:block">
-                <div className="text-[11px] font-bold text-slate-900 leading-tight">3. Preview & Pay</div>
-                <div className="text-[9px] text-slate-400">Instant Printing</div>
-              </div>
-              <span className="text-[11px] font-bold text-slate-800 sm:hidden">3. Print</span>
-            </div>
-          </div>
-        </div>
-
         {/* Card 1: 1. Upload Document */}
-        <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4 hover:border-slate-300 contain-layout">
+        <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-3 hover:border-slate-300 contain-layout">
           <div className="flex items-center justify-between select-none">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 font-extrabold text-xs flex items-center justify-center shadow-2xs">
-                1
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-slate-900 leading-tight">
-                  1. Upload Document{allowMultiple ? 's' : ''}
-                </h2>
-                <p className="text-[11px] text-slate-400 leading-tight">
-                  Select your document to print
-                </p>
-              </div>
-            </div>
-            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100/90 px-2.5 py-1 rounded-lg border border-slate-200/60">
-              PDF · JPG · PNG
+            <h2 className="text-sm font-bold text-slate-900">
+              1. Upload Document{allowMultiple ? 's' : ''}
+            </h2>
+            <span className="text-[10px] font-bold text-slate-400 tracking-wider">
+              PDF / JPG / PNG
             </span>
           </div>
 
@@ -668,24 +603,9 @@ export default function CustomerHomePage() {
 
         {/* Card 2: 2. Print Configuration */}
         <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4 hover:border-slate-300 [animation-delay:60ms] contain-layout">
-          <div className="flex items-center justify-between select-none">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 font-extrabold text-xs flex items-center justify-center shadow-2xs">
-                2
-              </div>
-              <div>
-                <h2 className="text-sm font-bold text-slate-900 leading-tight">
-                  2. Print Configuration
-                </h2>
-                <p className="text-[11px] text-slate-400 leading-tight">
-                  Paper size, color, sides & copies
-                </p>
-              </div>
-            </div>
-            <div className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
-              {paperSize} · {colorMode === 'BW' ? 'B&W' : 'Color'} · {copies} {copies === 1 ? 'Copy' : 'Copies'}
-            </div>
-          </div>
+          <h2 className="text-sm font-bold text-slate-900 select-none">
+            2. Print Configuration
+          </h2>
 
           <PrintOptionsSelector
             paperSize={paperSize}
@@ -704,24 +624,9 @@ export default function CustomerHomePage() {
         {/* Card 3: 3. Finishing & Add-ons */}
         {hasAnyAddons && (
           <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4 hover:border-slate-300 [animation-delay:120ms] contain-layout">
-            <div className="flex items-center justify-between select-none">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 font-extrabold text-xs flex items-center justify-center shadow-2xs">
-                  3
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-slate-900 leading-tight">
-                    3. Finishing & Add-ons
-                  </h2>
-                  <p className="text-[11px] text-slate-400 leading-tight">
-                    Binding, lamination & stapling
-                  </p>
-                </div>
-              </div>
-              <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                Optional
-              </span>
-            </div>
+            <h2 className="text-sm font-bold text-slate-900 select-none">
+              3. Finishing & Add-ons
+            </h2>
 
             <AddOnsSelector
               addOns={addOns}
@@ -733,25 +638,10 @@ export default function CustomerHomePage() {
 
         {/* Customer Details */}
         {showCustomerInfoSection && (
-          <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4 hover:border-slate-300 [animation-delay:180ms] contain-layout">
-            <div className="flex items-center justify-between select-none">
-              <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100 font-extrabold text-xs flex items-center justify-center shadow-2xs">
-                  {hasAnyAddons ? '4' : '3'}
-                </div>
-                <div>
-                  <h2 className="text-sm font-bold text-slate-900 leading-tight">
-                    {hasAnyAddons ? '4. Customer Identification' : '3. Customer Identification'}
-                  </h2>
-                  <p className="text-[11px] text-slate-400 leading-tight">
-                    Helps the store identify your prints
-                  </p>
-                </div>
-              </div>
-              <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200">
-                {isNameRequired ? 'Required' : 'Optional'}
-              </span>
-            </div>
+          <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-3.5 hover:border-slate-300 [animation-delay:180ms] contain-layout">
+            <h2 className="text-sm font-bold text-slate-900 select-none">
+              {hasAnyAddons ? '4. Customer Identification' : '3. Customer Identification'}
+            </h2>
 
             <div className="space-y-3">
               {showNameField && (
@@ -765,7 +655,7 @@ export default function CustomerHomePage() {
                       value={customerName}
                       onChange={(e) => setCustomerName(e.target.value)}
                       placeholder="Enter your name"
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
                     />
                     <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   </div>
@@ -783,7 +673,7 @@ export default function CustomerHomePage() {
                       value={customerPhone}
                       onChange={(e) => setCustomerPhone(e.target.value)}
                       placeholder="e.g. 9876543210"
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
                     />
                     <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   </div>
@@ -801,7 +691,7 @@ export default function CustomerHomePage() {
                       value={customerNotes}
                       onChange={(e) => setCustomerNotes(e.target.value)}
                       placeholder="Pickup notes (all uploaded pages will print)"
-                      className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600 focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
                     />
                     <MessageSquare className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   </div>
@@ -828,16 +718,7 @@ export default function CustomerHomePage() {
               TOTAL AMOUNT
             </div>
             <div className="text-2xl font-extrabold text-emerald-600 leading-tight [overflow-wrap:anywhere] transition-all duration-200">
-              {hasFile
-                ? (priceBreakdown ? formatCurrency(priceBreakdown.totalAmount) : 'Unavailable')
-                : `From ${formatCurrency(pricing?.a4_bw_per_page || 2)} / page`}
-            </div>
-            <div className="text-[11px] text-slate-400 font-medium select-none">
-              {hasFile ? (
-                `${effectivePages} ${effectivePages === 1 ? 'page' : 'pages'} × ${effectiveCopies} ${effectiveCopies === 1 ? 'copy' : 'copies'} · ${paperSize}`
-              ) : (
-                'Upload document to calculate exact total'
-              )}
+              {priceBreakdown ? formatCurrency(priceBreakdown.totalAmount) : 'Unavailable'}
             </div>
           </div>
 
@@ -899,7 +780,7 @@ export default function CustomerHomePage() {
             }
             className="btn-shimmer active-press py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] text-white font-bold text-sm shadow-md hover:shadow-lg hover:shadow-emerald-600/20 transition-all duration-150 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none select-none"
           >
-            <span>{isProcessingBatch ? 'Preparing...' : 'Preview & Print'}</span>
+            <span>{isProcessingBatch ? 'Preparing...' : 'Preview'}</span>
             <span className="preview-arrow" aria-hidden="true">→</span>
           </button>
         </div>
