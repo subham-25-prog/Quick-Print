@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Plus, Minus } from '@/components/ui/Icons';
+import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Plus, Minus, TapGesture } from '@/components/ui/Icons';
 import { BatchFileItem } from '@/types';
 import { detectFilePageCount, calculateBatchTotalPages } from '@/lib/batch-compiler';
 import { uploadDocumentFile, UploadedFileState, formatFileSize } from '@/lib/uploader';
@@ -452,7 +452,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => !isInspectingBatch && fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-200 card-hover-lift ${isInspectingBatch ? 'cursor-wait opacity-75' : 'cursor-pointer'} ${
+            className={`relative overflow-hidden border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-200 card-hover-lift ${isInspectingBatch ? 'cursor-wait opacity-75' : 'cursor-pointer'} ${
               isDragging
                 ? 'border-indigo-500 bg-indigo-50/70 scale-[1.01] shadow-lg shadow-indigo-500/10'
                 : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
@@ -462,7 +462,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
               <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5 transition-transform group-hover:scale-105">
                 <FileText className="w-5 h-5 text-slate-400" />
               </div>
-              <h4 className="text-sm font-bold text-slate-800 mb-0.5">
+              <h4 className="mb-0.5 text-sm font-bold text-slate-800">
                 {isInspectingBatch ? 'Checking documents…' : 'Tap or Drop Files Here'}
               </h4>
               <p className="text-[11px] text-slate-400">
@@ -471,6 +471,9 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                   : `Up to ${MAX_BATCH_FILE_COUNT} files · ${formatFileSize(MAX_BATCH_SOURCE_BYTES)} source batch`}
               </p>
             </div>
+            {!isInspectingBatch && (
+              <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-1 right-1 h-12 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
+            )}
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -557,7 +560,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => !uploading && fileInputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all duration-200 card-hover-lift ${
+          className={`relative overflow-hidden border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all duration-200 card-hover-lift ${
             isDragging
               ? 'border-indigo-500 bg-indigo-50/70 scale-[1.01] shadow-lg shadow-indigo-500/10'
               : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
@@ -607,17 +610,20 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center">
-              <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5 transition-transform group-hover:scale-105">
-                <FileText className="w-5 h-5 text-slate-400" />
+            <>
+              <div className="flex flex-col items-center">
+                <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5 transition-transform group-hover:scale-105">
+                  <FileText className="w-5 h-5 text-slate-400" />
+                </div>
+                <h4 className="mb-0.5 text-sm font-bold text-slate-800">
+                  Tap or Drop Document Here
+                </h4>
+                <p className="text-[11px] text-slate-400">
+                  Auto-detects page count instantly · Large files supported
+                </p>
               </div>
-              <h4 className="text-sm font-bold text-slate-800 mb-0.5">
-                Tap or Drop Document Here
-              </h4>
-              <p className="text-[11px] text-slate-400">
-                Auto-detects page count instantly · Large files supported
-              </p>
-            </div>
+              <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-1 right-1 h-12 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
+            </>
           )}
         </div>
       ) : (

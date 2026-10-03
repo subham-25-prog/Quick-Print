@@ -161,6 +161,21 @@
   }
 }
 
+@keyframes tapHint {
+  0%, 58%, 100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale3d(1, 1, 1);
+  }
+  16% {
+    opacity: 1;
+    transform: translate3d(0, 2px, 0) scale3d(0.92, 0.92, 1);
+  }
+  32% {
+    opacity: 1;
+    transform: translate3d(0, -1px, 0) scale3d(1, 1, 1);
+  }
+}
+
 @keyframes cashProgress {
   0% {
     transform: translateX(-100%);
@@ -191,6 +206,11 @@
 .animate-float-gentle {
   animation: floatGentle 3s ease-in-out infinite;
   will-change: transform;
+}
+
+.animate-tap-hint {
+  animation: tapHint 2.4s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 .animate-cash-progress {

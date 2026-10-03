@@ -22,6 +22,23 @@ export const FileText: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props 
   </svg>
 );
 
+/** A game-style hand prompt for areas that can be tapped or clicked. */
+export const TapGesture: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 48" fill="none" className={className} {...props}>
+    <path
+      d="M61.6 46.1c-5-1.8-8.3-5.9-11.5-10.8l-4.2-6.5c-1.4-2.2-3.5-3.9-6-4.8l-25.2-9c-3.4-1.2-6.4-.4-7.3 1.8-.8 2.1.9 4.3 4.2 5.5l14 5-9.1.8c-2.8.2-4.3 2-3.7 4.1.5 1.9 2.6 3.1 5.2 3.1h10.5c3.8 0 6.7 1.2 9.5 3.9l5.5 5.4c2.5 2.4 5.8 3.8 9.3 3.8h8.8Z"
+      fill="#F8FAFC"
+      stroke="#94A3B8"
+      strokeWidth="1.4"
+      strokeLinejoin="round"
+    />
+    <path d="m23 14.8 9.1-6.7c2-1.4 4.5-1 5.4.9.7 1.5.1 3.2-1.3 4.1l-5.6 3.8" fill="#F8FAFC" stroke="#94A3B8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="m31.9 15.8 8.7-4.1c2-1 4.2-.2 4.7 1.7.4 1.5-.5 3-2.2 3.7l-5.6 2.4" fill="#F8FAFC" stroke="#94A3B8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="m40.5 19.1 6.8-1.7c1.9-.5 3.7.5 4 2.1.2 1.4-.7 2.6-2.3 3l-5.3 1.2" fill="#F8FAFC" stroke="#94A3B8" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9.8 7.8 7.5 5.5M7.3 12H4M14.4 5.4l-.1-3.2" stroke="#CBD5E1" strokeWidth="1.7" strokeLinecap="round" />
+  </svg>
+);
+
 export const CheckCircle2: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
     <circle cx="12" cy="12" r="10" />
