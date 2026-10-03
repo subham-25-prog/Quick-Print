@@ -161,15 +161,6 @@
   }
 }
 
-@keyframes gestureGuideTap {
-  0%, 72%, 100% {
-    transform: translate3d(0, 0, 0);
-  }
-  84% {
-    transform: translate3d(0, -5px, 0) scale(0.96);
-  }
-}
-
 /* Premium Animation Utility Classes */
 .animate-fade-in-up {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -187,11 +178,6 @@
 
 .animate-float-gentle {
   animation: floatGentle 3s ease-in-out infinite;
-  will-change: transform;
-}
-
-.gesture-guide-tap {
-  animation: gestureGuideTap 1.8s ease-in-out infinite;
   will-change: transform;
 }
 

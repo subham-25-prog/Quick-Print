@@ -1081,7 +1081,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
           <button
             type="button"
-            data-guide-target="confirm"
             onClick={handlePrintApply}
             className="px-5 sm:px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40 transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
           >
@@ -1262,7 +1261,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           {/* Right Bottom: Confirm & Pay Button */}
           <button
             type="button"
-            data-guide-target="confirm"
             onClick={handlePrintApply}
             className="flex-[1.4] md:flex-none h-11 md:h-auto py-2 md:py-3 px-4 md:px-7 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm md:text-base font-extrabold shadow-md md:shadow-lg shadow-emerald-950/60 ring-1 md:ring-2 ring-emerald-400/50 hover:ring-emerald-300 transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1.5 md:gap-2 md:ml-auto touch-manipulation"
           >

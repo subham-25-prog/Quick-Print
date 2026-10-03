@@ -26,8 +26,6 @@ import {
 import { calculateBatchTotalPages } from '@/lib/batch-compiler';
 import { createCheckoutPreparation } from '@/lib/checkout-preparation';
 import { User, Phone, MessageSquare, XCircle } from '@/components/ui/Icons';
-import { GestureGuide } from '@/components/customer/GestureGuide';
-import { startGestureGuideVisit } from '@/lib/gesture-guide';
 
 const AdobePrintPreviewModal = dynamic(
   () => import('@/components/customer/AdobePrintPreviewModal').then((module) => module.AdobePrintPreviewModal),
@@ -40,8 +38,6 @@ const PaymentModal = dynamic(
 );
 
 const EAGER_BATCH_PREPARATION_LIMIT_BYTES = 24 * 1024 * 1024;
-
-type GestureGuideStep = 'upload' | 'preview' | 'confirm' | 'payment';
 
 export default function CustomerHomePage() {
   const router = useRouter();
@@ -78,13 +74,6 @@ export default function CustomerHomePage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
-  const [gestureGuideStep, setGestureGuideStep] = useState<GestureGuideStep | null>(null);
-
-  // This runs only in the browser and records a session before showing the
-  // first gesture, so a refresh never consumes another guided visit.
-  useEffect(() => {
-    if (startGestureGuideVisit()) setGestureGuideStep('upload');
-  }, []);
 
   // Build a multi-file document shortly after the list settles. Preview and
   // checkout then reuse this exact promise instead of making Cash wait for the
@@ -337,12 +326,6 @@ export default function CustomerHomePage() {
   const allowMultiple = pricing.form_fields?.allowMultipleFiles !== false;
   const hasBatch = allowMultiple && batchFiles.length > 0;
   const isMultiFileBatch = hasBatch && batchFiles.length > 1;
-
-  useEffect(() => {
-    if (gestureGuideStep === 'upload' && (uploadedFile || batchFiles.length > 0)) {
-      setGestureGuideStep('preview');
-    }
-  }, [gestureGuideStep, uploadedFile, batchFiles.length]);
 
   // Calculate live order pricing
   const totalDocPages = isMultiFileBatch
@@ -740,7 +723,6 @@ export default function CustomerHomePage() {
           </div>
 
           <button
-            data-guide-target="preview"
             type="button"
             onClick={async () => {
               if (hasBatch) {
@@ -748,13 +730,11 @@ export default function CustomerHomePage() {
                 if (batchFiles.length === 1) {
                   setBatchPreviewFile(batchFiles[0].file);
                   setIsAdobeModalOpen(true);
-                  setGestureGuideStep((current) => (current === 'preview' ? 'confirm' : current));
                   return;
                 }
                 const currentSig = getBatchSignature(batchFiles);
                 if (batchPreviewFile && lastCompiledBatchSig.current === currentSig) {
                   setIsAdobeModalOpen(true);
-                  setGestureGuideStep((current) => (current === 'preview' ? 'confirm' : current));
                   return;
                 }
                 setIsProcessingBatch(true);
@@ -763,7 +743,6 @@ export default function CustomerHomePage() {
                   setBatchPreviewFile(compiledFile);
                   lastCompiledBatchSig.current = currentSig;
                   setIsAdobeModalOpen(true);
-                  setGestureGuideStep((current) => (current === 'preview' ? 'confirm' : current));
                 } catch (err) {
                   console.error('Batch preview error:', err);
                   alert('Unable to prepare preview.');
@@ -776,7 +755,6 @@ export default function CustomerHomePage() {
                   return;
                 }
                 setIsAdobeModalOpen(true);
-                setGestureGuideStep((current) => (current === 'preview' ? 'confirm' : current));
               }
             }}
             onMouseEnter={() => {
@@ -815,10 +793,7 @@ export default function CustomerHomePage() {
           isOpen={isPaymentModalOpen}
           onClose={() => setIsPaymentModalOpen(false)}
           amount={priceBreakdown?.totalAmount ?? 0}
-          onConfirmPayment={(method) => {
-            setGestureGuideStep(null);
-            return handleConfirmOrder(method);
-          }}
+          onConfirmPayment={handleConfirmOrder}
           submitting={submitting || !pricingReady || !checkoutEnabled || !priceBreakdown}
           pricing={pricing}
           onlineEnabled={onlinePaymentEnabled}
@@ -904,13 +879,11 @@ export default function CustomerHomePage() {
               onCopiesChange={handleCopiesChange}
               onProceedToOrder={() => {
                 setIsAdobeModalOpen(false);
-                setGestureGuideStep((current) => (current === 'confirm' ? 'payment' : current));
                 handleOpenPayment();
               }}
             />
           );
         })()}
-      <GestureGuide target={gestureGuideStep} />
     </div>
   );
 }
