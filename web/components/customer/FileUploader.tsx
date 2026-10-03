@@ -461,16 +461,12 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             }`}
           >
             <div className="flex flex-col items-center gap-3">
-              {/* Icon cluster: dashed doc box + record dot + tap hand */}
-              <div className="relative flex items-center justify-center">
-                <div className="w-12 h-14 border-2 border-dashed border-slate-400/80 rounded-lg flex items-center justify-center text-slate-400 bg-white/70 shadow-inner">
+              {/* Centered document target with a hand tapping its right edge. */}
+              <div className="relative h-24 w-full">
+                <div className="absolute left-1/2 top-1 z-10 flex h-14 w-12 -translate-x-1/2 items-center justify-center rounded-lg border-2 border-dashed border-slate-400/80 bg-white/70 text-slate-400 shadow-inner">
                   <FileText className="w-5 h-5 text-slate-400" />
                 </div>
-                {/* Record-style overlay dot */}
-                <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shadow-xs">
-                  <div className="w-2 h-2 rounded-full bg-slate-400" />
-                </div>
-                <TapGesture aria-hidden="true" className="pointer-events-none -ml-2 h-24 w-24 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
+                <TapGesture aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1 z-20 -ml-6 h-24 w-24 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
               </div>
               <div>
                 <h4 className="text-sm font-bold text-slate-800 mb-1">
@@ -621,16 +617,12 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           ) : (
             <>
               <div className="flex flex-col items-center gap-3">
-                {/* Icon cluster: dashed doc box + record dot + tap hand */}
-                <div className="relative flex items-center justify-center">
-                  <div className="w-12 h-14 border-2 border-dashed border-slate-400/80 rounded-lg flex items-center justify-center text-slate-400 bg-white/70 shadow-inner">
+                {/* Centered document target with a hand tapping its right edge. */}
+                <div className="relative h-24 w-full">
+                  <div className="absolute left-1/2 top-1 z-10 flex h-14 w-12 -translate-x-1/2 items-center justify-center rounded-lg border-2 border-dashed border-slate-400/80 bg-white/70 text-slate-400 shadow-inner">
                     <FileText className="w-5 h-5 text-slate-400" />
                   </div>
-                  {/* Record-style overlay dot */}
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center shadow-xs">
-                    <div className="w-2 h-2 rounded-full bg-slate-400" />
-                  </div>
-                  <TapGesture aria-hidden="true" className="pointer-events-none -ml-2 h-24 w-24 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
+                  <TapGesture aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1 z-20 -ml-6 h-24 w-24 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-800 mb-1">
