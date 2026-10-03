@@ -25,14 +25,7 @@ import {
 } from '@/types';
 import { calculateBatchTotalPages } from '@/lib/batch-compiler';
 import { createCheckoutPreparation } from '@/lib/checkout-preparation';
-import { User, Phone, MessageSquare, XCircle, HelpCircle } from '@/components/ui/Icons';
-import { GuidedTour } from '@/components/customer/GuidedTour';
-import {
-  TOUR_STEPS,
-  shouldAutoShowTour,
-  incrementAutoShowCount,
-  markSessionSeen,
-} from '@/lib/tour';
+import { User, Phone, MessageSquare, XCircle } from '@/components/ui/Icons';
 
 const AdobePrintPreviewModal = dynamic(
   () => import('@/components/customer/AdobePrintPreviewModal').then((module) => module.AdobePrintPreviewModal),
@@ -81,59 +74,6 @@ export default function CustomerHomePage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
-
-  // Guided Tour State
-  const [isTourOpen, setIsTourOpen] = useState(false);
-  const [isManualTour, setIsManualTour] = useState(false);
-  const tourAutoLaunchAttemptedRef = useRef(false);
-
-  const handleManualTourStart = useCallback(() => {
-    setIsManualTour(true);
-    setIsTourOpen(true);
-  }, []);
-
-  // Automatic guided tour launch (only first 2 sessions per browser profile)
-  useEffect(() => {
-    if (tourAutoLaunchAttemptedRef.current) return;
-    tourAutoLaunchAttemptedRef.current = true;
-
-    if (!shouldAutoShowTour()) return;
-
-    let cancelled = false;
-    let timer: number | undefined;
-
-    const tryAutoStart = () => {
-      if (cancelled) return false;
-      const firstTarget = document.querySelector(TOUR_STEPS[0].targetSelector);
-      if (firstTarget) {
-        // Record session and increment display count upon successful open
-        markSessionSeen();
-        incrementAutoShowCount();
-        setIsManualTour(false);
-        setIsTourOpen(true);
-        return true;
-      }
-      return false;
-    };
-
-    if (!tryAutoStart()) {
-      timer = window.setTimeout(() => {
-        tryAutoStart();
-      }, 350);
-    }
-
-    return () => {
-      cancelled = true;
-      if (timer) window.clearTimeout(timer);
-    };
-  }, []);
-
-  // Close tour if documents are uploaded to preserve seamless upload and checkout flow
-  useEffect(() => {
-    if (uploadedFile || batchFiles.length > 0) {
-      setIsTourOpen(false);
-    }
-  }, [uploadedFile, batchFiles.length]);
 
   // Build a multi-file document shortly after the list settles. Preview and
   // checkout then reuse this exact promise instead of making Cash wait for the
@@ -641,26 +581,14 @@ export default function CustomerHomePage() {
         )}
 
         {/* Card 1: 1. Upload Document */}
-        <section id="tour-upload-step" className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-3 hover:border-slate-300 contain-layout">
-          <div className="flex items-center justify-between select-none gap-2">
+        <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-3 hover:border-slate-300 contain-layout">
+          <div className="flex items-center justify-between select-none">
             <h2 className="text-sm font-bold text-slate-900">
               1. Upload Document{allowMultiple ? 's' : ''}
             </h2>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleManualTourStart}
-                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-slate-100 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 text-slate-700 hover:text-indigo-600 text-xs font-semibold shadow-2xs transition-colors cursor-pointer active-press"
-                aria-label="How it works"
-                title="How it works"
-              >
-                <HelpCircle className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span>How it works</span>
-              </button>
-              <span className="text-[10px] font-bold text-slate-400 tracking-wider">
-                PDF / JPG / PNG
-              </span>
-            </div>
+            <span className="text-[10px] font-bold text-slate-400 tracking-wider">
+              PDF / JPG / PNG
+            </span>
           </div>
 
           <FileUploader
@@ -674,7 +602,7 @@ export default function CustomerHomePage() {
         </section>
 
         {/* Card 2: 2. Print Configuration */}
-        <section id="tour-print-settings-step" className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4 hover:border-slate-300 [animation-delay:60ms] contain-layout">
+        <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4 hover:border-slate-300 [animation-delay:60ms] contain-layout">
           <h2 className="text-sm font-bold text-slate-900 select-none">
             2. Print Configuration
           </h2>
@@ -785,7 +713,7 @@ export default function CustomerHomePage() {
           </p>
         )}
         <div className="max-w-xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          <div id="tour-price-step" className="select-none">
+          <div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
               TOTAL AMOUNT
             </div>
@@ -795,7 +723,6 @@ export default function CustomerHomePage() {
           </div>
 
           <button
-            id="tour-payment-step"
             type="button"
             onClick={async () => {
               if (hasBatch) {
@@ -957,14 +884,6 @@ export default function CustomerHomePage() {
             />
           );
         })()}
-
-      {/* Guided Tour Spotlight & Flow */}
-      <GuidedTour
-        isOpen={isTourOpen}
-        onClose={() => setIsTourOpen(false)}
-        isManual={isManualTour}
-        steps={TOUR_STEPS}
-      />
     </div>
   );
 }
