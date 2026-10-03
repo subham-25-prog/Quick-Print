@@ -16,8 +16,29 @@ export function database() {
   return db;
 }
 
+interface CachedPricing {
+  pricing: PricingConfig;
+  expiresAt: number;
+}
+
+const pricingCache = new Map<string, CachedPricing>();
+
+export function clearPricingCache(shopId?: string) {
+  if (shopId) {
+    pricingCache.delete(shopId);
+  } else {
+    pricingCache.clear();
+  }
+}
+
 export async function getActivePricing(): Promise<PricingConfig> {
   const shopId = getCurrentShopId();
+  const now = Date.now();
+  const cached = pricingCache.get(shopId);
+  if (cached && cached.expiresAt > now) {
+    return cached.pricing;
+  }
+
   const db = database();
 
   const [{ data, error }, { data: shop, error: shopError }] = await Promise.all([
@@ -48,13 +69,20 @@ export async function getActivePricing(): Promise<PricingConfig> {
   const shopAddress = pricing.shop_address || shop?.address || defaultPricingConfig.shop_address;
   const shopPhone = pricing.shop_phone || shop?.phone || defaultPricingConfig.shop_phone;
 
-  return validatePricing({
+  const validated = validatePricing({
     ...defaultPricingConfig,
     ...pricing,
     shop_name: shopName,
     shop_address: shopAddress,
     shop_phone: shopPhone,
   });
+
+  pricingCache.set(shopId, {
+    pricing: validated,
+    expiresAt: now + 60000,
+  });
+
+  return validated;
 }
 
 export async function updatePricing(patch: Partial<PricingConfig>): Promise<PricingConfig> {
@@ -123,6 +151,7 @@ export async function updatePricing(patch: Partial<PricingConfig>): Promise<Pric
     await db.from('shops').update(shopUpdate).eq('id', shopId);
   }
 
+  clearPricingCache(shopId);
   return updatedPricing;
 }
 

@@ -31,12 +31,22 @@ export default function OrderStatusPage() {
     order: Order;
     job: { status: string; submitted_at?: string };
     agentOnline: boolean;
-  } | null>(null);
+  } | null>(() => {
+    if (typeof window === 'undefined' || !id) return null;
+    try {
+      const cached = localStorage.getItem(`quickprint_cached_status_${id}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.order?.id) return parsed;
+      }
+    } catch {}
+    return null;
+  });
 
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !data);
   const [copied, setCopied] = useState(false);
-  const [isOfflineCached, setIsOfflineCached] = useState(false);
+  const [isOfflineCached, setIsOfflineCached] = useState(() => Boolean(data));
 
   const copyOrderId = useCallback(async () => {
     if (!data?.order?.order_number) return;

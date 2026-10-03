@@ -149,7 +149,17 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
             {allowCash && (
               <button
                 type="button"
-                onClick={() => void onConfirmPayment('CASH')}
+                onPointerDown={(e) => {
+                  if (e.button === 0 && !submitting) {
+                    void onConfirmPayment('CASH');
+                  }
+                }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (!submitting) {
+                    void onConfirmPayment('CASH');
+                  }
+                }}
                 disabled={submitting}
                 className="w-full text-left p-4 sm:p-5 rounded-2xl bg-slate-50 border-2 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer touch-manipulation"
               >
@@ -163,7 +173,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
                   </span>
                 </span>
                 <span className="mt-3 block w-full py-3 rounded-xl bg-white border border-slate-300 text-center text-slate-800 font-bold text-xs">
-                  Pay ${formatCurrency(amount)} by cash
+                  Pay {formatCurrency(amount)} by cash
                 </span>
               </button>
             )}

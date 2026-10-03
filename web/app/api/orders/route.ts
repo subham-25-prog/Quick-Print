@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
       rateLimit(req, 'checkout', 10),
       db
         .from('uploaded_files')
-        .select('*')
+        .select('id, shop_id, owner_hash, page_count, file_name, expires_at, deletion_claimed_at')
         .eq('id', uploadId)
         .eq('shop_id', shopId)
         .eq('owner_hash', owner)

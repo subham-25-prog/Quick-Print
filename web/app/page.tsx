@@ -140,12 +140,15 @@ export default function CustomerHomePage() {
   const [cashPaymentEnabled, setCashPaymentEnabled] = useState<boolean | undefined>(undefined);
   const [paymentErrorNotice, setPaymentErrorNotice] = useState<string | null>(null);
 
-  // Prefetch status route as soon as modal opens for near-zero navigation latency
+  // Prefetch status route and eagerly prepare batch upload as soon as modal opens
   useEffect(() => {
     if (isPaymentModalOpen) {
       router.prefetch('/status/pending');
+      if (batchFiles.length > 0) {
+        void checkoutPreparation.prepareUpload(batchFiles).catch(() => {});
+      }
     }
-  }, [isPaymentModalOpen, router]);
+  }, [isPaymentModalOpen, router, batchFiles, checkoutPreparation]);
 
   // Cleanly restore checkout state when user returns or presses back
   useEffect(() => {
@@ -503,7 +506,7 @@ export default function CustomerHomePage() {
               localStorage.setItem(`quickprint_cached_status_${data.paymentId}`, JSON.stringify(orderSnapshot));
             } catch {}
           }
-          router.push(statusUrl);
+          router.replace(statusUrl);
           setTimeout(() => {
             setIsPaymentModalOpen(false);
             setSubmitting(false);
