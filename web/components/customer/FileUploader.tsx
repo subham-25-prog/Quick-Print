@@ -458,9 +458,12 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                 : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
             }`}
           >
-            <div className="relative z-10 flex flex-col items-center">
-              <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5 transition-transform group-hover:scale-105">
-                <FileText className="w-5 h-5 text-slate-400" />
+            <div className="flex flex-col items-center">
+              <div className="mb-2 flex items-center justify-center gap-1.5">
+                <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 transition-transform group-hover:scale-105">
+                  <FileText className="w-5 h-5 text-slate-400" />
+                </div>
+                <TapGesture aria-hidden="true" className="pointer-events-none -ml-1 h-16 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
               </div>
               <h4 className="mb-0.5 text-sm font-bold text-slate-800">
                 {isInspectingBatch ? 'Checking documents…' : 'Tap or Drop Files Here'}
@@ -471,11 +474,6 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                   : `Up to ${MAX_BATCH_FILE_COUNT} files · ${formatFileSize(MAX_BATCH_SOURCE_BYTES)} source batch`}
               </p>
             </div>
-            {!isInspectingBatch && (
-              <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-0 -ml-10 -mt-3 h-20 w-20">
-                <TapGesture className="h-full w-full animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
-              </span>
-            )}
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -613,9 +611,12 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             </div>
           ) : (
             <>
-              <div className="relative z-10 flex flex-col items-center">
-                <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5 transition-transform group-hover:scale-105">
-                  <FileText className="w-5 h-5 text-slate-400" />
+              <div className="flex flex-col items-center">
+                <div className="mb-2 flex items-center justify-center gap-1.5">
+                  <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 transition-transform group-hover:scale-105">
+                    <FileText className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <TapGesture aria-hidden="true" className="pointer-events-none -ml-1 h-16 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" />
                 </div>
                 <h4 className="mb-0.5 text-sm font-bold text-slate-800">
                   Tap or Drop Document Here
@@ -624,9 +625,6 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                   Auto-detects page count instantly · Large files supported
                 </p>
               </div>
-              <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-0 -ml-10 -mt-3 h-20 w-20">
-                <TapGesture className="h-full w-full animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
-              </span>
             </>
           )}
         </div>
