@@ -24,26 +24,23 @@ export const FileText: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props 
 
 /** A game-style hand prompt for areas that can be tapped or clicked. */
 export const TapGesture: React.FC<IconProps> = ({ className = 'w-5 h-5', ...props }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56" fill="none" className={className} {...props}>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" className={className} {...props}>
     <defs>
-      <linearGradient id="upload-hand-fill" x1="20" y1="8" x2="62" y2="52" gradientUnits="userSpaceOnUse">
+      <linearGradient id="upload-hand-fill" x1="18" y1="10" x2="46" y2="58" gradientUnits="userSpaceOnUse">
         <stop stopColor="#FFFFFF" />
         <stop offset="1" stopColor="#E2E8F0" />
       </linearGradient>
     </defs>
-    <g stroke="#94A3B8" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round">
-      {/* Palm and wrist */}
-      <path d="M76 54H59c-5.2 0-9.4-2.5-12.3-6.6l-5.3-7.6c-2.7-3.9-6.3-6.2-11.2-7.1l-9.2-1.8c-3.4-.7-5.7-2.7-5.1-4.9.6-2.1 3.3-3 6.5-2.3l12.5 2.5-25-9.9C6.3 14.9 4.8 12 5.9 9.8c1.1-2.2 4.1-2.7 7.5-1.2l25.5 11.2c1.8.8 3.9 1.4 6 1.6l5.8.7c5.2.6 9.5 3.7 11.6 8.5l3.5 8c1.8 4.2 5.4 7.9 10.2 10.4Z" fill="url(#upload-hand-fill)" />
-      {/* Long pointing index finger */}
-      <path d="m36 26.1-26-10.3c-3.5-1.4-5-4.1-3.7-6.3 1.3-2.1 4.3-2.5 7.5-1.1l28 12.2" fill="url(#upload-hand-fill)" />
-      {/* Curled middle, ring, and little fingers */}
-      <path d="m42.8 22.4-18-13.7c-2.8-2.1-3.2-5.1-1.5-6.7 1.8-1.7 4.7-1.1 7.2.9L48 16" fill="url(#upload-hand-fill)" />
-      <path d="m50 22.3-14-13.6c-2.2-2.1-2.3-4.8-.7-6.1 1.8-1.4 4.3-.7 6.3 1.3L55 17.6" fill="url(#upload-hand-fill)" />
-      <path d="m56 25-9.7-11.3c-1.7-2-1.5-4.4.1-5.3 1.8-1 4 .1 5.6 2l9 10.2" fill="url(#upload-hand-fill)" />
-      {/* Thumb folded under the palm */}
-      <path d="m40.7 35-12.9 2.8c-3.2.7-5.8-.6-6.2-2.7-.4-2.2 1.6-4 4.6-4.5l10.2-1.9" fill="url(#upload-hand-fill)" />
-    </g>
-    <path d="M14.7 5.8 12.1 3M10.8 10.6H7M20 4.7l.2-3.5" stroke="#CBD5E1" strokeWidth="1.8" strokeLinecap="round" />
+    <circle cx="31" cy="10.5" r="7" fill="#FFFFFF" fillOpacity=".7" stroke="#06B6D4" strokeWidth="1.4" />
+    <path
+      d="M31.2 10.5c-2.4 0-4 1.8-4.2 4.4l-1 18.3c-.1 1.5-.9 2.4-2 2.6-1.2.2-2.4-.6-3.2-1.9l-3.4-5.5c-1.4-2.3-4.1-2.9-5.7-1.3-1.5 1.5-1.1 3.8.1 5.8l7.6 12.1c2.1 3.5 2.9 7.7 2.4 12.5h21.1c-.5-4.7 1.4-9.3 3.8-13.7 2.4-4.5 1.1-10-2.7-12.1-.2-3-2.3-5.1-5.2-5.1-1-2.8-3.5-4.2-6.1-3.4l.5-9.1c.2-2.2-.8-3.6-3-3.6Z"
+      fill="url(#upload-hand-fill)"
+      stroke="#64748B"
+      strokeWidth="1.35"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <path d="M32.9 23.3c-1.5.6-2.4 1.8-2.4 3.5M38.8 26.5c-1.4.5-2.2 1.7-2.2 3.3M44 31.6c-1.1.7-1.7 1.8-1.8 3.1" stroke="#94A3B8" strokeWidth="1.15" strokeLinecap="round" />
   </svg>
 );
 

@@ -472,7 +472,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
               </p>
             </div>
             {!isInspectingBatch && (
-              <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-1 right-1 h-12 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
+              <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-1 right-1 h-14 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
             )}
           </div>
         ) : (
@@ -622,7 +622,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                   Auto-detects page count instantly · Large files supported
                 </p>
               </div>
-              <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-1 right-1 h-12 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
+            <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-1 right-1 h-14 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
             </>
           )}
         </div>
