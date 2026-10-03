@@ -458,7 +458,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                 : 'border-slate-300/80 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300'
             }`}
           >
-            <div className="flex flex-col items-center">
+            <div className="relative z-10 flex flex-col items-center">
               <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5 transition-transform group-hover:scale-105">
                 <FileText className="w-5 h-5 text-slate-400" />
               </div>
@@ -472,7 +472,9 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
               </p>
             </div>
             {!isInspectingBatch && (
-              <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-1 right-1 h-14 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
+              <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-0 -ml-10 -mt-3 h-20 w-20">
+                <TapGesture className="h-full w-full animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
+              </span>
             )}
           </div>
         ) : (
@@ -611,7 +613,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             </div>
           ) : (
             <>
-              <div className="flex flex-col items-center">
+              <div className="relative z-10 flex flex-col items-center">
                 <div className="w-10 h-12 border-2 border-dashed border-slate-400 rounded-md flex items-center justify-center text-slate-400 mb-2.5 transition-transform group-hover:scale-105">
                   <FileText className="w-5 h-5 text-slate-400" />
                 </div>
@@ -622,7 +624,9 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                   Auto-detects page count instantly · Large files supported
                 </p>
               </div>
-            <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-1 right-1 h-14 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
+              <span aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 z-0 -ml-10 -mt-3 h-20 w-20">
+                <TapGesture className="h-full w-full animate-tap-hint motion-reduce:animate-none drop-shadow-md" />
+              </span>
             </>
           )}
         </div>
