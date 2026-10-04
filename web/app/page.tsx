@@ -152,6 +152,12 @@ export default function CustomerHomePage() {
 
   // Cleanly restore checkout state when user returns or presses back
   useEffect(() => {
+    // Prevent the browser from automatically scrolling down on refresh
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual';
+    }
+    window.scrollTo(0, 0);
+
     const handlePageShow = () => {
       setIsPaymentModalOpen(false);
       setSubmitting(false);
