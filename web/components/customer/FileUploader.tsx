@@ -505,7 +505,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => !isInspectingBatch && fileInputRef.current?.click()}
-            className={`relative overflow-hidden border-2 border-dashed rounded-2xl py-5 px-6 text-center transition-all duration-200 ${
+            className={`relative overflow-hidden border-2 border-dashed rounded-2xl py-3 px-4 text-center transition-all duration-200 ${
               isInspectingBatch ? 'cursor-wait opacity-75' : 'cursor-pointer'
             } ${
               isDragging
@@ -515,11 +515,11 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           >
             <div className="flex flex-col items-center gap-3">
               {/* The hand rests in the lower center and taps the document target. */}
-              <div className="relative h-24 w-full translate-y-1.5">
-                <div className="absolute left-1/2 top-1 z-10 flex h-14 w-12 -translate-x-1/2 items-center justify-center rounded-lg border-2 border-dashed border-slate-400/80 bg-white/70 text-slate-400 shadow-inner">
-                  <FileText className="w-5 h-5 text-slate-400" />
+              <div className="relative h-16 w-full translate-y-1">
+                <div className="absolute left-1/2 top-1 z-10 flex h-10 w-9 -translate-x-1/2 items-center justify-center rounded-lg border-2 border-dashed border-slate-400/80 bg-white/70 text-slate-400 shadow-inner">
+                  <FileText className="w-4 h-4 text-slate-400" />
                 </div>
-                <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-0 left-1/2 z-20 h-24 w-24 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" style={{ marginLeft: '-48px' }} />
+                <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-0 left-1/2 z-20 h-16 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" style={{ marginLeft: '-32px' }} />
               </div>
               <div>
                 <h4 className="text-sm font-bold text-slate-800 mb-1">
@@ -612,7 +612,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => !uploading && fileInputRef.current?.click()}
-          className={`relative overflow-hidden border-2 border-dashed rounded-2xl py-5 px-6 text-center cursor-pointer transition-all duration-200 ${
+          className={`relative overflow-hidden border-2 border-dashed rounded-2xl py-3 px-4 text-center cursor-pointer transition-all duration-200 ${
             isDragging
               ? 'border-indigo-400 bg-indigo-50/60 scale-[1.01] shadow-lg shadow-indigo-500/10'
               : 'border-slate-300 bg-slate-50/60 hover:bg-white hover:border-slate-400'
@@ -665,11 +665,11 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             <>
               <div className="flex flex-col items-center gap-3">
                 {/* The hand rests in the lower center and taps the document target. */}
-                <div className="relative h-24 w-full translate-y-1.5">
-                  <div className="absolute left-1/2 top-1 z-10 flex h-14 w-12 -translate-x-1/2 items-center justify-center rounded-lg border-2 border-dashed border-slate-400/80 bg-white/70 text-slate-400 shadow-inner">
-                    <FileText className="w-5 h-5 text-slate-400" />
+                <div className="relative h-16 w-full translate-y-1">
+                  <div className="absolute left-1/2 top-1 z-10 flex h-10 w-9 -translate-x-1/2 items-center justify-center rounded-lg border-2 border-dashed border-slate-400/80 bg-white/70 text-slate-400 shadow-inner">
+                    <FileText className="w-4 h-4 text-slate-400" />
                   </div>
-                  <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-0 left-1/2 z-20 h-24 w-24 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" style={{ marginLeft: '-48px' }} />
+                  <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-0 left-1/2 z-20 h-16 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" style={{ marginLeft: '-32px' }} />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-800 mb-1">
