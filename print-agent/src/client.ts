@@ -16,6 +16,8 @@ export interface ClaimedJob {
   paper_size: string;
   color_mode: string;
   print_sides: string;
+  orientation?: 'portrait' | 'landscape';
+  advanced_config?: Record<string, unknown>;
   is_test: boolean;
 }
 

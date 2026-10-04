@@ -310,6 +310,13 @@ export async function claimNextPrintJob(agentId: string) {
       paper_size: order.paper_size,
       color_mode: order.color_mode,
       print_sides: order.print_sides,
+      orientation:
+        order.advanced_config?.orientation?.toLowerCase() === 'landscape' ||
+        order.advanced_config?.rotationAngle === 90 ||
+        order.advanced_config?.rotationAngle === 270
+          ? 'landscape'
+          : 'portrait',
+      advanced_config: order.advanced_config,
       job_id: job.id,
     },
   };
