@@ -16,8 +16,6 @@ interface PaymentModalProps {
   cashEnabled?: boolean;
   error?: string;
   selectedMethod?: 'UPI' | 'CASH' | null;
-  uploadProgress?: number;
-  uploadStage?: 'idle' | 'uploading' | 'processing' | 'ready';
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
@@ -31,8 +29,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
   cashEnabled,
   error,
   selectedMethod,
-  uploadProgress = 0,
-  uploadStage = 'idle',
 }) => {
   const allowOnline = onlineEnabled !== undefined
     ? onlineEnabled
@@ -42,8 +38,6 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
     : Boolean(pricing?.form_fields?.allowCashPayment);
 
   const isCashLoading = submitting && selectedMethod === 'CASH';
-  const isDocumentUploading = uploadStage === 'uploading' && uploadProgress < 100;
-  const isDocumentProcessing = uploadStage === 'processing';
 
   if (!isOpen) return null;
 
@@ -53,20 +47,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
             <h3 className="text-base font-bold text-slate-900">
-              {isCashLoading
-                ? isDocumentUploading
-                  ? 'Uploading Document'
-                  : 'Cash Payment'
-                : 'Secure payment'}
+              {isCashLoading ? 'Cash Payment' : 'Secure payment'}
             </h3>
             <p className="text-[11px] text-slate-400 font-medium">
-              {isCashLoading
-                ? isDocumentUploading
-                  ? `Transferring document to shop (${uploadProgress}%)…`
-                  : isDocumentProcessing
-                  ? 'Finalizing document structure…'
-                  : 'Connecting to shop counter…'
-                : 'Your order is created after payment verification.'}
+              {isCashLoading ? 'Connecting to shop counter…' : 'Your order is created after payment verification.'}
             </p>
           </div>
           {!isCashLoading && (
@@ -105,18 +89,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
             {/* Title & Description */}
             <div className="space-y-1 max-w-xs">
               <h4 className="text-lg font-black text-slate-900 tracking-tight">
-                {isDocumentUploading
-                  ? `Uploading Document (${uploadProgress}%)`
-                  : isDocumentProcessing
-                  ? 'Processing Document…'
-                  : 'Confirming Cash Order…'}
+                Confirming Cash Order…
               </h4>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                {isDocumentUploading
-                  ? 'Transferring your file to the shop printer before counter confirmation'
-                  : isDocumentProcessing
-                  ? 'Verifying pages and preparing print record'
-                  : 'Generating counter slip & connecting to shop terminal'}
+                Generating counter slip & connecting to shop terminal
               </p>
             </div>
 
@@ -126,22 +102,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
               <span>Pay {formatCurrency(amount)} at Counter</span>
             </div>
 
-            {/* Real Progress Bar when uploading, Smooth animated wave when finalizing order */}
-            <div className="w-full max-w-xs bg-slate-100 rounded-full h-2.5 overflow-hidden relative border border-slate-200/60 shadow-inner">
-              {isDocumentUploading && uploadProgress > 0 ? (
-                <div
-                  className="h-full bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-600 rounded-full transition-all duration-200 ease-out"
-                  style={{ width: `${Math.max(uploadProgress, 5)}%` }}
-                />
-              ) : (
-                <div className="absolute inset-y-0 h-full w-1/2 bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 rounded-full animate-cash-progress" />
-              )}
+            {/* Indeterminate Smooth Progress Bar */}
+            <div className="w-full max-w-xs bg-slate-100 rounded-full h-2 overflow-hidden relative border border-slate-200/60">
+              <div className="absolute inset-y-0 h-full w-1/2 bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 rounded-full animate-cash-progress" />
             </div>
 
             <p className="text-[11px] text-slate-400 font-medium">
-              {isDocumentUploading
-                ? 'Please keep this tab open while your document uploads.'
-                : 'Please keep cash ready for the operator.'}
+              Please keep cash ready for the operator.
             </p>
           </div>
         ) : (
@@ -154,11 +121,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
             {error && <p role="alert" className="p-3 rounded-xl bg-amber-50 text-amber-900 [overflow-wrap:anywhere]">{error}</p>}
             {submitting && (
               <p role="status" className="p-3 rounded-xl bg-indigo-50 text-indigo-900 text-sm font-medium text-center">
-                {isDocumentUploading
-                  ? `Uploading document (${uploadProgress}%)…`
-                  : isDocumentProcessing
-                  ? 'Finalizing document structure…'
-                  : 'Opening secure payment…'}
+                Opening secure payment…
               </p>
             )}
             {allowOnline && (

@@ -14,7 +14,7 @@ const BUCKET_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 const MAX_CONTENT_LENGTH_BYTES = 105 * 1024 * 1024; // 105 MB multipart overhead
-const CHUNK_ASSEMBLY_CONCURRENCY = 6;
+const CHUNK_ASSEMBLY_CONCURRENCY = 3;
 
 // The final chunk reassembles the document, validates its PDF structure, uploads
 // the finished PDF and writes its record. Scanned, 100+ page documents can take
