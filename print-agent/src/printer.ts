@@ -256,16 +256,24 @@ export class WindowsPrinterService {
           ? 'A4'
           : job.paper_size;
 
-    // Detect orientation: from job contract, advanced_config, or PDF header inspection
+    // Detect orientation: from job contract, advanced_config, or PDF content inspection
     let orientation: 'portrait' | 'landscape' = 'portrait';
-    if (job.orientation === 'landscape' || (job.advanced_config as any)?.orientation === 'LANDSCAPE') {
+    const advOrientation = (job.advanced_config as any)?.orientation?.toString().toUpperCase();
+    const advRotation = Number((job.advanced_config as any)?.rotationAngle);
+
+    if (
+      job.orientation === 'landscape' ||
+      advOrientation === 'LANDSCAPE' ||
+      advRotation === 90 ||
+      advRotation === 270
+    ) {
       orientation = 'landscape';
     } else {
-      const headerSnippet = data.subarray(0, 32768).toString('latin1');
-      if (headerSnippet.includes('/Rotate 90') || headerSnippet.includes('/Rotate 270')) {
+      const fullContent = data.toString('latin1');
+      if (fullContent.includes('/Rotate 90') || fullContent.includes('/Rotate 270')) {
         orientation = 'landscape';
       } else {
-        const mediaBoxMatch = headerSnippet.match(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/);
+        const mediaBoxMatch = fullContent.match(/\/MediaBox\s*\[\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\]/);
         if (mediaBoxMatch) {
           const w = Math.abs(parseFloat(mediaBoxMatch[3]) - parseFloat(mediaBoxMatch[1]));
           const h = Math.abs(parseFloat(mediaBoxMatch[4]) - parseFloat(mediaBoxMatch[2]));

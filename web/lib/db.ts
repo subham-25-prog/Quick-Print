@@ -156,15 +156,37 @@ export async function updatePricing(patch: Partial<PricingConfig>): Promise<Pric
 }
 
 export async function getOrderById(id: string): Promise<Order | null> {
-  const { data, error } = await database()
+  const db = database();
+  const shopId = getCurrentShopId();
+  const { data, error } = await db
     .from('orders')
     .select('*')
     .eq('id', id)
-    .eq('shop_id', getCurrentShopId())
+    .eq('shop_id', shopId)
     .maybeSingle();
 
   if (error) throw error;
-  return data as Order | null;
+  if (!data) return null;
+
+  const order = data as Order;
+  if (!order.advanced_config && order.payment_id) {
+    try {
+      const { data: pay } = await db
+        .from('payments')
+        .select('draft_order')
+        .eq('id', order.payment_id)
+        .maybeSingle();
+      if (pay?.draft_order && typeof pay.draft_order === 'object') {
+        const draft = pay.draft_order as Record<string, unknown>;
+        if (draft.advanced_config) {
+          order.advanced_config = draft.advanced_config as AdvancedPrintConfig;
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching draft_order for order:', err);
+    }
+  }
+  return order;
 }
 
 export async function getAllOrders(status = 'ALL'): Promise<Order[]> {
@@ -187,6 +209,29 @@ export async function getAllOrders(status = 'ALL'): Promise<Order[]> {
   if (error) throw error;
 
   const existingOrders = (data || []) as Order[];
+
+  // Populate advanced_config from payments draft_order if missing on existing orders
+  const ordersMissingConfig = existingOrders.filter((o) => !o.advanced_config && o.payment_id);
+  if (ordersMissingConfig.length > 0) {
+    try {
+      const pIds = ordersMissingConfig.map((o) => o.payment_id as string);
+      const { data: payRecords } = await db
+        .from('payments')
+        .select('id, draft_order')
+        .in('id', pIds);
+      if (Array.isArray(payRecords)) {
+        const payMap = new Map(payRecords.map((p) => [p.id, p.draft_order]));
+        for (const o of ordersMissingConfig) {
+          const draft = payMap.get(o.payment_id);
+          if (draft && typeof draft === 'object' && (draft as Record<string, unknown>).advanced_config) {
+            o.advanced_config = (draft as Record<string, unknown>).advanced_config as AdvancedPrintConfig;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error fetching draft_orders in getAllOrders:', err);
+    }
+  }
   const existingPaymentIds = new Set(existingOrders.map((o) => o.payment_id).filter(Boolean));
 
   // Include pending cash payments that are awaiting counter verification
