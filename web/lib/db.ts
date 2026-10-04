@@ -1,4 +1,4 @@
-import { Order, OrderStatus, PricingConfig, PrintAgentInfo } from '@/types';
+import { Order, OrderStatus, PricingConfig, PrintAgentInfo, AdvancedPrintConfig } from '@/types';
 import { getAdminClient } from './supabase/admin';
 import { getCurrentShopId } from './shop';
 import { defaultPricingConfig } from './config';
