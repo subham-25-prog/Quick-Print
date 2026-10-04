@@ -1133,21 +1133,21 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         </div>
 
         {/* Footer Actions (Sticky at bottom of sidebar) */}
-        <div className="md:hidden px-4 py-3 border-t border-[#3c4043]/40 flex items-center justify-between gap-2 shrink-0 bg-[#202124]">
+        <div className="md:hidden px-3 py-3.5 border-t border-[#3c4043]/40 flex items-center justify-between gap-2.5 shrink-0 bg-[#202124]">
           {/* On mobile settings tab: quick view preview link */}
           <button
             type="button"
             onClick={() => setMobileTab('preview')}
-            className="px-3 py-2 rounded-lg bg-[#2b2d30] hover:bg-[#35363a] text-slate-200 text-xs font-semibold border border-slate-700/60 flex items-center gap-1.5 cursor-pointer"
+            className="flex-1 px-2 py-3 rounded-xl bg-[#2b2d30] hover:bg-[#35363a] text-slate-200 text-sm font-bold border border-slate-600 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95 transition-transform"
           >
-            <FileText className="w-3.5 h-3.5 text-[#8ab4f8]" />
+            <FileText className="w-4 h-4 text-[#8ab4f8]" />
             <span>Preview</span>
           </button>
 
           <button
             type="button"
             onClick={handleCloseModal}
-            className="px-3.5 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold border border-slate-500 cursor-pointer"
+            className="flex-1 px-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold border border-slate-500 flex items-center justify-center cursor-pointer shadow-sm active:scale-95 transition-transform"
             title="Save settings & Return"
           >
             Save
@@ -1156,10 +1156,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           <button
             type="button"
             onClick={handlePrintApply}
-            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40 transition-all cursor-pointer flex items-center gap-1 ml-auto"
+            className="flex-[1.5] px-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-extrabold shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
           >
-            <span>Confirm &amp; Pay</span>
-            <span>→</span>
+            <span>Pay</span>
+            <span className="text-base leading-none">→</span>
           </button>
         </div>
       </aside>
