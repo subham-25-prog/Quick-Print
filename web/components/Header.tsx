@@ -38,14 +38,6 @@ export const Header: React.FC<HeaderProps> = React.memo(({ isAdmin = false, shop
             <h1 className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 bg-clip-text text-transparent leading-tight tracking-tight">
               {displayName}
             </h1>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <div className="flex items-center justify-center w-4 h-4 rounded-full bg-amber-100/80 shadow-inner">
-                <span className="text-[9px]">⚡</span>
-              </div>
-              <span className="text-[11px] font-bold text-slate-500 tracking-wide uppercase">
-                {shopConfig.tagline}
-              </span>
-            </div>
           </div>
         </Link>
 
