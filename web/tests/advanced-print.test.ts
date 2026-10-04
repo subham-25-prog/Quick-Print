@@ -126,3 +126,47 @@ test('transformPdf returns original buffer when no transformation is requested',
   });
   expect(result).toEqual(sample);
 });
+
+test('transformPdf applies manual rotation angle correctly', async () => {
+  const sample = await createSamplePdf(2);
+  const rotated90 = await transformPdf(sample, { rotationAngle: 90 });
+  const doc90 = await PDFDocument.load(rotated90);
+  expect(doc90.getPage(0).getRotation().angle).toBe(90);
+  expect(doc90.getPage(1).getRotation().angle).toBe(90);
+
+  const rotated180 = await transformPdf(sample, { rotationAngle: 180 });
+  const doc180 = await PDFDocument.load(rotated180);
+  expect(doc180.getPage(0).getRotation().angle).toBe(180);
+});
+
+test('transformPdf handles 2-up in portrait mode (stacked slots)', async () => {
+  const sample = await createSamplePdf(4);
+  const result = await transformPdf(sample, {
+    pagesPerSheet: '2',
+    orientation: 'PORTRAIT',
+  });
+  const doc = await PDFDocument.load(result);
+  expect(doc.getPageCount()).toBe(2);
+  const sheet = doc.getPage(0);
+  const { width, height } = sheet.getSize();
+  expect(height).toBeGreaterThan(width); // Portrait sheet
+});
+
+test('transformPdf handles custom scaling and paper sizes', async () => {
+  const sample = await createSamplePdf(2);
+  const scaled = await transformPdf(
+    sample,
+    {
+      pageScaling: 'CUSTOM',
+      customScalePercent: 75,
+    },
+    { paperSize: 'A3' }
+  );
+  const doc = await PDFDocument.load(scaled);
+  expect(doc.getPageCount()).toBe(2);
+  const sheet = doc.getPage(0);
+  const { width, height } = sheet.getSize();
+  expect(Math.round(width)).toBe(842); // A3 portrait width
+  expect(Math.round(height)).toBe(1191); // A3 portrait height
+});
+

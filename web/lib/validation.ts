@@ -162,6 +162,7 @@ export function printOptions(
       pageScaling: pageScaling as AdvancedPrintConfig['pageScaling'],
       customScalePercent,
       orientation: orientation as AdvancedPrintConfig['orientation'],
+      rotationAngle: [0, 90, 180, 270].includes(Number(adv.rotationAngle)) ? Number(adv.rotationAngle) : 0,
       printQuality: printQuality as AdvancedPrintConfig['printQuality'],
       watermark: watermark as AdvancedPrintConfig['watermark'],
     };

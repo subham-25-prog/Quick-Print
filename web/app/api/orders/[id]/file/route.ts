@@ -83,7 +83,10 @@ export async function GET(
     }
 
     const rawBuffer = Buffer.from(await fileData.arrayBuffer());
-    const processedBuffer = await transformPdf(rawBuffer, advancedConfig);
+    const processedBuffer = await transformPdf(rawBuffer, advancedConfig, {
+      paperSize: order.paper_size,
+      colorMode: order.color_mode,
+    });
 
     return new NextResponse(new Uint8Array(processedBuffer), {
       headers: {

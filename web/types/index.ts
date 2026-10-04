@@ -32,6 +32,7 @@ export interface AdvancedPrintConfig {
   pageScaling?: 'FIT' | 'ACTUAL' | 'SHRINK' | 'CUSTOM';
   customScalePercent?: number;
   orientation?: 'AUTO' | 'PORTRAIT' | 'LANDSCAPE';
+  rotationAngle?: number;
   printQuality?: 'FAST_DRAFT' | 'STANDARD' | 'HIGH_QUALITY';
   watermark?: 'NONE' | 'CONFIDENTIAL' | 'DRAFT' | 'SAMPLE';
 }

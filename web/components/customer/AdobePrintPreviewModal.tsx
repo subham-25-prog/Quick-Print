@@ -129,7 +129,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   // --- Canvas & Viewer State ---
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoomLevel, setZoomLevel] = useState<number>(100);
-  const [rotationAngle, setRotationAngle] = useState<number>(0);
+  const [rotationAngle, setRotationAngle] = useState<number>(advancedConfig.rotationAngle || 0);
   const [localObjectUrl, setLocalObjectUrl] = useState<string | null>(null);
 
   // PDF Document rendering state
@@ -172,15 +172,84 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     setWatermark(advancedConfig.watermark || 'NONE');
     setCurrentPage(1);
     setZoomLevel(100);
-    setRotationAngle(0);
+    setRotationAngle(advancedConfig.rotationAngle || 0);
   }, [isOpen, copies, colorMode, paperSize, printSides, advancedConfig]);
+
+  const buildUpdatedConfig = useCallback((): AdvancedPrintConfig => ({
+    pageRangeMode,
+    customPageRange,
+    pagesPerSheet,
+    pageScaling: scaleMode,
+    customScalePercent,
+    orientation: modalLayout === 'LANDSCAPE' ? 'LANDSCAPE' : 'PORTRAIT',
+    rotationAngle: ((rotationAngle % 360) + 360) % 360,
+    printQuality: advancedConfig.printQuality || 'STANDARD',
+    watermark,
+  }), [
+    pageRangeMode,
+    customPageRange,
+    pagesPerSheet,
+    scaleMode,
+    customScalePercent,
+    modalLayout,
+    rotationAngle,
+    advancedConfig.printQuality,
+    watermark,
+  ]);
+
+  const applyAllSettings = useCallback((proceedToOrder = false) => {
+    const updatedConfig = buildUpdatedConfig();
+    onSaveAdvancedConfig(updatedConfig);
+    if (onPaperSizeChange && modalPaperSize !== paperSize) {
+      onPaperSizeChange(modalPaperSize);
+    }
+    if (onColorModeChange && modalColorMode !== colorMode) {
+      onColorModeChange(modalColorMode);
+    }
+    if (onPrintSidesChange && modalPrintSides !== printSides) {
+      onPrintSidesChange(modalPrintSides);
+    }
+    if (onCopiesChange && modalCopies !== copies) {
+      onCopiesChange(modalCopies);
+    }
+
+    if (proceedToOrder) {
+      if (onProceedToOrder) {
+        onProceedToOrder();
+      } else {
+        onClose();
+      }
+    }
+  }, [
+    buildUpdatedConfig,
+    onSaveAdvancedConfig,
+    onPaperSizeChange,
+    modalPaperSize,
+    paperSize,
+    onColorModeChange,
+    modalColorMode,
+    colorMode,
+    onPrintSidesChange,
+    modalPrintSides,
+    printSides,
+    onCopiesChange,
+    modalCopies,
+    copies,
+    onProceedToOrder,
+    onClose,
+  ]);
+
+  const handleCloseModal = useCallback(() => {
+    applyAllSettings(false);
+    onClose();
+  }, [applyAllSettings, onClose]);
 
   // Lock body scroll and handle Esc key
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
       const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Escape') onClose();
+        if (e.key === 'Escape') handleCloseModal();
       };
       window.addEventListener('keydown', handleKeyDown);
       return () => {
@@ -188,7 +257,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         window.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [isOpen, onClose]);
+  }, [isOpen, handleCloseModal]);
 
   // Create Object URL for uploaded local file
   useEffect(() => {
@@ -699,36 +768,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
   // Handle Apply and Close / Print
   const handlePrintApply = () => {
-    const updatedConfig: AdvancedPrintConfig = {
-      pageRangeMode,
-      customPageRange,
-      pagesPerSheet,
-      pageScaling: scaleMode,
-      customScalePercent,
-      orientation: modalLayout === 'LANDSCAPE' ? 'LANDSCAPE' : 'PORTRAIT',
-      printQuality: advancedConfig.printQuality || 'STANDARD',
-      watermark,
-    };
-
-    onSaveAdvancedConfig(updatedConfig);
-    if (onPaperSizeChange && modalPaperSize !== paperSize) {
-      onPaperSizeChange(modalPaperSize);
-    }
-    if (onColorModeChange && modalColorMode !== colorMode) {
-      onColorModeChange(modalColorMode);
-    }
-    if (onPrintSidesChange && modalPrintSides !== printSides) {
-      onPrintSidesChange(modalPrintSides);
-    }
-    if (onCopiesChange && modalCopies !== copies) {
-      onCopiesChange(modalCopies);
-    }
-
-    if (onProceedToOrder) {
-      onProceedToOrder();
-    } else {
-      onClose();
-    }
+    applyAllSettings(true);
   };
 
   const enabledPapers = pricing?.enabled_papers || { a4: true, a3: true, legal: true, photo: true };
@@ -750,9 +790,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       <header className="md:hidden bg-[#202124] border-b border-[#3c4043]/70 px-3 py-2 flex items-center justify-between shrink-0 shadow-sm z-30">
         <button
           type="button"
-          onClick={onClose}
+          onClick={handleCloseModal}
           className="min-h-[38px] min-w-[38px] rounded-full flex items-center justify-center text-[#9aa0a6] hover:text-white hover:bg-[#35363a] transition-colors"
-          aria-label="Close"
+          aria-label="Close and save"
         >
           <X className="w-5 h-5" />
         </button>
@@ -1068,12 +1108,12 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         </div>
 
         {/* Footer Actions (Sticky at bottom of sidebar) */}
-        <div className="md:hidden px-5 sm:px-6 py-3 sm:py-4 border-t border-[#3c4043]/40 flex flex-wrap items-center justify-between gap-3 shrink-0 bg-[#202124]">
+        <div className="md:hidden px-4 py-3 border-t border-[#3c4043]/40 flex items-center justify-between gap-2 shrink-0 bg-[#202124]">
           {/* On mobile settings tab: quick view preview link */}
           <button
             type="button"
             onClick={() => setMobileTab('preview')}
-            className="md:hidden px-3.5 py-2 rounded-lg bg-[#2b2d30] hover:bg-[#35363a] text-slate-200 text-xs font-semibold border border-slate-700/60 flex items-center gap-1.5"
+            className="px-3 py-2 rounded-lg bg-[#2b2d30] hover:bg-[#35363a] text-slate-200 text-xs font-semibold border border-slate-700/60 flex items-center gap-1.5 cursor-pointer"
           >
             <FileText className="w-3.5 h-3.5 text-[#8ab4f8]" />
             <span>Preview</span>
@@ -1081,8 +1121,17 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
           <button
             type="button"
+            onClick={handleCloseModal}
+            className="px-3.5 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white text-xs font-bold border border-slate-500 cursor-pointer"
+            title="Save settings & Return"
+          >
+            Save
+          </button>
+
+          <button
+            type="button"
             onClick={handlePrintApply}
-            className="px-5 sm:px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs sm:text-sm font-bold shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40 transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
+            className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40 transition-all cursor-pointer flex items-center gap-1 ml-auto"
           >
             <span>Confirm &amp; Pay</span>
             <span>→</span>
@@ -1112,10 +1161,21 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               </span>
             )}
           </div>
-          <span className="text-[11px] font-mono">
-            {modalPaperSize} • {modalLayout === 'LANDSCAPE' ? 'Landscape' : 'Portrait'} •{' '}
-            {isBw ? 'B&W' : 'Color'}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] font-mono hidden sm:inline-block">
+              {modalPaperSize} • {modalLayout === 'LANDSCAPE' ? 'Landscape' : 'Portrait'} •{' '}
+              {isBw ? 'B&W' : 'Color'}{rotationAngle !== 0 ? ` • ${rotationAngle}°` : ''}
+            </span>
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="px-2 py-1 rounded-md text-slate-300 hover:text-white hover:bg-slate-700/80 border border-slate-600/60 transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-medium"
+              title="Save settings & Close (Esc)"
+            >
+              <X className="w-3.5 h-3.5" />
+              <span>Close</span>
+            </button>
+          </div>
         </div>
 
         {/* Centered Document Canvas Container */}
@@ -1256,6 +1316,16 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <span className="hidden md:inline-block text-xs text-slate-300 font-medium border-l border-slate-600/90 pl-2.5 ml-0.5">
               {modalPaperSize} • {isBw ? 'B&W' : 'Color'} • {modalCopies}x
             </span>
+          </button>
+
+          {/* Center: Save Changes Button */}
+          <button
+            type="button"
+            onClick={handleCloseModal}
+            className="flex-1 md:flex-none h-11 md:h-auto py-2 md:py-3 px-3 md:px-5 rounded-xl bg-slate-700/80 hover:bg-slate-600 active:bg-slate-800 border border-slate-500/70 text-slate-100 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 touch-manipulation"
+            title="Save settings & return to order"
+          >
+            <span>Save Changes</span>
           </button>
 
           {/* Right Bottom: Confirm & Pay Button */}

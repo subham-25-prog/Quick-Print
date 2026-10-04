@@ -222,6 +222,7 @@ export async function getAllOrders(status = 'ALL'): Promise<Order[]> {
             print_sides: draft.print_sides || 'SINGLE',
             copies: draft.copies || 1,
             add_ons: draft.add_ons || {},
+            advanced_config: draft.advanced_config,
             per_page_rate: draft.per_page_rate || 0,
             print_subtotal: draft.print_subtotal || p.amount,
             addons_subtotal: draft.addons_subtotal || 0,
