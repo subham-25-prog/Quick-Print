@@ -22,9 +22,12 @@ export async function GET(req: NextRequest) {
     const backendUrl = req.nextUrl.origin;
     const printAgentSecret = process.env.PRINT_AGENT_SECRET || '';
 
+    const printAgentId = process.env.PRINT_AGENT_ID || 'agent-main-pc';
+
     // Create the content for the .env file
     const envContent = `BACKEND_URL="${backendUrl}"
 PRINT_AGENT_SECRET="${printAgentSecret}"
+PRINT_AGENT_ID="${printAgentId}"
 AGENT_MODE="live"
 `;
 
