@@ -175,7 +175,7 @@ const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies,
           file={item.file}
           name={item.name}
           pageCount={item.pageCount}
-          renderImagePreview={false}
+          renderImagePreview={true}
         />
         <div className="min-w-0 flex-1">
           <div className="text-xs font-semibold text-slate-800 truncate" title={item.name}>
