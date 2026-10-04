@@ -138,7 +138,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
               ) : (
                 <div className="flex items-center gap-1.5">
                   <a
-                    href="/downloads/quickprint-agent.zip"
+                    href="/api/admin/agent-download"
                     download="quickprint-agent.zip"
                     title="Download QuickPrint Windows Agent setup for this PC"
                     className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 hover:border-indigo-300 transition-all cursor-pointer shadow-2xs active:scale-95"

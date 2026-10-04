@@ -355,7 +355,7 @@ export default function AdminPrintingSettingsPage() {
             </div>
             <div className="flex items-center gap-2">
               <a
-                href="/downloads/quickprint-agent.zip"
+                href="/api/admin/agent-download"
                 download="quickprint-agent.zip"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-all shadow-2xs active:scale-95"
                 title="Download Windows Print Agent package for this shop PC"
@@ -453,7 +453,7 @@ export default function AdminPrintingSettingsPage() {
                 </div>
                 <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
                   <a
-                    href="/downloads/quickprint-agent.zip"
+                    href="/api/admin/agent-download"
                     download="quickprint-agent.zip"
                     className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors shadow-xs cursor-pointer active:scale-95"
                     title="Download QuickPrint Agent setup files for this PC"
