@@ -37,7 +37,7 @@ const PaymentModal = dynamic(
   { ssr: false }
 );
 
-const EAGER_BATCH_PREPARATION_LIMIT_BYTES = 24 * 1024 * 1024;
+const EAGER_BATCH_PREPARATION_LIMIT_BYTES = 100 * 1024 * 1024;
 
 export default function CustomerHomePage() {
   const router = useRouter();
@@ -48,6 +48,8 @@ export default function CustomerHomePage() {
   // Customer selections
   const [uploadedFile, setUploadedFile] = useState<UploadedFileState | null>(null);
   const [batchFiles, setBatchFiles] = useState<BatchFileItem[]>([]);
+  const [batchUploadProgress, setBatchUploadProgress] = useState<number>(0);
+  const [batchUploadStage, setBatchUploadStage] = useState<'idle' | 'uploading' | 'processing' | 'ready'>('idle');
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const lastCompiledBatchSig = useRef<string>('');
   const [checkoutPreparation] = useState(createCheckoutPreparation);
@@ -145,7 +147,10 @@ export default function CustomerHomePage() {
     if (isPaymentModalOpen) {
       router.prefetch('/status/pending');
       if (batchFiles.length > 0) {
-        void checkoutPreparation.prepareUpload(batchFiles).catch(() => {});
+        void checkoutPreparation.prepareUpload(batchFiles, (percent, stage) => {
+          setBatchUploadProgress(percent);
+          setBatchUploadStage(stage);
+        }).catch(() => {});
       }
     }
   }, [isPaymentModalOpen, router, batchFiles, checkoutPreparation]);
@@ -392,12 +397,21 @@ export default function CustomerHomePage() {
     files.map((f) => `${f.id}-${f.name}-${f.size}-${f.pageCount}-${f.copies}`).join('|');
 
   useEffect(() => {
-    if (!hasBatch) return;
+    if (!hasBatch) {
+      setBatchUploadProgress(0);
+      setBatchUploadStage('idle');
+      return;
+    }
     const batchSourceBytes = batchFiles.reduce((total, item) => total + item.size, 0);
     if (batchSourceBytes > EAGER_BATCH_PREPARATION_LIMIT_BYTES) return;
     const timer = window.setTimeout(() => {
-      void checkoutPreparation.prepareUpload(batchFiles).catch(() => {});
-    }, 400);
+      void checkoutPreparation.prepareUpload(batchFiles, (percent, stage) => {
+        setBatchUploadProgress(percent);
+        setBatchUploadStage(stage);
+      }).catch(() => {
+        setBatchUploadStage('idle');
+      });
+    }, 250);
     return () => window.clearTimeout(timer);
   }, [batchFiles, hasBatch, checkoutPreparation]);
 
@@ -450,7 +464,12 @@ export default function CustomerHomePage() {
       setSubmitting(true);
       setCheckoutError('');
       try {
-        const targetFile = hasBatch ? await checkoutPreparation.prepareUpload(batchFiles) : uploadedFile;
+        const targetFile = hasBatch
+          ? await checkoutPreparation.prepareUpload(batchFiles, (percent, stage) => {
+              setBatchUploadProgress(percent);
+              setBatchUploadStage(stage);
+            })
+          : uploadedFile;
         if (!targetFile) return;
         const res = await fetch('/api/orders', {
           method: 'POST',
@@ -665,6 +684,8 @@ export default function CustomerHomePage() {
             batchFiles={batchFiles}
             onBatchFilesChange={handleBatchFilesChange}
             isProcessingBatch={isProcessingBatch}
+            batchUploadProgress={batchUploadProgress}
+            batchUploadStage={batchUploadStage}
           />
         </section>
 
@@ -866,6 +887,8 @@ export default function CustomerHomePage() {
           onlineEnabled={onlinePaymentEnabled}
           cashEnabled={cashPaymentEnabled}
           selectedMethod={selectedPaymentMethod}
+          uploadProgress={batchUploadProgress}
+          uploadStage={batchUploadStage}
         />
       )}
 

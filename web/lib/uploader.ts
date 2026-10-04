@@ -17,8 +17,8 @@ export interface UploadOptions {
   onXhrCreated?: (xhr: XMLHttpRequest) => void;
 }
 
-const CHUNK_SIZE = 3 * 1024 * 1024;
-const PARALLEL_CHUNK_UPLOADS = 3;
+const CHUNK_SIZE = 4 * 1024 * 1024;
+const PARALLEL_CHUNK_UPLOADS = 4;
 const CHUNK_UPLOAD_TIMEOUT_MS = 180000;
 // The server allows five minutes for the final chunk to assemble, validate and
 // store a large document. Keep the browser alive a little longer so it receives

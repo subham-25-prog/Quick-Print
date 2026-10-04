@@ -21,6 +21,8 @@ interface FileUploaderProps {
   batchFiles?: BatchFileItem[];
   onBatchFilesChange?: (files: BatchFileItem[]) => void;
   isProcessingBatch?: boolean;
+  batchUploadProgress?: number;
+  batchUploadStage?: 'idle' | 'uploading' | 'processing' | 'ready';
 }
 
 const DocumentPreviewBox = React.memo<{
@@ -249,6 +251,8 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
   batchFiles = [],
   onBatchFilesChange,
   isProcessingBatch = false,
+  batchUploadProgress = 0,
+  batchUploadStage = 'idle',
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -560,7 +564,24 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                 <span>Add More Files</span>
               </button>
 
-              <div className="px-3.5 py-2 rounded-xl bg-slate-100/90 border border-slate-200 text-slate-700 text-xs font-medium flex items-center justify-between sm:justify-end gap-2">
+              <div className="px-3.5 py-2 rounded-xl bg-slate-100/90 border border-slate-200 text-slate-700 text-xs font-medium flex items-center justify-between sm:justify-end gap-2.5">
+                {batchUploadStage === 'uploading' && batchUploadProgress < 100 && (
+                  <span className="inline-flex items-center gap-1.5 text-indigo-600 font-semibold text-[11px] mr-auto sm:mr-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" />
+                    <span>Syncing: {batchUploadProgress}%</span>
+                  </span>
+                )}
+                {batchUploadStage === 'processing' && (
+                  <span className="inline-flex items-center gap-1.5 text-amber-600 font-semibold text-[11px] mr-auto sm:mr-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                    <span>Processing…</span>
+                  </span>
+                )}
+                {batchUploadStage === 'ready' && (
+                  <span className="inline-flex items-center gap-1 text-emerald-600 font-bold text-[11px] mr-auto sm:mr-1">
+                    <span>✓ Ready to print</span>
+                  </span>
+                )}
                 <span className="text-slate-500">Batch Total:</span>
                 <span className="font-bold text-slate-900">
                   {batchFiles.length} {batchFiles.length === 1 ? 'file' : 'files'} ·{' '}
