@@ -603,18 +603,11 @@ export default function CustomerHomePage() {
     customAddons.length > 0;
 
   return (
-    <div className="min-h-screen bg-[#fdfaf6] flex flex-col font-sans relative text-slate-900 selection:bg-[#9a3412] selection:text-white">
-      {/* Subtle decorative background glow (Traditional / Earthy) */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-orange-600/10 blur-[120px] rounded-full" />
-        <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] bg-amber-600/10 blur-[130px] rounded-full" />
-      </div>
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+      {/* 1. Header */}
+      <Header shopName={pricing.shop_name} />
 
-      <div className="relative z-10 flex flex-col flex-1">
-        {/* 1. Header */}
-        <Header shopName={pricing.shop_name} />
-
-        <main className="max-w-xl mx-auto w-full px-4 pt-4 pb-4 space-y-4 flex-1">
+      <main className="max-w-xl mx-auto w-full px-4 pt-4 pb-4 space-y-4">
         {!priceBreakdown && (
           <p role="alert" className="rounded-xl bg-amber-50 p-4 text-amber-900">
             Pricing is unavailable for this selection. Choose another print option or contact the shopkeeper.
@@ -958,7 +951,6 @@ export default function CustomerHomePage() {
             />
           );
         })()}
-      </div>
     </div>
   );
 }

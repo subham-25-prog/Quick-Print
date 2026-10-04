@@ -25,28 +25,17 @@ export const Header: React.FC<HeaderProps> = React.memo(({ isAdmin = false, shop
   }, [displayName]);
 
   return (
-    <header className="bg-[#fcf6f0]/95 backdrop-blur-xl border-b border-[#8a3c26]/20 sticky top-0 z-40 shadow-xs relative overflow-hidden">
-      {/* Earthy Terracotta Kalka (Paisley) Motif on the right */}
-      <div 
-        className="absolute right-0 top-0 bottom-0 w-[300px] opacity-[0.06] pointer-events-none mix-blend-multiply"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 90 C 90 90, 90 40, 50 40 C 25 40, 25 15, 50 5 C 10 20, -5 60, 20 90 Z' fill='none' stroke='%2378350f' stroke-width='3' /%3E%3Cpath d='M45 80 C 70 80, 70 48, 48 48 C 30 48, 30 25, 48 15 C 20 28, 15 55, 25 80 Z' fill='none' stroke='%239a3412' stroke-width='2' stroke-dasharray='4 4' /%3E%3Ccircle cx='40' cy='62' r='6' fill='%2378350f' /%3E%3Ccircle cx='40' cy='62' r='12' fill='none' stroke='%239a3412' stroke-width='1.5' /%3E%3C/svg%3E")`,
-          backgroundSize: '160px 160px',
-          backgroundPosition: 'right -20px top -30px',
-          backgroundRepeat: 'no-repeat',
-        }}
-      />
-      
-      <div className="max-w-2xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3 relative z-10">
+    <header className="bg-white/85 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-40 shadow-xs">
+      <div className="max-w-2xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
         <Link href="/" className="flex min-w-0 flex-1 items-center gap-3.5 group">
           <div className="relative">
-            <div className="absolute inset-0 bg-[#c2410c] rounded-xl blur-md opacity-25 group-hover:opacity-60 transition-opacity duration-300"></div>
-            <div className="relative w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-[#9a3412] via-[#c2410c] to-[#d97706] flex items-center justify-center text-white shadow-[0_4px_10px_rgba(154,52,18,0.25)] group-hover:scale-105 transition-all duration-300 ring-1 ring-white/40">
-              <Printer className="w-5 h-5 text-white drop-shadow-[0_1px_2px_rgba(67,20,7,0.6)]" />
+            <div className="absolute inset-0 bg-indigo-500 rounded-xl blur-md opacity-30 group-hover:opacity-60 transition-opacity duration-300"></div>
+            <div className="relative w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-700 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-all duration-300 ring-1 ring-white/20">
+              <Printer className="w-5 h-5 text-white drop-shadow-sm" />
             </div>
           </div>
           <div className="min-w-0 [overflow-wrap:anywhere]">
-            <h1 className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-[#431407] via-[#78350f] to-[#9a3412] bg-clip-text text-transparent leading-tight tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.9)]">
+            <h1 className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 bg-clip-text text-transparent leading-tight tracking-tight">
               {displayName}
             </h1>
           </div>
