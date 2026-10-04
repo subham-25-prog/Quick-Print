@@ -626,6 +626,31 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     [drawPreviewUnavailable]
   );
 
+  // Swipe logic state
+  const touchStartX = useRef<number | null>(null);
+  const touchEndX = useRef<number | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchEndX.current = null;
+    touchStartX.current = e.targetTouches[0].clientX;
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    touchEndX.current = e.targetTouches[0].clientX;
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchStartX.current === null || touchEndX.current === null) return;
+    const distance = touchStartX.current - touchEndX.current;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+    if (isLeftSwipe && currentPage < totalSheetsToPreview) {
+      setCurrentPage((p) => Math.min(totalSheetsToPreview, p + 1));
+    } else if (isRightSwipe && currentPage > 1) {
+      setCurrentPage((p) => Math.max(1, p - 1));
+    }
+  }, [currentPage, totalSheetsToPreview]);
+
   // --- Main Canvas Render Effect ---
   useEffect(() => {
     let cancelled = false;
@@ -1179,7 +1204,12 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         </div>
 
         {/* Centered Document Canvas Container */}
-        <div className="flex-1 w-full flex items-center justify-center overflow-auto p-1 sm:p-4 my-auto relative touch-manipulation">
+        <div 
+          className="flex-1 w-full flex items-center justify-center overflow-auto p-1 sm:p-4 my-auto relative touch-manipulation"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
           <div
             className="relative bg-white shadow-[0_12px_40px_rgba(0,0,0,0.65)] transition-all duration-150 rounded-xs flex items-center justify-center overflow-hidden border border-slate-400/20 contain-paint"
             style={{
