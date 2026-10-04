@@ -13,7 +13,8 @@ AlertCircle,
 RefreshCw,
 Save,
 Play,
-Trash2
+Trash2,
+Download
 } from '@/components/ui/Icons';
 
 interface PrinterCardProps {
@@ -353,6 +354,15 @@ export default function AdminPrintingSettingsPage() {
               </h1>
             </div>
             <div className="flex items-center gap-2">
+              <a
+                href="/downloads/quickprint-agent.zip"
+                download="quickprint-agent.zip"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-all shadow-2xs active:scale-95"
+                title="Download Windows Print Agent package for this shop PC"
+              >
+                <Download className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Download Agent</span>
+              </a>
               <button
                 type="button"
                 onClick={loadPrinters}
@@ -442,6 +452,15 @@ export default function AdminPrintingSettingsPage() {
                   </p>
                 </div>
                 <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
+                  <a
+                    href="/downloads/quickprint-agent.zip"
+                    download="quickprint-agent.zip"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors shadow-xs cursor-pointer active:scale-95"
+                    title="Download QuickPrint Agent setup files for this PC"
+                  >
+                    <Download className="w-3.5 h-3.5 text-white" />
+                    <span>Download Print Agent</span>
+                  </a>
                   <button
                     type="button"
                     onClick={loadPrinters}
@@ -455,10 +474,11 @@ export default function AdminPrintingSettingsPage() {
                     <button
                       type="button"
                       onClick={handleStartAgent}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 transition-colors shadow-xs cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-300 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                      title="Launch agent if already installed on this PC"
                     >
-                      <Play className="w-3 h-3 fill-white" />
-                      <span>Launch Print Agent</span>
+                      <Play className="w-3 h-3 fill-slate-600 text-slate-600" />
+                      <span>Launch Agent</span>
                     </button>
                   )}
                 </div>

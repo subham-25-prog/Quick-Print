@@ -49,18 +49,29 @@ export async function rateLimit(
     : 'local';
   const key = hash(`${getCurrentShopId()}:${scope}:${ip}`);
 
-  const { data, error } = await database().rpc('consume_rate_limit', {
-    p_key: key,
-    p_limit: limit,
-    p_seconds: seconds,
-  });
+  try {
+    const { data, error } = await database().rpc('consume_rate_limit', {
+      p_key: key,
+      p_limit: limit,
+      p_seconds: seconds,
+    });
 
-  if (error) {
-    throw error;
-  }
+    if (error) {
+      throw error;
+    }
 
-  if (data !== true) {
-    throw new HttpError(429, 'Too many requests. Please wait a minute and retry.');
+    if (data !== true) {
+      throw new HttpError(429, 'Too many requests. Please wait a minute and retry.');
+    }
+  } catch (err) {
+    if (err instanceof HttpError && err.status === 429) {
+      throw err;
+    }
+    // In local development without Supabase, do not block admin login
+    if (process.env.NODE_ENV !== 'production' && !process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      return;
+    }
+    throw err;
   }
 }
 

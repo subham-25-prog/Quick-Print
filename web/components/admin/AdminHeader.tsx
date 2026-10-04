@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Zap, Lock, Save, Play } from '@/components/ui/Icons';
+import { Zap, Lock, Save, Play, Download } from '@/components/ui/Icons';
 import { startPolling } from '@/lib/polling';
 import { useShopName } from '@/lib/shop-sync';
 
@@ -136,15 +136,26 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                   </Link>
                 )
               ) : (
-                <button
-                  type="button"
-                  onClick={handleStartAgent}
-                  title="Click to launch Print Agent on this PC (quickprint://start)"
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 hover:border-indigo-300 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
-                >
-                  <Play className="w-2.5 h-2.5 fill-indigo-600 text-indigo-600" />
-                  <span>Start Agent</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <a
+                    href="/downloads/quickprint-agent.zip"
+                    download="quickprint-agent.zip"
+                    title="Download QuickPrint Windows Agent setup for this PC"
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 hover:border-indigo-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+                  >
+                    <Download className="w-2.5 h-2.5 text-indigo-600" />
+                    <span>Download Agent</span>
+                  </a>
+                  <button
+                    type="button"
+                    onClick={handleStartAgent}
+                    title="Click to launch Print Agent on this PC (quickprint://start)"
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 hover:border-slate-300 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
+                  >
+                    <Play className="w-2.5 h-2.5 fill-slate-600 text-slate-600" />
+                    <span>Start Agent</span>
+                  </button>
+                </div>
               )
             )}
           </div>

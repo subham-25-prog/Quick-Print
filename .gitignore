@@ -12,6 +12,7 @@ dist/
 # Local Tarballs & Binaries
 *.tgz
 *.zip
+!web/public/downloads/*.zip
 *.tar.gz
 
 # Environment variables
