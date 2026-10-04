@@ -1348,16 +1348,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             </span>
           </button>
 
-          {/* Center: Save Changes Button */}
-          <button
-            type="button"
-            onClick={handleCloseModal}
-            className="flex-1 md:flex-none h-11 md:h-auto py-2 md:py-3 px-3 md:px-5 rounded-xl bg-slate-700/80 hover:bg-slate-600 active:bg-slate-800 border border-slate-500/70 text-slate-100 text-xs sm:text-sm font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 touch-manipulation"
-            title="Save settings & return to order"
-          >
-            <span>Save Changes</span>
-          </button>
-
           {/* Right Bottom: Confirm & Pay Button */}
           <button
             type="button"
