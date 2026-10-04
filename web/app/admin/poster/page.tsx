@@ -7,7 +7,7 @@ import { shopConfig } from '@/lib/config';
 import { useInitialPricing } from '@/lib/initial-pricing';
 import { useShopName, cleanShopName } from '@/lib/shop-sync';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
-import { Printer, Download, FileText, RefreshCw } from '@/components/ui/Icons';
+import { Download, FileText, RefreshCw } from '@/components/ui/Icons';
 import { generateShopPosterPdf, downloadPosterPdf } from '@/lib/poster-pdf';
 
 export default function ShopWallPosterPage() {
@@ -51,10 +51,6 @@ export default function ShopWallPosterPage() {
       .then((url) => setQrDataUrl(url))
       .catch((err) => console.error('QR code generation error:', err));
   }, [activeUrl]);
-
-  const handlePrint = () => {
-    window.print();
-  };
 
   const handleDownloadQr = () => {
     if (!qrDataUrl) return;
@@ -131,16 +127,6 @@ export default function ShopWallPosterPage() {
                 <Download className="w-4 h-4" />
                 <span>Save QR Image</span>
               </button>
-
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="py-2.5 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer touch-manipulation"
-                title="Print directly to connected printer"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Print Poster</span>
-              </button>
             </div>
           </div>
         </div>
@@ -166,24 +152,24 @@ export default function ShopWallPosterPage() {
             </p>
           </div>
 
-          {/* Large Centered QR Code Box (Enlarged) */}
-          <div className="p-5 sm:p-6 rounded-3xl border-2 border-indigo-100 bg-indigo-50/40 inline-block mx-auto shadow-2xs">
+          {/* Centered QR Code Box (Minimized for clean webpage layout) */}
+          <div className="p-3.5 sm:p-4 rounded-2xl border-2 border-indigo-100 bg-indigo-50/40 inline-block mx-auto shadow-2xs">
             {qrDataUrl ? (
               <img
                 src={qrDataUrl}
                 alt="Scan to Print"
-                className="w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 mx-auto rounded-2xl bg-white p-3 shadow-xs border border-slate-100 object-contain"
+                className="w-44 h-44 sm:w-48 sm:h-48 mx-auto rounded-xl bg-white p-2.5 shadow-xs border border-slate-100 object-contain"
               />
             ) : (
-              <div className="w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 text-xs font-bold">
+              <div className="w-44 h-44 sm:w-48 sm:h-48 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 text-xs font-bold">
                 Generating High-Res QR...
               </div>
             )}
-            <div className="mt-3.5 space-y-0.5">
-              <div className="text-xs sm:text-sm font-black text-indigo-700 tracking-wider uppercase">
+            <div className="mt-2.5 space-y-0.5">
+              <div className="text-xs font-black text-indigo-700 tracking-wider uppercase">
                 📱 SCAN TO UPLOAD & PRINT
               </div>
-              <div className="text-[10px] sm:text-xs text-slate-500 font-medium">
+              <div className="text-[10px] text-slate-500 font-medium">
                 Works directly in Mobile Browser • No App Needed
               </div>
             </div>
