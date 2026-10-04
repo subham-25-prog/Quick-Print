@@ -980,17 +980,19 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           </div>
 
           {/* 4. Color */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-normal text-[#9aa0a6]">Color</label>
-            <select
-              value={modalColorMode}
-              onChange={(e) => setModalColorMode(e.target.value as ColorMode)}
-              className="w-full px-3 py-2 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
-            >
-              <option value="BW">Black and white</option>
-              <option value="COLOR">Color</option>
-            </select>
-          </div>
+          {pricing?.form_fields?.allowColorPrinting !== false && (
+            <div className="space-y-1.5">
+              <label className="block text-xs font-normal text-[#9aa0a6]">Color</label>
+              <select
+                value={modalColorMode}
+                onChange={(e) => setModalColorMode(e.target.value as ColorMode)}
+                className="w-full px-3 py-2 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
+              >
+                <option value="BW">Black and white</option>
+                <option value="COLOR">Color</option>
+              </select>
+            </div>
+          )}
 
           {/* 5. More / Fewer Settings Collapsible Toggle */}
           <div className="pt-1">
@@ -1100,18 +1102,20 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               </div>
 
               {/* Two-Sided Printing */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-normal text-[#9aa0a6]">Two-sided</label>
-                <label className="flex items-center gap-2.5 cursor-pointer py-1">
-                  <input
-                    type="checkbox"
-                    checked={modalPrintSides === 'DOUBLE'}
-                    onChange={(e) => setModalPrintSides(e.target.checked ? 'DOUBLE' : 'SINGLE')}
-                    className="accent-[#8ab4f8] w-4 h-4 rounded cursor-pointer"
-                  />
-                  <span className="text-xs text-[#e8eaed]">Print on both sides</span>
-                </label>
-              </div>
+              {pricing?.form_fields?.allowDoubleSided !== false && (
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-normal text-[#9aa0a6]">Two-sided</label>
+                  <label className="flex items-center gap-2.5 cursor-pointer py-1">
+                    <input
+                      type="checkbox"
+                      checked={modalPrintSides === 'DOUBLE'}
+                      onChange={(e) => setModalPrintSides(e.target.checked ? 'DOUBLE' : 'SINGLE')}
+                      className="accent-[#8ab4f8] w-4 h-4 rounded cursor-pointer"
+                    />
+                    <span className="text-xs text-[#e8eaed]">Print on both sides</span>
+                  </label>
+                </div>
+              )}
 
               {/* Watermark */}
               <div className="space-y-1.5">
