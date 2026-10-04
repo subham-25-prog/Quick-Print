@@ -25,17 +25,27 @@ export const Header: React.FC<HeaderProps> = React.memo(({ isAdmin = false, shop
   }, [displayName]);
 
   return (
-    <header className="bg-white/85 backdrop-blur-xl border-b border-slate-200/60 sticky top-0 z-40 shadow-xs">
-      <div className="max-w-2xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
+    <header className="bg-[#fffaf5]/90 backdrop-blur-xl border-b border-orange-900/10 sticky top-0 z-40 shadow-xs relative overflow-hidden">
+      {/* Subtle Alpana / Mandala Background Pattern */}
+      <div 
+        className="absolute inset-0 opacity-[0.05] pointer-events-none mix-blend-multiply"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M40 10 C50 30 60 40 70 40 C60 40 50 50 40 70 C30 50 20 40 10 40 C20 40 30 30 40 10 Z' fill='none' stroke='%23b45309' stroke-width='1.5' /%3E%3Ccircle cx='40' cy='40' r='4' fill='%23b45309' /%3E%3Cpath d='M40 22 C45 32 52 35 60 40 C52 45 45 48 40 58 C35 48 28 45 20 40 C28 35 35 32 40 22 Z' fill='none' stroke='%23c2410c' stroke-width='1' stroke-dasharray='2 2' /%3E%3C/svg%3E")`,
+          backgroundSize: '100px 100px',
+          backgroundPosition: 'center',
+        }}
+      />
+      
+      <div className="max-w-2xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3 relative z-10">
         <Link href="/" className="flex min-w-0 flex-1 items-center gap-3.5 group">
           <div className="relative">
-            <div className="absolute inset-0 bg-indigo-500 rounded-xl blur-md opacity-30 group-hover:opacity-60 transition-opacity duration-300"></div>
-            <div className="relative w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-700 flex items-center justify-center text-white shadow-md group-hover:scale-105 transition-all duration-300 ring-1 ring-white/20">
-              <Printer className="w-5 h-5 text-white drop-shadow-sm" />
+            <div className="absolute inset-0 bg-orange-600 rounded-xl blur-md opacity-30 group-hover:opacity-70 transition-opacity duration-300"></div>
+            <div className="relative w-10 h-10 shrink-0 rounded-xl bg-gradient-to-br from-red-600 via-orange-500 to-amber-500 flex items-center justify-center text-white shadow-[0_4px_10px_rgba(234,88,12,0.2)] group-hover:scale-105 transition-all duration-300 ring-1 ring-white/40">
+              <Printer className="w-5 h-5 text-white drop-shadow-[0_1px_2px_rgba(153,27,27,0.5)]" />
             </div>
           </div>
           <div className="min-w-0 [overflow-wrap:anywhere]">
-            <h1 className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-900 bg-clip-text text-transparent leading-tight tracking-tight">
+            <h1 className="text-base sm:text-lg font-extrabold bg-gradient-to-r from-red-900 via-orange-900 to-amber-900 bg-clip-text text-transparent leading-tight tracking-tight drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)]">
               {displayName}
             </h1>
           </div>
