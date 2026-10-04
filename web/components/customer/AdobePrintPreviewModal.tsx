@@ -1025,7 +1025,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                   className="w-full px-3 py-2 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
                 >
                   {enabledPapers.a4 !== false && <option value="A4">A4</option>}
-                  <option value="LETTER">Letter</option>
                   {enabledPapers.legal !== false && <option value="LEGAL">Legal</option>}
                   {enabledPapers.a3 !== false && <option value="A3">Tabloid / A3</option>}
                   {customPapers.map((p) => (
