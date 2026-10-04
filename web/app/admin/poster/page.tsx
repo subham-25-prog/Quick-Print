@@ -1,22 +1,22 @@
 'use client';
 
-import { useState,useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { shopConfig } from '@/lib/config';
 import { useInitialPricing } from '@/lib/initial-pricing';
 import { useShopName, cleanShopName } from '@/lib/shop-sync';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
-import { Printer,Download } from '@/components/ui/Icons';
+import { Printer, Download, FileText, RefreshCw } from '@/components/ui/Icons';
+import { generateShopPosterPdf, downloadPosterPdf } from '@/lib/poster-pdf';
 
 export default function ShopWallPosterPage() {
   const initialPricing = useInitialPricing();
   const [activeUrl, setActiveUrl] = useState<string>('');
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [rawShopName, setRawShopName] = useState(initialPricing.shop_name);
-  // Use the server snapshot first. Fetching pricing after hydration should not
-  // briefly replace the saved address with an environment fallback.
   const [shopAddress, setShopAddress] = useState(initialPricing.shop_address || shopConfig.address);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const shopName = useShopName(rawShopName);
 
   useEffect(() => {
@@ -40,8 +40,8 @@ export default function ShopWallPosterPage() {
     if (!urlToEncode) return;
 
     QRCode.toDataURL(urlToEncode, {
-      width: 600,
-      margin: 2,
+      width: 1000,
+      margin: 1,
       errorCorrectionLevel: 'H',
       color: {
         dark: '#0f172a',
@@ -67,13 +67,32 @@ export default function ShopWallPosterPage() {
     document.body.removeChild(a);
   };
 
+  const handleDownloadPdf = async () => {
+    if (!qrDataUrl || isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    try {
+      const pdfBytes = await generateShopPosterPdf({
+        shopName: shopName || 'QuickPrint Express',
+        shopAddress: shopAddress || 'Shop Counter • Fast Document & Photo Printing',
+        qrDataUrl,
+      });
+      const safePrefix = (shopName || 'Shop').replace(/[^a-zA-Z0-9_-]/g, '_');
+      downloadPosterPdf(pdfBytes, `${safePrefix}_Counter_QR_Poster.pdf`);
+    } catch (err) {
+      console.error('Failed to generate poster PDF:', err);
+      alert('Unable to generate PDF poster. Please try again.');
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-20 print:bg-white print:p-0">
+    <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-20 print:bg-white print:p-0 print:pb-0">
       <div className="print:hidden">
         <AdminHeader shopName={shopName} />
       </div>
 
-      <main className="max-w-3xl mx-auto w-full px-4 pt-6 space-y-6">
+      <main className="max-w-3xl mx-auto w-full px-4 pt-6 space-y-6 print:p-0 print:max-w-full print:m-0">
         {/* Notice & Control Toolbar (Hidden on print) */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs space-y-4 print:hidden">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -83,15 +102,31 @@ export default function ShopWallPosterPage() {
                 <span>Counter QR Code & Customer Portal</span>
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">
-                High-Resolution QR Code (Level-H Error Correction). Print this on paper and stick it at your shop counter.
+                High-Resolution QR Code (Level-H Error Correction). Print this on paper or download as a 1-page A4 PDF poster for your shop counter.
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={!qrDataUrl || isGeneratingPdf}
+                className="py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer disabled:opacity-50 touch-manipulation"
+                title="Download ready-to-print 1-page A4 PDF poster"
+              >
+                {isGeneratingPdf ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FileText className="w-4 h-4" />
+                )}
+                <span>{isGeneratingPdf ? 'Generating PDF...' : 'Download PDF (A4)'}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleDownloadQr}
-                className="py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                className="py-2.5 px-3.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer touch-manipulation"
+                title="Save PNG image"
               >
                 <Download className="w-4 h-4" />
                 <span>Save QR Image</span>
@@ -100,10 +135,11 @@ export default function ShopWallPosterPage() {
               <button
                 type="button"
                 onClick={handlePrint}
-                className="py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer"
+                className="py-2.5 px-3.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all active:scale-95 cursor-pointer touch-manipulation"
+                title="Print directly to connected printer"
               >
                 <Printer className="w-4 h-4" />
-                <span>Print QR Code (A4)</span>
+                <span>Print Poster</span>
               </button>
             </div>
           </div>
@@ -112,7 +148,7 @@ export default function ShopWallPosterPage() {
         {/* The Printable A4 Poster Canvas */}
         <div
           id="quickprint-poster-canvas"
-          className="bg-white rounded-3xl p-8 sm:p-12 border-4 border-indigo-600 shadow-xl text-center space-y-7 mx-auto max-w-lg print:border-none print:shadow-none print:p-4 print:max-w-full"
+          className="bg-white rounded-3xl p-6 sm:p-10 border-4 border-indigo-600 shadow-xl text-center space-y-6 mx-auto max-w-lg print:border-none print:shadow-none print:p-2 print:space-y-4 print:max-w-full"
         >
           {/* Top Pill Badge */}
           <div className="inline-flex items-center gap-1.5 px-5 py-2 rounded-full bg-indigo-600 text-white text-xs font-extrabold tracking-wider uppercase shadow-xs">
@@ -130,24 +166,24 @@ export default function ShopWallPosterPage() {
             </p>
           </div>
 
-          {/* Large Centered QR Code Box */}
-          <div className="p-5 rounded-3xl border-2 border-indigo-100 bg-indigo-50/40 inline-block mx-auto shadow-2xs">
+          {/* Large Centered QR Code Box (Enlarged) */}
+          <div className="p-5 sm:p-6 rounded-3xl border-2 border-indigo-100 bg-indigo-50/40 inline-block mx-auto shadow-2xs">
             {qrDataUrl ? (
               <img
                 src={qrDataUrl}
                 alt="Scan to Print"
-                className="w-56 h-56 sm:w-64 sm:h-64 mx-auto rounded-2xl bg-white p-2.5 shadow-xs border border-slate-100"
+                className="w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 mx-auto rounded-2xl bg-white p-3 shadow-xs border border-slate-100 object-contain"
               />
             ) : (
-              <div className="w-56 h-56 sm:w-64 sm:h-64 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 text-xs font-bold">
+              <div className="w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 text-xs font-bold">
                 Generating High-Res QR...
               </div>
             )}
             <div className="mt-3.5 space-y-0.5">
-              <div className="text-xs font-black text-indigo-700 tracking-wider uppercase">
+              <div className="text-xs sm:text-sm font-black text-indigo-700 tracking-wider uppercase">
                 📱 SCAN TO UPLOAD & PRINT
               </div>
-              <div className="text-[10px] text-slate-500 font-medium">
+              <div className="text-[10px] sm:text-xs text-slate-500 font-medium">
                 Works directly in Mobile Browser • No App Needed
               </div>
             </div>
@@ -222,6 +258,28 @@ export default function ShopWallPosterPage() {
           <DeveloperBadge />
         </div>
       </main>
+
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 6mm;
+          }
+          html, body {
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          #quickprint-poster-canvas {
+            border: none !important;
+            box-shadow: none !important;
+            padding: 0 !important;
+            max-width: 100% !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
