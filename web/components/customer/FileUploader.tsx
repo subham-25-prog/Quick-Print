@@ -6,6 +6,7 @@ import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Plus, Minus, T
 import { BatchFileItem } from '@/types';
 import { detectFilePageCount, calculateBatchTotalPages } from '@/lib/batch-compiler';
 import { uploadDocumentFile, UploadedFileState, formatFileSize } from '@/lib/uploader';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 export type { UploadedFileState };
 
@@ -62,6 +63,8 @@ const DocumentPreviewBox = React.memo<{
           <img
             src={imgUrl}
             alt={name}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover"
           />
         ) : (
@@ -164,6 +167,20 @@ interface BatchFileRowProps {
   onRemove: (id: string) => void;
 }
 
+function areBatchFileRowPropsEqual(prev: BatchFileRowProps, next: BatchFileRowProps): boolean {
+  return (
+    prev.idx === next.idx &&
+    prev.item.id === next.item.id &&
+    prev.item.copies === next.item.copies &&
+    prev.item.pageCount === next.item.pageCount &&
+    prev.item.size === next.item.size &&
+    prev.item.name === next.item.name &&
+    prev.item.file === next.item.file &&
+    prev.onUpdateCopies === next.onUpdateCopies &&
+    prev.onRemove === next.onRemove
+  );
+}
+
 const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies, onRemove }) => {
   return (
     <div
@@ -228,7 +245,7 @@ const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies,
       </div>
     </div>
   );
-});
+}, areBatchFileRowPropsEqual);
 BatchFileRow.displayName = 'BatchFileRow';
 
 function generateUUID(): string {
@@ -473,7 +490,8 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
     const totalPages = calculateBatchTotalPages(batchFiles);
 
     return (
-      <div className="w-full space-y-3">
+      <ErrorBoundary fallbackTitle="Document batch manager encountered an issue">
+        <div className="w-full space-y-3">
         <input
           ref={fileInputRef}
           type="file"
@@ -578,12 +596,14 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           </div>
         )}
       </div>
+      </ErrorBoundary>
     );
   }
 
   // --- SINGLE FILE MODE RENDER ---
   return (
-    <div className="w-full">
+    <ErrorBoundary fallbackTitle="Document uploader encountered an issue">
+      <div className="w-full">
       <input
         ref={fileInputRef}
         type="file"
@@ -642,11 +662,14 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                 </button>
               </div>
 
-              {/* Real-time Gradient Progress Bar */}
+              {/* Real-time Gradient Progress Bar - 120 FPS Composited */}
               <div className="w-full bg-slate-200/80 rounded-full h-2 overflow-hidden mb-2 shadow-inner">
                 <div
-                  className="bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 h-full rounded-full transition-all duration-200 ease-out shadow-xs"
-                  style={{ width: `${Math.max(uploadProgress, 6)}%` }}
+                  className="w-full bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 h-full rounded-full transition-transform duration-200 ease-out shadow-xs will-change-transform"
+                  style={{
+                    transform: `scaleX(${Math.max(uploadProgress, 6) / 100})`,
+                    transformOrigin: 'left',
+                  }}
                 />
               </div>
 
@@ -720,6 +743,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
         </div>
       )}
     </div>
+    </ErrorBoundary>
   );
 });
 FileUploader.displayName = 'FileUploader';

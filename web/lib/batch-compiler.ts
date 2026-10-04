@@ -62,9 +62,54 @@ async function compileBatchPdfInWorker(items: BatchFileItem[]): Promise<{ file: 
   });
 }
 
+async function fastDetectPdfPageCount(file: File): Promise<number | null> {
+  try {
+    const headSize = Math.min(file.size, 131072);
+    const headBlob = file.slice(0, headSize);
+    const headText = await headBlob.text();
+
+    const pagesRegex = /\/Type\s*\/Pages[^>]*?\/Count\s+(\d+)/g;
+    let match: RegExpExecArray | null;
+    let maxCount = 0;
+
+    while ((match = pagesRegex.exec(headText)) !== null) {
+      const c = parseInt(match[1], 10);
+      if (c > maxCount) maxCount = c;
+    }
+
+    const pagesReversedRegex = /\/Count\s+(\d+)[^>]*?\/Type\s*\/Pages/g;
+    while ((match = pagesReversedRegex.exec(headText)) !== null) {
+      const c = parseInt(match[1], 10);
+      if (c > maxCount) maxCount = c;
+    }
+
+    if (file.size > headSize) {
+      const tailOffset = Math.max(0, file.size - 131072);
+      const tailBlob = file.slice(tailOffset);
+      const tailText = await tailBlob.text();
+
+      while ((match = pagesRegex.exec(tailText)) !== null) {
+        const c = parseInt(match[1], 10);
+        if (c > maxCount) maxCount = c;
+      }
+      while ((match = pagesReversedRegex.exec(tailText)) !== null) {
+        const c = parseInt(match[1], 10);
+        if (c > maxCount) maxCount = c;
+      }
+    }
+
+    if (maxCount > 0 && maxCount < 100000) {
+      return maxCount;
+    }
+  } catch {
+    // Fall back to full parser
+  }
+  return null;
+}
+
 /**
- * Rapidly detect the page count of a PDF file using pdf-lib client-side.
- * Images (JPG, PNG) are treated as 1 page.
+ * Rapidly detect the page count of a PDF file using memory-safe partial stream inspection,
+ * falling back to pdf-lib only if needed. Images (JPG, PNG) are treated as 1 page.
  */
 export async function detectFilePageCount(file: File): Promise<number> {
   const isPdf =
@@ -72,6 +117,11 @@ export async function detectFilePageCount(file: File): Promise<number> {
 
   if (isPdf) {
     try {
+      const fastCount = await fastDetectPdfPageCount(file);
+      if (fastCount !== null) {
+        return Math.max(1, fastCount);
+      }
+
       const buffer = await file.arrayBuffer();
       const pdf = await PDFDocument.load(buffer, { ignoreEncryption: true });
       return Math.max(1, pdf.getPageCount());

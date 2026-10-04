@@ -25,7 +25,9 @@ import {
 } from '@/types';
 import { calculateBatchTotalPages } from '@/lib/batch-compiler';
 import { createCheckoutPreparation } from '@/lib/checkout-preparation';
-import { User, Phone, MessageSquare, XCircle } from '@/components/ui/Icons';
+import { XCircle } from '@/components/ui/Icons';
+import { CustomerIdentificationCard } from '@/components/customer/CustomerIdentificationCard';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 
 const AdobePrintPreviewModal = dynamic(
   () => import('@/components/customer/AdobePrintPreviewModal').then((module) => module.AdobePrintPreviewModal),
@@ -603,7 +605,8 @@ export default function CustomerHomePage() {
     customAddons.length > 0;
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+    <ErrorBoundary fallbackTitle="QuickPrint encountered a temporary issue">
+      <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
       {/* 1. Header */}
       <Header shopName={pricing.shop_name} />
 
@@ -705,67 +708,20 @@ export default function CustomerHomePage() {
 
         {/* Customer Details */}
         {showCustomerInfoSection && (
-          <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-3.5 hover:border-slate-300 [animation-delay:180ms] contain-layout">
-            <h2 className="text-sm font-bold text-slate-900 select-none">
-              {hasAnyAddons ? '4. Customer Identification' : '3. Customer Identification'}
-            </h2>
-
-            <div className="space-y-3">
-              {showNameField && (
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1 select-none">
-                    Your Full Name {isNameRequired ? <span className="text-rose-500">*</span> : <span className="text-slate-400 font-normal">(Optional)</span>}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      placeholder="Enter your name"
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
-                    />
-                    <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  </div>
-                </div>
-              )}
-
-              {showPhoneField && (
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1 select-none">
-                    WhatsApp / Mobile Number {isPhoneRequired ? <span className="text-rose-500">*</span> : <span className="text-slate-400 font-normal">(Optional)</span>}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="tel"
-                      value={customerPhone}
-                      onChange={(e) => setCustomerPhone(e.target.value)}
-                      placeholder="e.g. 9876543210"
-                      className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
-                    />
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  </div>
-                </div>
-              )}
-
-              {showNotesField && (
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1 select-none">
-                    Special Instructions / Notes <span className="text-slate-400 font-normal">(Optional)</span>
-                  </label>
-                  <div className="relative">
-                    <textarea
-                      rows={2}
-                      value={customerNotes}
-                      onChange={(e) => setCustomerNotes(e.target.value)}
-                      placeholder="Pickup notes (all uploaded pages will print)"
-                      className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600"
-                    />
-                    <MessageSquare className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
+          <CustomerIdentificationCard
+            customerName={customerName}
+            onCustomerNameChange={setCustomerName}
+            customerPhone={customerPhone}
+            onCustomerPhoneChange={setCustomerPhone}
+            customerNotes={customerNotes}
+            onCustomerNotesChange={setCustomerNotes}
+            showNameField={showNameField}
+            isNameRequired={isNameRequired}
+            showPhoneField={showPhoneField}
+            isPhoneRequired={isPhoneRequired}
+            showNotesField={showNotesField}
+            sectionIndexText={hasAnyAddons ? '4. Customer Identification' : '3. Customer Identification'}
+          />
         )}
 
         {/* Developer Attribution Card */}
@@ -952,5 +908,6 @@ export default function CustomerHomePage() {
           );
         })()}
     </div>
+    </ErrorBoundary>
   );
 }

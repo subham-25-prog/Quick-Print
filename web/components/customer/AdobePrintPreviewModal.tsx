@@ -62,8 +62,37 @@ export function getPdfJs() {
   return cachedPdfJsPromise;
 }
 
-// Global cache for parsed PDF documents to ensure instant modal reopen
+// Global bounded LRU cache for parsed PDF documents to prevent memory exhaustion
+const MAX_PARSED_DOCS = 2;
 const parsedDocCache = new Map<string, any>();
+
+function cacheParsedDoc(key: string, doc: any) {
+  if (!key || !doc) return;
+  if (parsedDocCache.has(key)) {
+    parsedDocCache.delete(key);
+  } else if (parsedDocCache.size >= MAX_PARSED_DOCS) {
+    const oldestKey = parsedDocCache.keys().next().value;
+    if (oldestKey) {
+      const oldestDoc = parsedDocCache.get(oldestKey);
+      try {
+        oldestDoc?.cleanup?.();
+        oldestDoc?.destroy?.();
+      } catch {}
+      parsedDocCache.delete(oldestKey);
+    }
+  }
+  parsedDocCache.set(key, doc);
+}
+
+function clearCanvasCache(cache: Map<string, HTMLCanvasElement>) {
+  cache.forEach((canvas) => {
+    try {
+      canvas.width = 0;
+      canvas.height = 0;
+    } catch {}
+  });
+  cache.clear();
+}
 
 export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   isOpen,
@@ -314,7 +343,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     if (!isOpen) return;
     setPdfDoc(null);
     setIsPdfLoading(isPdfFile);
-    pdfPageCache.current.clear();
+    clearCanvasCache(pdfPageCache.current);
     imageElementCache.current.clear();
   }, [isOpen, uploadedFile?.file, uploadedFile?.uploadId, fileName, isPdfFile]);
 
@@ -375,7 +404,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         const doc = await loadingTask.promise;
 
         if (docCacheKey) {
-          parsedDocCache.set(docCacheKey, doc);
+          cacheParsedDoc(docCacheKey, doc);
         }
 
         if (active) {
@@ -601,8 +630,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         const viewport = page.getViewport({ scale: scale * pixelRatio });
 
         const offCanvas = document.createElement('canvas');
-        offCanvas.width = Math.max(1, Math.round(viewport.width));
-        offCanvas.height = Math.max(1, Math.round(viewport.height));
+        offCanvas.width = Math.max(1, Math.min(3072, Math.round(viewport.width)));
+        offCanvas.height = Math.max(1, Math.min(3072, Math.round(viewport.height)));
         const offCtx = offCanvas.getContext('2d');
         if (!offCtx) return;
 
@@ -610,6 +639,19 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           canvasContext: offCtx,
           viewport,
         }).promise;
+
+        // Bounded LRU eviction for offscreen page canvases (max 8 pages)
+        if (pdfPageCache.current.size >= 8) {
+          const oldestKey = pdfPageCache.current.keys().next().value;
+          if (oldestKey) {
+            const oldCanvas = pdfPageCache.current.get(oldestKey);
+            if (oldCanvas) {
+              oldCanvas.width = 0;
+              oldCanvas.height = 0;
+            }
+            pdfPageCache.current.delete(oldestKey);
+          }
+        }
 
         pdfPageCache.current.set(cacheKey, offCanvas);
 

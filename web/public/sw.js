@@ -1,5 +1,5 @@
 // QuickPrint Service Worker - High Performance Offline-First Shell
-const CACHE_NAME = 'quickprint-cache-v2';
+const CACHE_NAME = 'quickprint-cache-v3';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -57,8 +57,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // API endpoints: Network first, never break live pricing/order updates
+  // API endpoints: Network first, cache successful GET responses for pricing/settings
   if (url.pathname.startsWith('/api/')) {
+    if (request.method === 'GET' && url.pathname.includes('/api/pricing')) {
+      event.respondWith(
+        fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const clone = response.clone();
+              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            }
+            return response;
+          })
+          .catch(() => {
+            return caches.match(request).then((cached) => {
+              if (cached) return cached;
+              return new Response(JSON.stringify({ error: 'Offline mode active', offline: true }), {
+                status: 503,
+                headers: { 'Content-Type': 'application/json' },
+              });
+            });
+          })
+      );
+      return;
+    }
+
     event.respondWith(
       fetch(request).catch(() => {
         return caches.match(request).then((cached) => {
