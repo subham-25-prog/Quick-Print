@@ -29,6 +29,7 @@ import { createCheckoutPreparation } from '@/lib/checkout-preparation';
 import { XCircle } from '@/components/ui/Icons';
 import { CustomerIdentificationCard } from '@/components/customer/CustomerIdentificationCard';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import type { CanvaImageItem } from '@/components/customer/CanvaStudioCanvas';
 
 const AdobePrintPreviewModal = dynamic(
   () => import('@/components/customer/AdobePrintPreviewModal').then((module) => module.AdobePrintPreviewModal),
@@ -51,6 +52,7 @@ export default function CustomerHomePage() {
   // Customer selections
   const [uploadedFile, setUploadedFile] = useState<UploadedFileState | null>(null);
   const [batchFiles, setBatchFiles] = useState<BatchFileItem[]>([]);
+  const [canvaSavedItems, setCanvaSavedItems] = useState<CanvaImageItem[]>([]);
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const lastCompiledBatchSig = useRef<string>('');
   const [checkoutPreparation] = useState(createCheckoutPreparation);
@@ -530,6 +532,7 @@ export default function CustomerHomePage() {
     setBatchFiles(files);
     setBatchPreviewFile(null);
     setUploadedFile(null);
+    setCanvaSavedItems([]);
     lastCompiledBatchSig.current = '';
     if (files.length === 1 && files[0].copies) {
       setCopies(files[0].copies);
@@ -861,6 +864,8 @@ export default function CustomerHomePage() {
               onPrintSidesChange={setPrintSides}
               onCopiesChange={handleCopiesChange}
               batchFiles={batchFiles}
+              savedCanvaItems={canvaSavedItems}
+              onCanvaItemsChange={setCanvaSavedItems}
               onApplyCanvasLayout={async (newFile: File) => {
                 try {
                   const uploadRes = await uploadDocumentFile(newFile);

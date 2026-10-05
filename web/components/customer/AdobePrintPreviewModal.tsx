@@ -42,6 +42,8 @@ interface AdobePrintPreviewModalProps {
   onProceedToOrder?: () => void;
   onApplyCanvasLayout?: (file: File) => Promise<void> | void;
   batchFiles?: Array<{ name: string; file: File; id?: string }>;
+  savedCanvaItems?: CanvaImageItem[];
+  onCanvaItemsChange?: (items: CanvaImageItem[]) => void;
 }
 
 // Cached PDF.js module promise so it's loaded only once across the whole app
@@ -120,12 +122,22 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   onProceedToOrder,
   onApplyCanvasLayout,
   batchFiles,
+  savedCanvaItems: propsSavedCanvaItems,
+  onCanvaItemsChange: propsOnCanvaItemsChange,
 }) => {
   // --- Canva Studio State ---
   const [viewMode, setViewMode] = useState<'preview' | 'canva'>('preview');
   const [canvaSnapshotUrl, setCanvaSnapshotUrl] = useState<string | null>(null);
   const [canvaSnapshotUrls, setCanvaSnapshotUrls] = useState<string[]>([]);
-  const [savedCanvaItems, setSavedCanvaItems] = useState<CanvaImageItem[]>([]);
+  const [internalSavedCanvaItems, setInternalSavedCanvaItems] = useState<CanvaImageItem[]>([]);
+  const savedCanvaItems = propsSavedCanvaItems ?? internalSavedCanvaItems;
+  const setSavedCanvaItems = useCallback(
+    (items: CanvaImageItem[]) => {
+      setInternalSavedCanvaItems(items);
+      propsOnCanvaItemsChange?.(items);
+    },
+    [propsOnCanvaItemsChange]
+  );
 
   // Clean, customer-friendly display document title (no robotic Batch_Order or internal filenames)
   const displayFileName = useMemo(() => {
