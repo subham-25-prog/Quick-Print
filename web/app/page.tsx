@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { FileUploader, UploadedFileState } from '@/components/customer/FileUploader';
+import { uploadDocumentFile } from '@/lib/uploader';
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
 import { calculateOrderPrice } from '@/lib/pricing';
@@ -900,6 +901,28 @@ export default function CustomerHomePage() {
               onColorModeChange={setColorMode}
               onPrintSidesChange={setPrintSides}
               onCopiesChange={handleCopiesChange}
+              batchFiles={batchFiles}
+              onApplyCanvasLayout={async (newFile: File) => {
+                try {
+                  const uploadRes = await uploadDocumentFile(newFile);
+                  setUploadedFile(uploadRes);
+                  if (hasBatch) {
+                    setBatchFiles([
+                      {
+                        id: `batch-${Date.now()}`,
+                        file: newFile,
+                        name: newFile.name,
+                        size: newFile.size,
+                        pageCount: 1,
+                        copies: 1,
+                      },
+                    ]);
+                    setBatchPreviewFile(newFile);
+                  }
+                } catch (e) {
+                  console.error('Failed to upload customized layout:', e);
+                }
+              }}
               onProceedToOrder={() => {
                 setIsAdobeModalOpen(false);
                 handleOpenPayment();

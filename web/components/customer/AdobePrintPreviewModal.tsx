@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { AdvancedPrintConfig, PaperSize, ColorMode, PrintSides, PricingConfig } from '@/types';
 import { UploadedFileState } from './FileUploader';
+import { CanvaStudioCanvas } from './CanvaStudioCanvas';
 import {
   ChevronDown,
   ChevronUp,
@@ -16,6 +17,7 @@ import {
   FileText,
   Sliders,
   Edit,
+  Sparkles,
 } from '@/components/ui/Icons';
 
 interface AdobePrintPreviewModalProps {
@@ -39,6 +41,8 @@ interface AdobePrintPreviewModalProps {
   onPrintSidesChange?: (val: PrintSides) => void;
   onCopiesChange?: (val: number) => void;
   onProceedToOrder?: () => void;
+  onApplyCanvasLayout?: (file: File) => Promise<void> | void;
+  batchFiles?: Array<{ name: string; file: File; id?: string }>;
 }
 
 // Cached PDF.js module promise so it's loaded only once across the whole app
@@ -115,7 +119,12 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   onPrintSidesChange,
   onCopiesChange,
   onProceedToOrder,
+  onApplyCanvasLayout,
+  batchFiles,
 }) => {
+  // --- Canva Studio State ---
+  const [viewMode, setViewMode] = useState<'preview' | 'canva'>('preview');
+
   // --- Sidebar Settings State ---
   const [modalCopies, setModalCopies] = useState<number>(copies || 1);
   const [modalLayout, setModalLayout] = useState<'PORTRAIT' | 'LANDSCAPE'>(
@@ -324,6 +333,35 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       /\.(jpg|jpeg|png|webp|gif|bmp|svg)$/i.test(name)
     );
   }, [fileType, uploadedFile?.fileType, uploadedFile?.file, fileName, uploadedFile?.fileName]);
+
+  const canvaInitialImages = useMemo(() => {
+    const list: Array<{ url: string; name: string }> = [];
+    if (activePreviewUrl && (isImgFile || !fileName?.toLowerCase().endsWith('.pdf'))) {
+      list.push({ url: activePreviewUrl, name: fileName || 'Photo' });
+    }
+    if (batchFiles && batchFiles.length > 0) {
+      batchFiles.forEach((b) => {
+        if (b.file && (b.file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(b.name))) {
+          try {
+            list.push({ url: URL.createObjectURL(b.file), name: b.name });
+          } catch {}
+        }
+      });
+    }
+    return list;
+  }, [activePreviewUrl, isImgFile, fileName, batchFiles]);
+
+  const handleApplyCanvaLayout = async (renderedFile: File) => {
+    try {
+      const newUrl = URL.createObjectURL(renderedFile);
+      setLocalObjectUrl(newUrl);
+    } catch {}
+
+    if (onApplyCanvasLayout) {
+      await onApplyCanvasLayout(renderedFile);
+    }
+    setViewMode('preview');
+  };
 
   const isPdfFile = useMemo(() => {
     if (isImgFile) return false;
@@ -924,6 +962,35 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
         {/* Scrollable Form Settings */}
         <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-5 text-xs text-[#e8eaed]">
+          {/* Canva Studio Quick Launch Card */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-slate-900 border border-purple-500/40 space-y-2.5 shadow-lg">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black text-purple-200 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-amber-300 animate-spin [animation-duration:8s]" />
+                <span>Canva Studio Mode</span>
+              </span>
+              <span className="px-2 py-0.5 rounded-full bg-purple-500/30 text-[9px] font-black text-purple-300 uppercase tracking-wider border border-purple-400/30">
+                Custom Page
+              </span>
+            </div>
+            <p className="text-[11px] text-purple-200/80 leading-relaxed font-medium">
+              Rearrange, resize, rotate, add multiple images, or use Passport photo &amp; ID card grids.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setViewMode('canva');
+                if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                  setMobileTab('preview');
+                }
+              }}
+              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer"
+            >
+              <span>{viewMode === 'canva' ? 'Editing in Canva Studio' : 'Open Canva Studio'}</span>
+              <span>🎨</span>
+            </button>
+          </div>
+
           {/* 1. Copies with Stepper for easy mobile tapping */}
           <div className="space-y-1.5">
             <label className="block text-xs font-normal text-[#9aa0a6]">Copies</label>
@@ -1218,9 +1285,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         }`}
       >
         {/* Top Info Bar */}
-        <div className="w-full flex items-center justify-between text-xs text-[#9aa0a6] px-2 shrink-0 z-10">
-          <div className="flex items-center gap-2 truncate max-w-[220px] sm:max-w-xs">
-            <span className="truncate font-mono text-[11px]">
+        <div className="w-full flex items-center justify-between text-xs text-[#9aa0a6] px-2 shrink-0 z-10 gap-2 flex-wrap pb-2 border-b border-[#3c4043]/50">
+          <div className="flex items-center gap-2 truncate max-w-[200px] sm:max-w-xs">
+            <span className="truncate font-mono text-[11px] text-white">
               {fileName}
             </span>
             {pageRangeMode === 'RANGE' && currentSheetPages.length > 0 && (
@@ -1231,6 +1298,36 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               </span>
             )}
           </div>
+
+          {/* Canva Studio vs Standard Preview Segmented Control */}
+          <div className="flex items-center p-0.5 rounded-xl bg-[#202124] border border-[#3c4043] shadow-inner">
+            <button
+              type="button"
+              onClick={() => setViewMode('preview')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'preview'
+                  ? 'bg-slate-700 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Standard Preview</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('canva')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'canva'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
+                  : 'text-purple-300 hover:text-white'
+              }`}
+              title="Canva-style canvas editor: rearrange, resize, rotate, and add multiple images"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+              <span>Canva Studio</span>
+            </button>
+          </div>
+
           <div className="flex items-center gap-3">
             <span className="text-[11px] font-mono hidden sm:inline-block">
               {modalPaperSize} • {modalLayout === 'LANDSCAPE' ? 'Landscape' : 'Portrait'} •{' '}
@@ -1248,7 +1345,20 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           </div>
         </div>
 
-        {/* Centered Document Canvas Container */}
+        {viewMode === 'canva' ? (
+          <CanvaStudioCanvas
+            initialImages={canvaInitialImages}
+            paperSize={modalPaperSize}
+            isLandscape={isLandscape}
+            paperAspectRatio={paperAspectRatio}
+            isBw={isBw}
+            zoomLevel={zoomLevel}
+            onApplyLayout={handleApplyCanvaLayout}
+            onCancel={() => setViewMode('preview')}
+          />
+        ) : (
+          <>
+            {/* Centered Document Canvas Container */}
         <div 
           className="flex-1 w-full flex items-center justify-center overflow-auto p-1 sm:p-4 my-auto relative touch-manipulation"
           onTouchStart={handleTouchStart}
@@ -1367,6 +1477,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <RotateCw className="w-3.5 h-3.5" />
           </button>
         </div>
+          </>
+        )}
 
         {/* Bottom Quick-Action Bar in Preview Canvas: Edit on left side, Confirm & Pay on right bottom */}
         <div className="w-full px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-2.5 md:gap-3 z-20 shrink-0 bg-[#202124]/95 backdrop-blur-md border-t border-[#3c4043]/70 shadow-lg touch-manipulation">
