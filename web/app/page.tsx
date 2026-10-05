@@ -864,7 +864,7 @@ export default function CustomerHomePage() {
               onApplyCanvasLayout={async (newFile: File) => {
                 try {
                   const uploadRes = await uploadDocumentFile(newFile);
-                  setUploadedFile(uploadRes);
+                  setUploadedFile({ ...uploadRes, file: newFile });
                   setBatchFiles([]);
                   setBatchPreviewFile(null);
                 } catch (e) {

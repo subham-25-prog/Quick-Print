@@ -200,7 +200,26 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   const pdfPageCache = useRef<Map<string, HTMLCanvasElement>>(new Map());
   const imageElementCache = useRef<Map<string, HTMLImageElement>>(new Map());
 
-  const totalDocPages = pdfPageCount > 0 ? pdfPageCount : pageCount > 0 ? pageCount : 1;
+  const canvaMaxPage = useMemo(() => {
+    if (savedCanvaItems && savedCanvaItems.length > 0) {
+      return Math.max(1, ...savedCanvaItems.map((it) => (it.pageIndex ?? 0) + 1));
+    }
+    if (batchFiles && batchFiles.length > 0) {
+      return batchFiles.length;
+    }
+    return 1;
+  }, [savedCanvaItems, batchFiles]);
+
+  const totalDocPages =
+    canvaSnapshotUrls.length > 0
+      ? canvaSnapshotUrls.length
+      : savedCanvaItems.length > 0
+      ? canvaMaxPage
+      : pdfPageCount > 0
+      ? pdfPageCount
+      : pageCount > 0
+      ? pageCount
+      : canvaMaxPage;
 
   // Sync state with incoming props when modal opens
   useEffect(() => {
@@ -428,11 +447,12 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   // Clear PDF rendering state and raster caches whenever document changes or modal opens
   useEffect(() => {
     if (!isOpen) return;
+    if (savedCanvaItems.length > 0 || canvaSnapshotUrls.length > 0) return;
     setPdfDoc(null);
     setIsPdfLoading(isPdfFile);
     clearCanvasCache(pdfPageCache.current);
     imageElementCache.current.clear();
-  }, [isOpen, uploadedFile?.file, uploadedFile?.uploadId, fileName, isPdfFile]);
+  }, [isOpen, uploadedFile?.file, uploadedFile?.uploadId, fileName, isPdfFile, savedCanvaItems.length, canvaSnapshotUrls.length]);
 
   // --- Load actual uploaded PDF document ---
   useEffect(() => {
@@ -687,6 +707,50 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     []
   );
 
+  // Helper to render Canva Studio items directly onto preview canvas slot
+  const renderCanvaPageItems = useCallback(
+    async (
+      ctx: CanvasRenderingContext2D,
+      pageItems: CanvaImageItem[],
+      slotX: number,
+      slotY: number,
+      slotW: number,
+      slotH: number
+    ): Promise<void> => {
+      for (const item of pageItems) {
+        let img = imageElementCache.current.get(item.src);
+        if (!img || !img.complete || img.naturalWidth === 0) {
+          try {
+            img = await new Promise<HTMLImageElement>((resolve, reject) => {
+              const el = new Image();
+              el.crossOrigin = 'anonymous';
+              el.onload = () => resolve(el);
+              el.onerror = reject;
+              el.src = item.src;
+            });
+            imageElementCache.current.set(item.src, img);
+          } catch {
+            continue;
+          }
+        }
+
+        const ix = slotX + (item.x / 100) * slotW;
+        const iy = slotY + (item.y / 100) * slotH;
+        const iw = (item.width / 100) * slotW;
+        const ih = (item.height / 100) * slotH;
+
+        ctx.save();
+        ctx.translate(ix + iw / 2, iy + ih / 2);
+        if (item.rotation) {
+          ctx.rotate((item.rotation * Math.PI) / 180);
+        }
+        ctx.drawImage(img, -iw / 2, -ih / 2, iw, ih);
+        ctx.restore();
+      }
+    },
+    []
+  );
+
   // Helper to render real PDF page from uploaded document
   const renderPdfSlot = useCallback(
     async (
@@ -851,12 +915,27 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         const offsetX = targetX + (targetW - scaledW) / 2;
         const offsetY = targetY + (targetH - scaledH) / 2;
 
-        // Render actual uploaded document
+        // Render actual uploaded document or customized Canva layout
+        const pageCanvaItems = savedCanvaItems
+          .filter((it) => (it.pageIndex ?? 0) === (pageToDraw - 1))
+          .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+
         const pageSnapshot = canvaSnapshotUrls[pageToDraw - 1] || (pageToDraw === 1 ? canvaSnapshotUrl : null);
-        if (pageSnapshot) {
+
+        if (pageCanvaItems.length > 0) {
+          await renderCanvaPageItems(ctx, pageCanvaItems, offsetX, offsetY, scaledW, scaledH);
+        } else if (pageSnapshot) {
           await renderImageSlot(ctx, pageSnapshot, offsetX, offsetY, scaledW, scaledH);
         } else if (pdfDoc && pageToDraw <= pdfDoc.numPages) {
           await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
+        } else if (batchFiles && batchFiles.length >= pageToDraw && batchFiles[pageToDraw - 1]?.file) {
+          const bFile = batchFiles[pageToDraw - 1];
+          if (bFile.file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(bFile.name)) {
+            const bUrl = URL.createObjectURL(bFile.file);
+            await renderImageSlot(ctx, bUrl, offsetX, offsetY, scaledW, scaledH);
+          } else {
+            drawPreviewUnavailable(ctx, offsetX, offsetY, scaledW, scaledH);
+          }
         } else if (isImgFile && activePreviewUrl) {
           await renderImageSlot(ctx, activePreviewUrl, offsetX, offsetY, scaledW, scaledH);
         } else {
@@ -920,6 +999,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     pdfDoc,
     canvaSnapshotUrl,
     canvaSnapshotUrls,
+    savedCanvaItems,
+    batchFiles,
+    viewMode,
+    renderCanvaPageItems,
     drawPreviewUnavailable,
     renderImageSlot,
     renderPdfSlot,
