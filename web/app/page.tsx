@@ -24,7 +24,7 @@ import {
   AdvancedPrintConfig,
   BatchFileItem,
 } from '@/types';
-import { calculateBatchTotalPages } from '@/lib/batch-compiler';
+import { calculateBatchTotalPages, detectFilePageCount } from '@/lib/batch-compiler';
 import { createCheckoutPreparation } from '@/lib/checkout-preparation';
 import { XCircle } from '@/components/ui/Icons';
 import { CustomerIdentificationCard } from '@/components/customer/CustomerIdentificationCard';
@@ -869,15 +869,17 @@ export default function CustomerHomePage() {
               onApplyCanvasLayout={async (newFile: File) => {
                 try {
                   const uploadRes = await uploadDocumentFile(newFile);
+                  const pCount = await detectFilePageCount(newFile);
+                  const actualPageCount = Math.max(1, pCount || uploadRes.pageCount || 1);
                   const customBatchItem: BatchFileItem = {
                     id: uploadRes.uploadId || `custom-canva-${Date.now()}`,
                     file: newFile,
                     name: newFile.name || 'Customized_Print_Document.pdf',
                     size: newFile.size,
-                    pageCount: uploadRes.pageCount || 1,
+                    pageCount: actualPageCount,
                     copies: 1,
                   };
-                  setUploadedFile({ ...uploadRes, file: newFile });
+                  setUploadedFile({ ...uploadRes, pageCount: actualPageCount, file: newFile });
                   setBatchFiles([customBatchItem]);
                   setBatchPreviewFile(newFile);
                 } catch (e) {
