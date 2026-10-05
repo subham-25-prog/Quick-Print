@@ -874,7 +874,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                     e.stopPropagation();
                     setActivePageIndex(pageIdx);
                   }}
-                  className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border overflow-hidden touch-none transition-all ${
+                  className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border touch-none transition-all ${
                     isActivePage ? 'border-indigo-500/70 ring-2 ring-indigo-500/30' : 'border-slate-400/40'
                   }`}
                   style={{
@@ -889,14 +889,35 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                   onPointerUp={handlePointerUp}
                   onPointerCancel={handlePointerUp}
                 >
-
-                  {/* Center alignment guides */}
-                  <div className="absolute inset-x-0 top-1/2 h-[1px] border-b border-dashed border-indigo-200/50 pointer-events-none z-0" />
-                  <div className="absolute inset-y-0 left-1/2 w-[1px] border-r border-dashed border-indigo-200/50 pointer-events-none z-0" />
+                  {/* Inner clipped page boundary for background guides */}
+                  <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-xs">
+                    {/* Center alignment guides */}
+                    <div className="absolute inset-x-0 top-1/2 h-[1px] border-b border-dashed border-indigo-200/50 pointer-events-none z-0" />
+                    <div className="absolute inset-y-0 left-1/2 w-[1px] border-r border-dashed border-indigo-200/50 pointer-events-none z-0" />
+                  </div>
 
                   {/* Render All Canvas Image Items for this page */}
                   {pageItems.map((item) => {
                     const isSelected = item.id === selectedId;
+
+                    // Dynamic Smart Positioning for Floating Action Toolbar so it never gets clipped at page corners
+                    const isNearTop = item.y < 14;
+                    const isSmallTop = isNearTop && item.height < 14;
+                    const vPosClass = isSmallTop
+                      ? 'top-full mt-3'
+                      : isNearTop
+                      ? 'top-2'
+                      : '-top-12';
+
+                    const isNearLeft = item.x < 18;
+                    const isNearRight = item.x + item.width > 82;
+                    const hPosClass = isNearLeft
+                      ? 'left-0 translate-x-0'
+                      : isNearRight
+                      ? 'right-0 translate-x-0'
+                      : 'left-1/2 -translate-x-1/2';
+
+                    const isKnobBottom = item.y < 8;
 
                     return (
                       <div
@@ -945,11 +966,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                         {/* Canva Active Selection Frame & Floating Action Toolbar */}
                         {isSelected && (
                           <div className="absolute -inset-[2px] border-2 border-indigo-600 pointer-events-auto touch-none z-50">
-                            {/* FLOATING ACTION TOOLBAR DIRECTLY OVER THE IMAGE LIKE CANVA */}
+                            {/* FLOATING ACTION TOOLBAR ALWAYS INSIDE VISIBLE PAGE */}
                             <div
-                              className={`absolute ${
-                                item.y < 12 ? 'top-2' : '-top-12'
-                              } left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#1e2022]/95 text-white p-1 rounded-xl shadow-2xl border border-slate-600/90 z-50 pointer-events-auto backdrop-blur-md select-none animate-fade-in-scale`}
+                              className={`absolute ${vPosClass} ${hPosClass} flex items-center gap-1 bg-[#1e2022]/95 text-white p-1 rounded-xl shadow-2xl border border-slate-600/90 z-50 pointer-events-auto backdrop-blur-md select-none animate-fade-in-scale whitespace-nowrap`}
                               onPointerDown={(e) => e.stopPropagation()}
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -1000,15 +1019,30 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                               {item.rotation !== 0 && ` (${item.rotation}°)`}
                             </div>
 
-                            {/* Top Rotation Knob */}
-                            <div
-                              onPointerDown={(e) => handlePointerDown(e, item, 'rotate')}
-                              className="absolute -top-7 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125"
-                              title="Drag to rotate"
-                            >
-                              <RotateCw className="w-3.5 h-3.5 text-indigo-600 pointer-events-none" />
-                            </div>
-                            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-[2px] h-2 bg-indigo-600 pointer-events-none" />
+                            {/* Rotation Knob */}
+                            {isKnobBottom ? (
+                              <>
+                                <div
+                                  onPointerDown={(e) => handlePointerDown(e, item, 'rotate')}
+                                  className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125 z-50"
+                                  title="Drag to rotate"
+                                >
+                                  <RotateCw className="w-3.5 h-3.5 text-indigo-600 pointer-events-none" />
+                                </div>
+                                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[2px] h-2 bg-indigo-600 pointer-events-none" />
+                              </>
+                            ) : (
+                              <>
+                                <div
+                                  onPointerDown={(e) => handlePointerDown(e, item, 'rotate')}
+                                  className="absolute -top-7 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125 z-50"
+                                  title="Drag to rotate"
+                                >
+                                  <RotateCw className="w-3.5 h-3.5 text-indigo-600 pointer-events-none" />
+                                </div>
+                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-[2px] h-2 bg-indigo-600 pointer-events-none" />
+                              </>
+                            )}
 
                             {/* Touch-Friendly Corner Resize Handles */}
                             <div
