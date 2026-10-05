@@ -388,6 +388,13 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     const pageSheet = target.closest('[data-canva-page]') as HTMLElement | null;
     if (!pageSheet) return;
 
+    // Automatically elevate tapped/selected item to top layer (highest zIndex)
+    setItems((prev) => {
+      const maxZ = prev.reduce((max, it) => Math.max(max, it.zIndex || 0), 0);
+      if (item.zIndex >= maxZ && maxZ > 0) return prev;
+      return prev.map((it) => (it.id === item.id ? { ...it, zIndex: maxZ + 1 } : it));
+    });
+
     setSelectedId(item.id);
     setActivePageIndex(item.pageIndex ?? 0);
     const rect = pageSheet.getBoundingClientRect();
@@ -810,7 +817,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                     e.stopPropagation();
                     setActivePageIndex(pageIdx);
                   }}
-                  className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border overflow-hidden touch-none transition-all ${
+                  className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border touch-none transition-all ${
                     isActivePage ? 'border-indigo-500/70 ring-2 ring-indigo-500/30' : 'border-slate-400/40'
                   }`}
                   style={{
@@ -838,9 +845,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                       <div
                         key={item.id}
                         onPointerDown={(e) => handlePointerDown(e, item, 'move')}
-                        className={`absolute select-none cursor-move touch-none transition-shadow will-change-transform ${
-                          isSelected ? 'z-20' : ''
-                        }`}
+                        className="absolute select-none cursor-move touch-none transition-shadow will-change-transform"
                         style={{
                           left: `${item.x}%`,
                           top: `${item.y}%`,
@@ -848,7 +853,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                           height: `${item.height}%`,
                           transform: `rotate(${item.rotation}deg)`,
                           transformOrigin: 'center center',
-                          zIndex: item.zIndex,
+                          zIndex: isSelected ? Math.max(1000, (item.zIndex || 0) + 100) : item.zIndex,
                           filter: isBw ? 'grayscale(100%)' : 'none',
                         }}
                       >
@@ -862,11 +867,11 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
                         {/* Canva Active Selection Frame & Floating Action Toolbar */}
                         {isSelected && (
-                          <div className="absolute -inset-[2px] border-2 border-indigo-600 pointer-events-auto touch-none">
+                          <div className="absolute -inset-[2px] border-2 border-indigo-600 pointer-events-auto touch-none z-50">
                             {/* FLOATING ACTION TOOLBAR DIRECTLY OVER THE IMAGE LIKE CANVA */}
                             <div
                               className={`absolute ${
-                                item.y < 14 ? 'top-1.5' : '-top-11'
+                                item.y < 12 ? 'top-2' : '-top-12'
                               } left-1/2 -translate-x-1/2 flex items-center gap-1 bg-[#1e2022]/95 text-white p-1 rounded-xl shadow-2xl border border-slate-600/90 z-50 pointer-events-auto backdrop-blur-md select-none animate-fade-in-scale`}
                               onPointerDown={(e) => e.stopPropagation()}
                               onClick={(e) => e.stopPropagation()}
