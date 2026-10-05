@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Image from 'next/image';
 import {
   CheckCircle2,
   RefreshCw,
@@ -222,24 +223,24 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
     <div
       role="region"
       aria-label="Live Print Progress Status"
-      className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900/98 to-slate-950 border border-slate-800 p-5 sm:p-6 text-white shadow-2xl space-y-4 transition-all duration-300 contain-layout"
+      className="relative overflow-hidden rounded-3xl spidey-card border-2 border-red-500/40 p-5 sm:p-6 text-white shadow-2xl shadow-red-950/40 space-y-4 transition-all duration-300 contain-layout"
     >
       {/* Ambient background glow */}
-      <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-80 h-36 bg-gradient-to-r from-indigo-500/20 via-cyan-400/15 to-emerald-400/20 blur-3xl pointer-events-none rounded-full" />
-      <div className="absolute -bottom-16 right-8 w-52 h-28 bg-indigo-600/15 blur-2xl pointer-events-none rounded-full" />
+      <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-80 h-36 bg-gradient-to-r from-red-600/25 via-rose-500/15 to-blue-600/25 blur-3xl pointer-events-none rounded-full" />
+      <div className="absolute -bottom-16 right-8 w-52 h-28 bg-red-600/20 blur-2xl pointer-events-none rounded-full" />
 
       {/* Top Header Pill & Stage Indicator */}
       <div className="relative z-10 flex items-center justify-between gap-2 border-b border-slate-800/80 pb-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/15 border border-indigo-400/30 text-indigo-300 text-[11px] font-extrabold tracking-wider uppercase">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/40 text-red-300 text-[11px] font-black tracking-wider uppercase">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
           </span>
-          <span>Live Print Station</span>
+          <span>🕷️ Spider Print Station</span>
         </div>
 
-        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-xs text-slate-300 font-semibold select-none">
-          <span className="font-mono text-indigo-300 font-bold">{progressPercentage}%</span>
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950/90 border border-slate-800 text-xs text-slate-300 font-bold select-none">
+          <span className="font-mono text-amber-300 font-black">{progressPercentage}%</span>
           <span className="text-slate-500">•</span>
           <span>
             {currentStep === 4
@@ -254,6 +255,38 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
               ? 'Attention'
               : 'In Progress'}
           </span>
+        </div>
+      </div>
+
+      {/* Hanging Spider-Man Animation perched while printing */}
+      <div className="relative z-10 flex items-center justify-between p-3.5 rounded-2xl bg-gradient-to-r from-red-950/60 via-slate-900/90 to-blue-950/60 border border-red-500/30 shadow-md">
+        <div className="space-y-0.5 min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-black uppercase tracking-wider text-red-300 bg-red-500/20 px-2 py-0.5 rounded-full border border-red-500/30">
+              Friendly Neighborhood Hero
+            </span>
+          </div>
+          <p className="text-xs font-bold text-white leading-snug">
+            {currentStep === 4
+              ? `Spider-printing page ${printedPages} of ${totalPages} at the counter!`
+              : currentStep === 3
+              ? 'Document swinging through the counter print queue!'
+              : currentStep === 2
+              ? 'Preparing your pages with superhero precision!'
+              : 'Order verified and spooled in Peter\'s web!'}
+          </p>
+        </div>
+
+        <div className="relative shrink-0 w-16 h-20 -my-2 pointer-events-none select-none">
+          <div className="w-full h-full animate-spiderman-pendulum filter drop-shadow-[0_6px_12px_rgba(220,38,38,0.5)]">
+            <Image
+              src="/spiderman.png"
+              alt="Spider-Man watching print"
+              fill
+              sizes="64px"
+              className="object-contain"
+            />
+          </div>
         </div>
       </div>
 
@@ -275,18 +308,18 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
                 ? 'Printer delay detected'
                 : 'Order confirmed & spooled'}
             </span>
-            <span className="font-mono text-indigo-300 shrink-0 ml-2">{progressPercentage}%</span>
+            <span className="font-mono text-amber-300 shrink-0 ml-2 font-bold">{progressPercentage}%</span>
           </div>
-          <div className="w-full h-2 rounded-full bg-slate-800/90 overflow-hidden relative">
+          <div className="w-full h-2 rounded-full bg-slate-950 overflow-hidden relative border border-slate-800">
             <div
-              className="w-full h-full rounded-full transition-transform duration-700 ease-out bg-gradient-to-r from-indigo-500 via-cyan-400 to-emerald-400 will-change-transform"
+              className="w-full h-full rounded-full transition-transform duration-700 ease-out bg-gradient-to-r from-red-600 via-rose-500 to-blue-600 will-change-transform"
               style={{
                 transform: `scaleX(${progressPercentage / 100})`,
                 transformOrigin: 'left',
               }}
             />
             {currentStep === 4 && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-pulse pointer-events-none" />
             )}
           </div>
         </div>
@@ -306,9 +339,9 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
                     <div
                       className={`h-full transition-colors duration-500 ${
                         isDone
-                          ? 'bg-emerald-500'
+                          ? 'bg-blue-600'
                           : isCurrent
-                          ? 'bg-gradient-to-r from-indigo-500 to-slate-700'
+                          ? 'bg-gradient-to-r from-red-600 to-slate-800'
                           : 'bg-slate-800'
                       }`}
                     />
@@ -319,9 +352,9 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
                 <div
                   className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-500 relative ${
                     isDone
-                      ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/40 ring-1 ring-blue-400'
                       : isCurrent
-                      ? 'bg-indigo-600 text-white ring-4 ring-indigo-500/30 shadow-lg shadow-indigo-600/40 scale-105'
+                      ? 'bg-gradient-to-tr from-red-600 to-rose-600 text-white ring-4 ring-red-500/40 shadow-lg shadow-red-600/50 scale-105'
                       : 'bg-slate-800 text-slate-500 border border-slate-700/80'
                   }`}
                 >

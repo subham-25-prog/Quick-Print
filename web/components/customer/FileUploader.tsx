@@ -55,7 +55,7 @@ const DocumentPreviewBox = React.memo<{
 
   return (
     <div
-      className={`w-12 h-14 sm:w-13 sm:h-15 rounded-xl border border-slate-200/90 bg-white shadow-2xs overflow-hidden shrink-0 flex flex-col justify-between relative select-none contain-paint ${className}`}
+      className={`w-12 h-14 sm:w-13 sm:h-15 rounded-xl border border-slate-700/80 bg-slate-900 shadow-md overflow-hidden shrink-0 flex flex-col justify-between relative select-none contain-paint ${className}`}
       title={name}
     >
       {isImg ? (
@@ -68,15 +68,15 @@ const DocumentPreviewBox = React.memo<{
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="flex flex-col items-center justify-center h-full text-indigo-400 p-1">
+          <div className="flex flex-col items-center justify-center h-full text-red-400 p-1">
             <ImageIcon className="w-5 h-5" />
           </div>
         )
       ) : (
         /* Real Document Sheet Preview for PDF */
-        <div className="w-full h-full p-1.5 flex flex-col justify-between bg-gradient-to-b from-slate-50 to-white">
-          <div className="flex items-center justify-between border-b border-rose-100 pb-1">
-            <div className="w-2.5 h-2.5 rounded-xs bg-rose-500 flex items-center justify-center">
+        <div className="w-full h-full p-1.5 flex flex-col justify-between bg-gradient-to-b from-slate-900 to-slate-950 text-slate-200">
+          <div className="flex items-center justify-between border-b border-red-900/60 pb-1">
+            <div className="w-2.5 h-2.5 rounded-xs bg-red-600 flex items-center justify-center">
               <span className="text-[6px] font-black text-white leading-none">P</span>
             </div>
             <span className="text-[7px] font-bold text-slate-400 leading-none">
@@ -86,14 +86,14 @@ const DocumentPreviewBox = React.memo<{
 
           {/* Miniature Document Content Lines */}
           <div className="space-y-1 my-auto px-0.5">
-            <div className="h-1 bg-slate-400/80 rounded-full w-4/5" />
-            <div className="h-0.5 bg-slate-200 rounded-full w-full" />
-            <div className="h-0.5 bg-slate-200 rounded-full w-5/6" />
-            <div className="h-0.5 bg-slate-200 rounded-full w-3/4" />
+            <div className="h-1 bg-slate-600 rounded-full w-4/5" />
+            <div className="h-0.5 bg-slate-700 rounded-full w-full" />
+            <div className="h-0.5 bg-slate-700 rounded-full w-5/6" />
+            <div className="h-0.5 bg-slate-700 rounded-full w-3/4" />
           </div>
 
           {/* PDF Format Tag */}
-          <div className="text-[7px] font-extrabold text-rose-600 tracking-wider text-center uppercase">
+          <div className="text-[7px] font-extrabold text-red-500 tracking-wider text-center uppercase">
             PDF
           </div>
         </div>
@@ -101,7 +101,7 @@ const DocumentPreviewBox = React.memo<{
 
       {/* Bottom format pill for image */}
       {isImg && (
-        <span className="absolute bottom-0 inset-x-0 text-[7px] font-black text-center py-0.2 tracking-wider uppercase bg-indigo-600/90 text-white">
+        <span className="absolute bottom-0 inset-x-0 text-[7px] font-black text-center py-0.2 tracking-wider uppercase bg-red-600/90 text-white">
           IMG
         </span>
       )}
@@ -184,7 +184,7 @@ function areBatchFileRowPropsEqual(prev: BatchFileRowProps, next: BatchFileRowPr
 const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies, onRemove }) => {
   return (
     <div
-      className="animate-fade-in-scale p-3 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-2xs flex flex-wrap items-center justify-between gap-3 transition-all duration-150 contain-layout"
+      className="animate-fade-in-scale p-3 rounded-2xl border border-slate-800 bg-slate-900/90 hover:border-red-500/40 shadow-md flex flex-wrap items-center justify-between gap-3 transition-all duration-150 contain-layout"
     >
       {/* Left: Small preview box */}
       <div className="flex items-center gap-3 min-w-0 flex-1 select-none">
@@ -195,15 +195,15 @@ const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies,
           renderImagePreview={true}
         />
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-semibold text-slate-800 truncate" title={item.name}>
-            <span className="text-slate-400 font-normal mr-1">#{idx + 1}</span>
+          <div className="text-xs font-semibold text-slate-100 truncate" title={item.name}>
+            <span className="text-red-400 font-bold mr-1">#{idx + 1}</span>
             <span className="truncate">{item.name}</span>
           </div>
-          <div className="text-[11px] text-slate-500 font-medium mt-1 flex items-center gap-2 flex-wrap">
-            <span className="text-indigo-600 font-semibold">
+          <div className="text-[11px] text-slate-400 font-medium mt-1 flex items-center gap-2 flex-wrap">
+            <span className="text-amber-400 font-bold">
               {item.pageCount} {item.pageCount === 1 ? 'page' : 'pages'}
             </span>
-            <span className="text-slate-300">·</span>
+            <span className="text-slate-600">·</span>
             <span>{formatFileSize(item.size)}</span>
           </div>
         </div>
@@ -211,23 +211,23 @@ const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies,
 
       {/* Right: Per-File Copies Stepper & Remove */}
       <div className="flex items-center gap-2 shrink-0">
-        <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50/80 p-0.5 shadow-2xs">
+        <div className="flex items-center border border-slate-700/80 rounded-xl bg-slate-950/80 p-0.5 shadow-2xs">
           <button
             type="button"
             onClick={() => onUpdateCopies(item.id, -1)}
             disabled={item.copies <= 1}
-            className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-manipulation"
+            className="stepper-btn w-7 h-7 rounded-lg bg-slate-800 border border-slate-700/80 hover:bg-slate-700 disabled:opacity-40 text-slate-200 font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-manipulation"
             title="Decrease copies"
           >
             <Minus className="w-3 h-3" />
           </button>
-          <span className="px-2.5 text-xs font-bold text-slate-800 min-w-[54px] text-center select-none">
+          <span className="px-2.5 text-xs font-bold text-slate-100 min-w-[54px] text-center select-none">
             {item.copies} {item.copies === 1 ? 'copy' : 'copies'}
           </span>
           <button
             type="button"
             onClick={() => onUpdateCopies(item.id, 1)}
-            className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-manipulation"
+            className="stepper-btn w-7 h-7 rounded-lg bg-slate-800 border border-slate-700/80 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-manipulation"
             title="Increase copies"
           >
             <Plus className="w-3 h-3" />
@@ -237,7 +237,7 @@ const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies,
         <button
           type="button"
           onClick={() => onRemove(item.id)}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all cursor-pointer touch-manipulation"
+          className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/40 active:scale-90 transition-all cursor-pointer touch-manipulation"
           title="Remove file"
         >
           <X className="w-4 h-4" />
@@ -523,29 +523,33 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => !isInspectingBatch && fileInputRef.current?.click()}
-            className={`relative overflow-hidden border-2 border-dashed rounded-2xl py-3 px-4 text-center transition-all duration-200 ${
+            className={`relative overflow-hidden border-2 border-dashed rounded-2xl py-4 px-4 text-center transition-all duration-200 ${
               isInspectingBatch ? 'cursor-wait opacity-75' : 'cursor-pointer'
             } ${
               isDragging
-                ? 'border-indigo-400 bg-indigo-50/60 scale-[1.01] shadow-lg shadow-indigo-500/10'
-                : 'border-slate-300 bg-slate-50/60 hover:bg-white hover:border-slate-400'
+                ? 'border-red-500 bg-red-950/40 scale-[1.01] shadow-lg shadow-red-500/20'
+                : 'border-slate-800 bg-slate-900/60 hover:bg-slate-850 hover:border-red-500/40'
             }`}
           >
             <div className="flex flex-col items-center gap-3">
               {/* The hand rests in the lower center and taps the document target. */}
               <div className="relative h-16 w-full translate-y-1">
-                <div className="absolute left-1/2 top-1 z-10 flex h-10 w-9 -translate-x-1/2 items-center justify-center rounded-lg border-2 border-dashed border-slate-400/80 bg-white/70 text-slate-400 shadow-inner">
-                  <FileText className="w-4 h-4 text-slate-400" />
+                <div className="absolute left-1/2 top-1 z-10 flex h-10 w-9 -translate-x-1/2 items-center justify-center rounded-lg border-2 border-dashed border-red-500/50 bg-slate-800/80 text-red-400 shadow-inner">
+                  <FileText className="w-4 h-4 text-red-400" />
                 </div>
                 <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-0 left-1/2 z-20 h-16 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" style={{ marginLeft: '-32px' }} />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-800 mb-1">
-                  {isInspectingBatch ? 'Checking documents…' : 'Tap or Drop Files Here'}
+                <h4 className="text-sm font-black text-slate-100 mb-1">
+                  {isInspectingBatch ? 'Checking documents…' : 'Tap or Sling Files Here 🕸️'}
                 </h4>
-                {isInspectingBatch && (
+                {isInspectingBatch ? (
                   <p className="text-[11px] text-slate-400 font-medium">
                     Counting pages with memory-safe processing
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    Batch upload supported · Tap to browse
                   </p>
                 )}
               </div>
@@ -572,7 +576,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                 type="button"
                 onClick={() => !isInspectingBatch && fileInputRef.current?.click()}
                 disabled={isInspectingBatch}
-                className="py-2.5 px-3.5 rounded-xl border border-dashed border-indigo-300 hover:border-indigo-500 bg-indigo-50/40 hover:bg-indigo-50 text-indigo-700 text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] hover:shadow-xs disabled:cursor-wait disabled:opacity-60"
+                className="py-2.5 px-3.5 rounded-xl border border-dashed border-red-500/40 hover:border-red-500 bg-red-950/30 hover:bg-red-950/50 text-red-300 text-xs font-bold transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer active:scale-[0.98] hover:shadow-xs disabled:cursor-wait disabled:opacity-60"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add More Files</span>
@@ -632,19 +636,19 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => !uploading && fileInputRef.current?.click()}
-          className={`relative overflow-hidden border-2 border-dashed rounded-2xl py-3 px-4 text-center cursor-pointer transition-all duration-200 ${
+          className={`relative overflow-hidden border-2 border-dashed rounded-2xl py-4 px-4 text-center cursor-pointer transition-all duration-200 ${
             isDragging
-              ? 'border-indigo-400 bg-indigo-50/60 scale-[1.01] shadow-lg shadow-indigo-500/10'
-              : 'border-slate-300 bg-slate-50/60 hover:bg-white hover:border-slate-400'
+              ? 'border-red-500 bg-red-950/40 scale-[1.01] shadow-lg shadow-red-500/20'
+              : 'border-slate-800 bg-slate-900/60 hover:bg-slate-850 hover:border-red-500/40'
           }`}
         >
           {uploading ? (
             <div className="py-2 px-1 flex flex-col items-center justify-center w-full max-w-sm mx-auto">
               <div className="flex items-center justify-between w-full mb-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <RefreshCw className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
-                  <span className="text-xs font-semibold text-slate-800 truncate">
-                    {currentFileName || 'Uploading file...'}
+                  <RefreshCw className="w-4 h-4 text-red-400 animate-spin shrink-0" />
+                  <span className="text-xs font-bold text-slate-100 truncate">
+                    {currentFileName || 'Slinging file to print web...'}
                   </span>
                   {currentFileSize > 0 && (
                     <span className="text-[10px] text-slate-400 shrink-0">
@@ -655,7 +659,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                 <button
                   type="button"
                   onClick={cancelUpload}
-                  className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors shrink-0 ml-2"
+                  className="p-1 rounded-md text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors shrink-0 ml-2"
                   title="Cancel upload"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -663,9 +667,9 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
               </div>
 
               {/* Real-time Gradient Progress Bar - 120 FPS Composited */}
-              <div className="w-full bg-slate-200/80 rounded-full h-2 overflow-hidden mb-2 shadow-inner">
+              <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden mb-2 shadow-inner border border-slate-800">
                 <div
-                  className="w-full bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 h-full rounded-full transition-transform duration-200 ease-out shadow-xs will-change-transform"
+                  className="w-full bg-gradient-to-r from-red-600 via-rose-500 to-blue-600 h-full rounded-full transition-transform duration-200 ease-out shadow-xs will-change-transform"
                   style={{
                     transform: `scaleX(${Math.max(uploadProgress, 6) / 100})`,
                     transformOrigin: 'left',
@@ -673,13 +677,13 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                 />
               </div>
 
-              <div className="flex items-center justify-between w-full text-[11px] text-slate-500">
+              <div className="flex items-center justify-between w-full text-[11px] text-slate-400">
                 <span>
                   {uploadStage === 'processing'
                     ? 'Detecting pages & finalizing...'
                     : 'Uploading document...'}
                 </span>
-                <span className="font-semibold text-indigo-600">
+                <span className="font-extrabold text-red-400">
                   {uploadProgress}%
                 </span>
               </div>
@@ -689,17 +693,17 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
               <div className="flex flex-col items-center gap-3">
                 {/* The hand rests in the lower center and taps the document target. */}
                 <div className="relative h-16 w-full translate-y-1">
-                  <div className="absolute left-1/2 top-1 z-10 flex h-10 w-9 -translate-x-1/2 items-center justify-center rounded-lg border-2 border-dashed border-slate-400/80 bg-white/70 text-slate-400 shadow-inner">
-                    <FileText className="w-4 h-4 text-slate-400" />
+                  <div className="absolute left-1/2 top-1 z-10 flex h-10 w-9 -translate-x-1/2 items-center justify-center rounded-lg border-2 border-dashed border-red-500/50 bg-slate-800/80 text-red-400 shadow-inner">
+                    <FileText className="w-4 h-4 text-red-400" />
                   </div>
                   <TapGesture aria-hidden="true" className="pointer-events-none absolute bottom-0 left-1/2 z-20 h-16 w-16 animate-tap-hint motion-reduce:animate-none drop-shadow-sm" style={{ marginLeft: '-32px' }} />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-800 mb-1">
-                    Tap or Drop Files Here
+                  <h4 className="text-sm font-black text-slate-100 mb-1">
+                    Tap or Sling Files Here 🕸️
                   </h4>
                   <p className="text-[11px] text-slate-400 font-medium">
-                    Auto-detects page count instantly · Large files supported
+                    Auto-detects page count instantly · PDFs & Images supported
                   </p>
                 </div>
               </div>
@@ -707,7 +711,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           )}
         </div>
       ) : (
-        <div className="animate-fade-in-scale p-3.5 rounded-2xl border border-emerald-300 bg-emerald-50/40 flex items-center justify-between gap-3 shadow-xs">
+        <div className="animate-fade-in-scale p-3.5 rounded-2xl border border-red-500/40 bg-gradient-to-r from-red-950/40 via-slate-900/90 to-slate-900 flex items-center justify-between gap-3 shadow-md shadow-red-950/20">
           {/* Left: Small preview box where user can see uploaded image or PDF content */}
           <div className="flex items-center gap-3 min-w-0 flex-1 select-none">
             <DocumentPreviewBox
@@ -717,15 +721,15 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
               fallbackUrl={uploadedFile.signedUrl || uploadedFile.previewUrl}
             />
             <div className="min-w-0 flex-1">
-              <div className="text-xs sm:text-sm font-semibold text-slate-800 truncate" title={uploadedFile.fileName}>
+              <div className="text-xs sm:text-sm font-bold text-slate-100 truncate" title={uploadedFile.fileName}>
                 {uploadedFile.fileName}
               </div>
-              <div className="text-[11px] text-emerald-700 font-medium mt-1 flex items-center gap-2 flex-wrap">
+              <div className="text-[11px] text-amber-400 font-semibold mt-1 flex items-center gap-2 flex-wrap">
                 <span>
                   Detected: {uploadedFile.pageCount} {uploadedFile.pageCount === 1 ? 'page' : 'pages'}
                 </span>
                 {uploadedFile.fileSizeBytes > 0 && (
-                  <span className="text-slate-400">
+                  <span className="text-slate-400 font-normal">
                     · {formatFileSize(uploadedFile.fileSizeBytes)}
                   </span>
                 )}
@@ -735,7 +739,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
 
           <button
             onClick={handleRemoveSingle}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all shrink-0 cursor-pointer"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-950/40 active:scale-90 transition-all shrink-0 cursor-pointer"
             title="Remove document"
           >
             <X className="w-4 h-4" />

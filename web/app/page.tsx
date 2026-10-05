@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { FileUploader, UploadedFileState } from '@/components/customer/FileUploader';
+import { SpidermanBanner } from '@/components/customer/SpidermanBanner';
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
 import { calculateOrderPrice } from '@/lib/pricing';
@@ -606,13 +607,16 @@ export default function CustomerHomePage() {
 
   return (
     <ErrorBoundary fallbackTitle="QuickPrint encountered a temporary issue">
-      <div className="min-h-screen bg-slate-100 flex flex-col font-sans">
+      <div className="min-h-screen spidey-bg text-slate-100 flex flex-col font-sans selection:bg-red-600 selection:text-white">
       {/* 1. Header */}
       <Header shopName={pricing.shop_name} />
 
       <main className="max-w-xl mx-auto w-full px-4 pt-4 pb-4 space-y-4">
+        {/* Marvel Spider-Man Hero Banner */}
+        <SpidermanBanner />
+
         {!priceBreakdown && (
-          <p role="alert" className="rounded-xl bg-amber-50 p-4 text-amber-900">
+          <p role="alert" className="rounded-2xl bg-amber-950/40 border border-amber-500/40 p-4 text-amber-200 text-sm">
             Pricing is unavailable for this selection. Choose another print option or contact the shopkeeper.
           </p>
         )}
@@ -651,12 +655,13 @@ export default function CustomerHomePage() {
         )}
 
         {/* Card 1: 1. Upload Document */}
-        <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-3 hover:border-slate-300 contain-layout">
+        <section className="animate-fade-in-up spidey-card rounded-3xl p-5 sm:p-6 space-y-3 contain-layout">
           <div className="flex items-center justify-between select-none">
-            <h2 className="text-sm font-bold text-slate-900">
-              1. Upload Document{allowMultiple ? 's' : ''}
+            <h2 className="text-sm font-black text-white flex items-center gap-2">
+              <span className="text-red-400">🕷️</span>
+              <span>1. Upload Document{allowMultiple ? 's' : ''}</span>
             </h2>
-            <span className="text-[10px] font-extrabold text-slate-500 tracking-widest uppercase">
+            <span className="text-[10px] font-black text-red-300 tracking-widest uppercase bg-red-500/15 border border-red-500/30 px-2.5 py-0.5 rounded-full">
               PDF / JPG / PNG
             </span>
           </div>
@@ -672,9 +677,10 @@ export default function CustomerHomePage() {
         </section>
 
         {/* Card 2: 2. Print Configuration */}
-        <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4 hover:border-slate-300 [animation-delay:60ms] contain-layout">
-          <h2 className="text-sm font-bold text-slate-900 select-none">
-            2. Print Configuration
+        <section className="animate-fade-in-up spidey-card rounded-3xl p-5 sm:p-6 space-y-4 [animation-delay:60ms] contain-layout">
+          <h2 className="text-sm font-black text-white select-none flex items-center gap-2">
+            <span className="text-blue-400">⚡</span>
+            <span>2. Superhero Print Configuration</span>
           </h2>
 
           <PrintOptionsSelector
@@ -693,9 +699,10 @@ export default function CustomerHomePage() {
 
         {/* Card 3: 3. Finishing & Add-ons */}
         {hasAnyAddons && (
-          <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-4 hover:border-slate-300 [animation-delay:120ms] contain-layout">
-            <h2 className="text-sm font-bold text-slate-900 select-none">
-              3. Finishing & Add-ons
+          <section className="animate-fade-in-up spidey-card rounded-3xl p-5 sm:p-6 space-y-4 [animation-delay:120ms] contain-layout">
+            <h2 className="text-sm font-black text-white select-none flex items-center gap-2">
+              <span className="text-amber-400">✨</span>
+              <span>3. Superhero Finishing & Add-ons</span>
             </h2>
 
             <AddOnsSelector
@@ -729,18 +736,19 @@ export default function CustomerHomePage() {
       </main>
 
       {/* Sticky Bottom Order Summary & Proceed Button Bar */}
-      <div className="sticky bottom-0 mt-auto bg-white/90 backdrop-blur-xl border-t border-slate-200/80 p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.06)] z-40 gpu-layer">
+      <div className="sticky bottom-0 mt-auto bg-slate-950/95 backdrop-blur-2xl border-t border-red-500/30 p-4 shadow-[0_-10px_35px_rgba(0,0,0,0.6)] z-40 gpu-layer">
         {pricingReady && !checkoutEnabled && (
-          <p role="status" className="max-w-xl mx-auto mb-2 text-sm text-amber-900">
+          <p role="status" className="max-w-xl mx-auto mb-2 text-sm text-amber-300">
             Online ordering is not available yet. Please contact the shopkeeper.
           </p>
         )}
         <div className="max-w-xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
-              TOTAL AMOUNT
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400 select-none flex items-center gap-1">
+              <span>🕷️</span>
+              <span>TOTAL AMOUNT</span>
             </div>
-            <div className="text-2xl font-extrabold text-emerald-600 leading-tight [overflow-wrap:anywhere] transition-all duration-200">
+            <div className="text-2xl font-black text-amber-300 leading-tight [overflow-wrap:anywhere] transition-all duration-200">
               {priceBreakdown ? formatCurrency(priceBreakdown.totalAmount) : 'Unavailable'}
             </div>
           </div>
@@ -801,10 +809,10 @@ export default function CustomerHomePage() {
               submitting ||
               !priceBreakdown
             }
-            className="btn-shimmer active-press py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] text-white font-bold text-sm shadow-md hover:shadow-lg hover:shadow-emerald-600/20 transition-all duration-150 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none select-none"
+            className="btn-shimmer spidey-btn-thwip active-press py-3 px-6 rounded-2xl text-white font-black text-sm shadow-xl shadow-red-900/40 transition-all duration-150 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none select-none"
           >
-            <span>{isProcessingBatch ? 'Preparing...' : 'Preview'}</span>
-            <span className="preview-arrow" aria-hidden="true">→</span>
+            <span>{isProcessingBatch ? 'Preparing...' : 'THWIP! Preview & Print'}</span>
+            <span className="text-base select-none">🕸️</span>
           </button>
         </div>
       </div>

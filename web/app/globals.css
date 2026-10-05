@@ -226,6 +226,158 @@
   will-change: transform;
 }
 
+/* ========================================================================= */
+/* Bold Marvel Comic & Cinematic Spider-Man Theme Primitives                */
+/* ========================================================================= */
+
+.spidey-bg {
+  background-color: #060911;
+  background-image: 
+    radial-gradient(circle at 15% 15%, rgba(225, 29, 72, 0.15) 0%, transparent 45%),
+    radial-gradient(circle at 85% 85%, rgba(37, 99, 235, 0.15) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(220, 38, 38, 0.06) 0%, transparent 60%),
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px;
+}
+
+.spidey-card {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(10, 15, 28, 0.98) 100%);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  box-shadow: 0 12px 32px -5px rgba(0, 0, 0, 0.5), 0 0 20px rgba(220, 38, 38, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.spidey-card:hover {
+  border-color: rgba(239, 68, 68, 0.45);
+  box-shadow: 0 16px 40px -4px rgba(0, 0, 0, 0.65), 0 0 25px rgba(220, 38, 38, 0.16);
+}
+
+.spidey-badge {
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+  color: #ffffff;
+  border: 1px solid rgba(254, 202, 202, 0.3);
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35);
+}
+
+.spidey-btn-thwip {
+  background: linear-gradient(135deg, #e11d48 0%, #dc2626 50%, #2563eb 100%);
+  color: #ffffff;
+  font-weight: 900;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 24px -4px rgba(225, 29, 72, 0.45);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.spidey-btn-thwip:hover {
+  box-shadow: 0 12px 30px -2px rgba(225, 29, 72, 0.65);
+  transform: translate3d(0, -1px, 0) scale(1.01);
+}
+
+.spidey-btn-thwip:active {
+  transform: scale(0.98);
+}
+
+/* Spider-Man Rope Descent & Physics Keyframes */
+@keyframes spidermanDrop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -115%, 0) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+  }
+  62% {
+    transform: translate3d(0, 10px, 0) rotate(3deg);
+  }
+  78% {
+    transform: translate3d(0, -6px, 0) rotate(-2deg);
+  }
+  90% {
+    transform: translate3d(0, 3px, 0) rotate(1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes spidermanZipUp {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  18% {
+    transform: translate3d(0, 12px, 0) scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -140%, 0) scale(0.9);
+  }
+}
+
+@keyframes spidermanPendulum {
+  0%, 100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+
+@keyframes comicPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-12deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.1) rotate(3deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes webPulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.35), 0 0 30px rgba(59, 130, 246, 0.25);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.6), 0 0 45px rgba(59, 130, 246, 0.45);
+  }
+}
+
+.animate-spiderman-drop {
+  animation: spidermanDrop 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+.animate-spiderman-zip {
+  animation: spidermanZipUp 0.65s cubic-bezier(0.55, 0, 0.1, 1) both;
+  will-change: transform, opacity;
+}
+
+.animate-spiderman-pendulum {
+  animation: spidermanPendulum 3.6s ease-in-out infinite;
+  transform-origin: top center;
+  will-change: transform;
+}
+
+.animate-comic-pop {
+  animation: comicPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  will-change: transform, opacity;
+}
+
+.animate-web-pulse {
+  animation: webPulseGlow 3s ease-in-out infinite;
+}
+
 /* Premium Shimmer Button Highlight */
 .btn-shimmer {
   position: relative;
