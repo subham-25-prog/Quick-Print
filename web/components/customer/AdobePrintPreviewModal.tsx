@@ -676,17 +676,21 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     ): Promise<void> => {
       const cachedImg = imageElementCache.current.get(url);
       if (cachedImg && cachedImg.complete && cachedImg.naturalWidth > 0) {
-        const imgAspect = cachedImg.width / cachedImg.height;
+        const imgAspect = cachedImg.naturalWidth / cachedImg.naturalHeight;
         const slotAspect = w / h;
         let drawW = w;
         let drawH = h;
-        if (imgAspect > slotAspect) {
-          drawH = w / imgAspect;
-        } else {
-          drawW = h * imgAspect;
+        let drawX = x;
+        let drawY = y;
+        if (Math.abs(imgAspect - slotAspect) > 0.03) {
+          if (imgAspect > slotAspect) {
+            drawH = w / imgAspect;
+            drawY = y + (h - drawH) / 2;
+          } else {
+            drawW = h * imgAspect;
+            drawX = x + (w - drawW) / 2;
+          }
         }
-        const drawX = x + (w - drawW) / 2;
-        const drawY = y + (h - drawH) / 2;
         ctx.drawImage(cachedImg, drawX, drawY, drawW, drawH);
         return Promise.resolve();
       }
@@ -697,17 +701,21 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         img.src = url;
         img.onload = () => {
           imageElementCache.current.set(url, img);
-          const imgAspect = img.width / img.height;
+          const imgAspect = img.naturalWidth / img.naturalHeight;
           const slotAspect = w / h;
           let drawW = w;
           let drawH = h;
-          if (imgAspect > slotAspect) {
-            drawH = w / imgAspect;
-          } else {
-            drawW = h * imgAspect;
+          let drawX = x;
+          let drawY = y;
+          if (Math.abs(imgAspect - slotAspect) > 0.03) {
+            if (imgAspect > slotAspect) {
+              drawH = w / imgAspect;
+              drawY = y + (h - drawH) / 2;
+            } else {
+              drawW = h * imgAspect;
+              drawX = x + (w - drawW) / 2;
+            }
           }
-          const drawX = x + (w - drawW) / 2;
-          const drawY = y + (h - drawH) / 2;
           ctx.drawImage(img, drawX, drawY, drawW, drawH);
           resolve();
         };
@@ -760,7 +768,18 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         if (item.rotation) {
           ctx.rotate((item.rotation * Math.PI) / 180);
         }
-        ctx.drawImage(img, -iw / 2, -ih / 2, iw, ih);
+
+        const cropLeft = item.cropLeft || 0;
+        const cropRight = item.cropRight || 0;
+        const cropTop = item.cropTop || 0;
+        const cropBottom = item.cropBottom || 0;
+
+        const sx = (cropLeft / 100) * img.naturalWidth;
+        const sy = (cropTop / 100) * img.naturalHeight;
+        const sw = (Math.max(1, 100 - cropLeft - cropRight) / 100) * img.naturalWidth;
+        const sh = (Math.max(1, 100 - cropTop - cropBottom) / 100) * img.naturalHeight;
+
+        ctx.drawImage(img, sx, sy, sw, sh, -iw / 2, -ih / 2, iw, ih);
         ctx.restore();
       }
     },
@@ -896,9 +915,14 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Crisp Retina-optimized canvas dimensions
-    const baseW = isLandscape ? 1200 : 850;
-    const baseH = isLandscape ? 850 : 1200;
+    // Crisp Retina-optimized canvas dimensions matching paperAspectRatio exactly
+    const baseDimension = 1200;
+    const baseW = isLandscape
+      ? baseDimension
+      : Math.max(1, Math.round(baseDimension * paperAspectRatio));
+    const baseH = isLandscape
+      ? Math.max(1, Math.round(baseDimension / paperAspectRatio))
+      : baseDimension;
 
     if (canvas.width !== baseW) canvas.width = baseW;
     if (canvas.height !== baseH) canvas.height = baseH;
