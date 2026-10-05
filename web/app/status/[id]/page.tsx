@@ -15,10 +15,6 @@ import {
   FileText,
 } from '@/components/ui/Icons';
 import { LivePrintVisualizer } from '@/components/customer/LivePrintVisualizer';
-import {
-  SpidermanFeedbackModal,
-  triggerSpidermanFeedback,
-} from '@/components/customer/SpidermanFeedbackModal';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { startPolling } from '@/lib/polling';
 import { useShopName } from '@/lib/shop-sync';
@@ -381,35 +377,6 @@ export default function OrderStatusPage() {
           </>
         )}
 
-        {/* Friendly Neighborhood Feedback Trigger Banner */}
-        <button
-          type="button"
-          onClick={() => triggerSpidermanFeedback()}
-          className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-red-950/40 via-slate-900 to-blue-950/40 border border-red-500/30 hover:border-red-500/60 shadow-md text-left flex items-center justify-between gap-3 group transition-all duration-200 cursor-pointer active-press"
-        >
-          <div className="flex items-center gap-3 min-w-0">
-            <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600 to-rose-600 flex items-center justify-center text-lg shadow-md shadow-red-600/30 shrink-0 group-hover:scale-110 transition-transform">
-              🕷️
-            </span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-white uppercase tracking-wider">
-                  Spider-Feedback
-                </span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-red-500/20 text-red-300 font-bold border border-red-500/30">
-                  Tap to Summon Spidey 🕸️
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 truncate">
-                Rate your printing speed & quality while you wait
-              </p>
-            </div>
-          </div>
-          <span className="px-2.5 py-1 rounded-lg bg-red-600/30 text-red-300 text-xs font-bold shrink-0 border border-red-500/30 group-hover:bg-red-600 group-hover:text-white transition-colors">
-            Rate ★
-          </span>
-        </button>
-
         {/* Action Button: Print Another Document */}
         <Link
           href="/"
@@ -422,14 +389,6 @@ export default function OrderStatusPage() {
         {/* Developer Attribution Card */}
         <DeveloperBadge className="mt-2" />
       </main>
-
-      {/* Spider-Man Animated Feedback System while waiting for printing */}
-      <SpidermanFeedbackModal
-        orderId={data?.order?.id}
-        orderNumber={data?.order?.order_number}
-        shopName={shopName}
-        isWaiting={!isPrinted || isAwaitingVerification || isHardwarePrinting}
-      />
     </div>
   );
 }
