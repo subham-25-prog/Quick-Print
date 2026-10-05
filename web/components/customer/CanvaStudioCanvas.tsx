@@ -448,9 +448,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         nextY = 50 - initialItem.height / 2;
       }
 
-      // Constrain inside sheet
-      nextX = Math.max(-initialItem.width + 5, Math.min(95, nextX));
-      nextY = Math.max(-initialItem.height + 5, Math.min(95, nextY));
+      // Constrain strictly inside sheet
+      nextX = Math.max(0, Math.min(100 - initialItem.width, nextX));
+      nextY = Math.max(0, Math.min(100 - initialItem.height, nextY));
 
       updatedItem.x = nextX;
       updatedItem.y = nextY;
@@ -506,6 +506,12 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         newH = Math.max(MIN_SIZE_PERCENT, initialItem.height - deltaYPercent);
         newY = initialItem.y + (initialItem.height - newH);
       }
+
+      // Constrain resize strictly inside 0-100% sheet bounds
+      newX = Math.max(0, Math.min(100 - MIN_SIZE_PERCENT, newX));
+      newY = Math.max(0, Math.min(100 - MIN_SIZE_PERCENT, newY));
+      newW = Math.min(100 - newX, newW);
+      newH = Math.min(100 - newY, newH);
 
       updatedItem.width = newW;
       updatedItem.height = newH;
@@ -817,7 +823,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                     e.stopPropagation();
                     setActivePageIndex(pageIdx);
                   }}
-                  className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border touch-none transition-all ${
+                  className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border overflow-hidden touch-none transition-all ${
                     isActivePage ? 'border-indigo-500/70 ring-2 ring-indigo-500/30' : 'border-slate-400/40'
                   }`}
                   style={{
