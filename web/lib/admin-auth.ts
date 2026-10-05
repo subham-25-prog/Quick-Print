@@ -20,7 +20,7 @@ function sessionSecret(): string {
   return process.env.NODE_ENV === 'production' ? '' : DEVELOPMENT_SESSION_SECRET;
 }
 
-export function configuredAdminPin(): string {
+function configuredAdminPin(): string {
   const pin = process.env.ADMIN_PIN?.trim();
   if (pin && pin.length >= MIN_ADMIN_PIN_LENGTH) return pin;
   return process.env.NODE_ENV === 'production' ? '' : DEVELOPMENT_PIN;

@@ -2,7 +2,7 @@ import { PDFDocument, rgb, degrees, StandardFonts, PDFPage } from 'pdf-lib';
 import { AdvancedPrintConfig } from '@/types';
 import { parsePageRange, computeEffectivePageCount } from './page-range';
 
-export { parsePageRange, computeEffectivePageCount };
+export { computeEffectivePageCount };
 
 export interface TransformPdfOptions {
   paperSize?: string;

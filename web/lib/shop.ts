@@ -14,5 +14,3 @@ export function getCurrentShopId() {
   }
   return shopId;
 }
-
-export { LEGACY_DEFAULT_SHOP_ID };

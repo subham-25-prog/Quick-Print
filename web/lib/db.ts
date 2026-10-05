@@ -1,4 +1,4 @@
-import { Order, OrderStatus, PricingConfig, PrintAgentInfo, AdvancedPrintConfig } from '@/types';
+import { Order, PricingConfig, PrintAgentInfo, AdvancedPrintConfig } from '@/types';
 import { getAdminClient } from './supabase/admin';
 import { getCurrentShopId } from './shop';
 import { defaultPricingConfig } from './config';
@@ -23,7 +23,7 @@ interface CachedPricing {
 
 const pricingCache = new Map<string, CachedPricing>();
 
-export function clearPricingCache(shopId?: string) {
+function clearPricingCache(shopId?: string) {
   if (shopId) {
     pricingCache.delete(shopId);
   } else {
@@ -294,32 +294,6 @@ export async function getAllOrders(status = 'ALL'): Promise<Order[]> {
   return [...pendingCashOrders, ...existingOrders];
 }
 
-export async function updateOrderStatus(
-  id: string,
-  status: OrderStatus,
-  _actor = 'ADMIN',
-  extra: Record<string, unknown> = {}
-): Promise<Order> {
-  const db = database();
-  const shopId = getCurrentShopId();
-
-  const updateData: Record<string, unknown> = {
-    order_status: status,
-    updated_at: new Date().toISOString(),
-    ...extra,
-  };
-
-  const { data, error } = await db
-    .from('orders')
-    .update(updateData)
-    .eq('id', id)
-    .eq('shop_id', shopId)
-    .select('*')
-    .single();
-
-  if (error) throw error;
-  return data as Order;
-}
 
 export async function claimNextPrintJob(agentId: string) {
   const db = database();
@@ -506,7 +480,7 @@ export async function recordAgentHeartbeat(
   return { activePrinter };
 }
 
-export function isVirtualSystemPrinter(name: string | null | undefined): boolean {
+function isVirtualSystemPrinter(name: string | null | undefined): boolean {
   if (!name || typeof name !== 'string') return true;
   const lower = name.toLowerCase().trim();
   if (!lower) return true;

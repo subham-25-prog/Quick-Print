@@ -28,7 +28,6 @@
     "@electric-sql/pglite": "^0.5.8",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.63.0",
-    "@types/adm-zip": "^0.5.8",
     "@types/node": "^20.17.10",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^18.3.18",

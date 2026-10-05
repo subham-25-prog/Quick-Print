@@ -5,8 +5,6 @@ import { database } from '../db';
 import { getCurrentShopId } from '../shop';
 import { HttpError } from '../http';
 
-export { PhonePeProvider, CashfreeProvider };
-
 export function configuredProvider(): PaymentProvider {
   const providerName = (process.env.PAYMENT_PROVIDER || '').trim();
 

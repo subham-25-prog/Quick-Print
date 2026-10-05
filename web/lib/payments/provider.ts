@@ -1,4 +1,4 @@
-export type PaymentState = 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'CANCELLED';
+type PaymentState = 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'CANCELLED';
 
 export interface PaymentContext {
   id: string;

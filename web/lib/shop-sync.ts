@@ -6,7 +6,7 @@ import { useInitialPricing } from '@/lib/initial-pricing';
 
 export const SHOP_NAME_EVENT = 'quickprint_shop_name_updated';
 export const SHOP_PRICING_STORAGE_KEY = 'quickprint_live_pricing';
-export const SHOP_BROADCAST_CHANNEL = 'quickprint_shop_broadcast_channel';
+const SHOP_BROADCAST_CHANNEL = 'quickprint_shop_broadcast_channel';
 
 /**
  * Sanitizes any raw shop name, ensuring empty or legacy 'QuickPrint' names

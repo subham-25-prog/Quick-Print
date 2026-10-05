@@ -1,7 +1,7 @@
 import { PDFDocument } from 'pdf-lib';
 import { BatchFileItem } from '@/types';
 
-export const MAX_COMPILED_BATCH_SIZE_BYTES = 100 * 1024 * 1024;
+const MAX_COMPILED_BATCH_SIZE_BYTES = 100 * 1024 * 1024;
 
 type BatchWorkerResult = {
   type: 'success';
