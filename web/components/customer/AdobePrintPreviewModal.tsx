@@ -1575,7 +1575,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           RIGHT WORKSPACE: Full Adobe Acrobat / Edge Preview Canvas Area
          ========================================================================= */}
       <main
-        className={`flex-1 min-h-0 min-w-0 bg-[#323639] flex flex-col items-center justify-between p-3 sm:p-6 relative overflow-hidden h-full ${
+        className={`flex-1 min-h-0 min-w-0 bg-[#323639] flex flex-col items-center justify-between relative overflow-hidden h-full ${
+          viewMode === 'canva' ? 'p-0 w-full h-full' : 'p-3 sm:p-6'
+        } ${
           activeTab === 'settings' ? 'hidden md:flex' : 'flex'
         }`}
       >
