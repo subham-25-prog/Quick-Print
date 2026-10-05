@@ -16,7 +16,6 @@ import {
   X,
   FileText,
   Sliders,
-  Edit,
   Sparkles,
 } from '@/components/ui/Icons';
 
@@ -982,26 +981,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           <button
             type="button"
             onClick={() => {
-              setActiveTab('settings');
-              if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-                const sidebar = document.querySelector('aside');
-                sidebar?.scrollIntoView({ behavior: 'smooth' });
-                const firstInput = sidebar?.querySelector<HTMLInputElement | HTMLSelectElement>('input, select, button');
-                firstInput?.focus();
-              }
-            }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              activeTab === 'settings'
-                ? 'bg-[#1a73e8] text-white shadow-sm'
-                : 'text-[#9aa0a6] hover:text-white'
-            }`}
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>Settings</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
               setActiveTab('canva');
               setViewMode('canva');
             }}
@@ -1017,20 +996,11 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           </button>
         </div>
 
-        {/* Right Info & Close */}
+        {/* Right Paper Specs */}
         <div className="flex items-center gap-2">
-          <span className="text-[11px] font-mono text-[#9aa0a6] hidden lg:inline-block">
+          <span className="text-[11px] font-mono text-[#9aa0a6] hidden sm:inline-block">
             {modalPaperSize} • {modalLayout === 'LANDSCAPE' ? 'Landscape' : 'Portrait'} • {isBw ? 'B&W' : 'Color'}
           </span>
-          <button
-            type="button"
-            onClick={handleCloseModal}
-            className="px-2.5 py-1 rounded-md text-slate-300 hover:text-white hover:bg-slate-700/80 border border-slate-600/60 transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-medium"
-            title="Save settings & Close (Esc)"
-          >
-            <X className="w-3.5 h-3.5" />
-            <span>Close</span>
-          </button>
         </div>
       </header>
 
@@ -1386,37 +1356,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           activeTab === 'settings' ? 'hidden md:flex' : 'flex'
         }`}
       >
-        {/* Top Info Bar */}
-        <div className="w-full flex items-center justify-between text-xs text-[#9aa0a6] px-2 shrink-0 z-10 gap-2 flex-wrap pb-2 border-b border-[#3c4043]/50">
-          <div className="flex items-center gap-2 truncate max-w-[240px] sm:max-w-md">
-            <span className="truncate font-mono text-[11px] text-white">
-              {displayFileName}
-            </span>
-            {pageRangeMode === 'RANGE' && currentSheetPages.length > 0 && (
-              <span className="px-1.5 py-0.5 text-[10px] font-mono bg-blue-500/20 text-blue-300 rounded border border-blue-500/30 shrink-0">
-                {currentSheetPages.length === 1
-                  ? `Page ${currentSheetPages[0]}`
-                  : `Pages ${currentSheetPages.join(', ')}`}
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-mono hidden sm:inline-block">
-              {modalPaperSize} • {modalLayout === 'LANDSCAPE' ? 'Landscape' : 'Portrait'} •{' '}
-              {isBw ? 'B&W' : 'Color'}{rotationAngle !== 0 ? ` • ${rotationAngle}°` : ''}
-            </span>
-            <button
-              type="button"
-              onClick={handleCloseModal}
-              className="px-2 py-1 rounded-md text-slate-300 hover:text-white hover:bg-slate-700/80 border border-slate-600/60 transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-medium"
-              title="Save settings & Close (Esc)"
-            >
-              <X className="w-3.5 h-3.5" />
-              <span>Close</span>
-            </button>
-          </div>
-        </div>
 
         {viewMode === 'canva' ? (
           <CanvaStudioCanvas
@@ -1499,6 +1438,13 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <span className="font-mono text-[11px] px-1 text-slate-300">
               <strong className="text-white">{currentPage}</strong> /{' '}
               {totalSheetsToPreview}
+              {pageRangeMode === 'RANGE' && currentSheetPages.length > 0 && (
+                <span className="ml-1.5 px-1 py-0.5 text-[9px] font-mono bg-blue-500/20 text-blue-300 rounded border border-blue-500/30">
+                  {currentSheetPages.length === 1
+                    ? `P.${currentSheetPages[0]}`
+                    : `P.${currentSheetPages.join(',')}`}
+                </span>
+              )}
             </span>
             <button
               type="button"
@@ -1560,7 +1506,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
         {/* Bottom Quick-Action Bar in Preview Canvas: Edit on left side, Confirm & Pay on right bottom */}
         <div className="w-full px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-2.5 md:gap-3 z-20 shrink-0 bg-[#202124]/95 backdrop-blur-md border-t border-[#3c4043]/70 shadow-lg touch-manipulation">
-          {/* Left Side: Edit Button */}
+          {/* Left Side: Settings Button */}
           <button
             type="button"
             onClick={() => {
@@ -1574,10 +1520,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               }
             }}
             className="flex-1 md:flex-none h-11 md:h-auto py-2 md:py-3 px-3 md:px-6 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:bg-slate-900 border border-slate-600/80 md:border-2 md:border-indigo-400/60 md:hover:border-indigo-300 text-white text-xs sm:text-sm md:text-base font-bold flex items-center justify-center md:justify-start gap-2 md:gap-2.5 shadow-xs md:shadow-md md:shadow-black/40 md:ring-1 md:ring-indigo-500/20 transition-all cursor-pointer active:scale-95 touch-manipulation"
-            title="Edit Print Settings"
+            title="Print Settings"
           >
-            <Edit className="w-4 h-4 md:w-5 md:h-5 text-indigo-300 shrink-0" />
-            <span className="font-extrabold tracking-wide">Edit</span>
+            <Sliders className="w-4 h-4 md:w-5 md:h-5 text-indigo-300 shrink-0" />
+            <span className="font-extrabold tracking-wide">Settings</span>
             <span className="hidden md:inline-block text-xs text-slate-300 font-medium border-l border-slate-600/90 pl-2.5 ml-0.5">
               {modalPaperSize} • {isBw ? 'B&W' : 'Color'} • {modalCopies}x
             </span>
