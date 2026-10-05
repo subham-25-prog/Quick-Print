@@ -722,19 +722,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           </span>
         </div>
 
-        {/* Right Side: Undo */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {history.length > 0 && (
-            <button
-              type="button"
-              onClick={handleUndo}
-              className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-colors touch-manipulation"
-              title="Undo"
-            >
-              <RotateCcw className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+
       </div>
 
       {/* -------------------------------------------------------------
@@ -1025,32 +1013,46 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           <span className="hidden sm:inline-block">· Drag or pinch to resize</span>
         </div>
 
-        <button
-          type="button"
-          onClick={handleExportToPrint}
-          disabled={isExporting || items.length === 0}
-          className={`px-4 py-1.5 rounded-xl active:scale-95 disabled:opacity-50 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md transition-all cursor-pointer touch-manipulation ${
-            justApplied
-              ? 'bg-emerald-500 ring-emerald-300'
-              : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950/60'
-          }`}
-          title="Apply canvas design and open Print Preview"
-        >
-          {isExporting ? (
-            <span className="animate-pulse">Applying...</span>
-          ) : justApplied ? (
-            <>
-              <Check className="w-4 h-4 stroke-[3]" />
-              <span>Applied!</span>
-            </>
-          ) : (
-            <>
-              <Check className="w-4 h-4 stroke-[3]" />
-              <span>Apply &amp; Open Preview</span>
-              <span className="text-sm leading-none">→</span>
-            </>
+        <div className="flex items-center gap-2">
+          {history.length > 0 && (
+            <button
+              type="button"
+              onClick={handleUndo}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation"
+              title="Undo last action"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Undo</span>
+            </button>
           )}
-        </button>
+
+          <button
+            type="button"
+            onClick={handleExportToPrint}
+            disabled={isExporting || items.length === 0}
+            className={`px-4 py-1.5 rounded-xl active:scale-95 disabled:opacity-50 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md transition-all cursor-pointer touch-manipulation ${
+              justApplied
+                ? 'bg-emerald-500 ring-emerald-300'
+                : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950/60'
+            }`}
+            title="Apply canvas design and open Print Preview"
+          >
+            {isExporting ? (
+              <span className="animate-pulse">Applying...</span>
+            ) : justApplied ? (
+              <>
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Applied!</span>
+              </>
+            ) : (
+              <>
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Apply &amp; Open Preview</span>
+                <span className="text-sm leading-none">→</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
