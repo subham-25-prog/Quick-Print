@@ -819,27 +819,55 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     [drawPreviewUnavailable]
   );
 
-  // Swipe logic state
+  // Swipe and wheel page navigation
   const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
   const touchEndX = useRef<number | null>(null);
+  const touchEndY = useRef<number | null>(null);
+  const lastWheelTime = useRef<number>(0);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     touchEndX.current = null;
+    touchEndY.current = null;
     touchStartX.current = e.targetTouches[0].clientX;
+    touchStartY.current = e.targetTouches[0].clientY;
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     touchEndX.current = e.targetTouches[0].clientX;
+    touchEndY.current = e.targetTouches[0].clientY;
   }, []);
 
   const handleTouchEnd = useCallback(() => {
     if (touchStartX.current === null || touchEndX.current === null) return;
-    const distance = touchStartX.current - touchEndX.current;
-    const isLeftSwipe = distance > 50;
-    const isRightSwipe = distance < -50;
-    if (isLeftSwipe && currentPage < totalSheetsToPreview) {
+    const diffX = touchStartX.current - touchEndX.current;
+    const diffY = (touchStartY.current ?? 0) - (touchEndY.current ?? 0);
+    const isHorizontal = Math.abs(diffX) > Math.abs(diffY);
+
+    if (isHorizontal) {
+      if (diffX > 40 && currentPage < totalSheetsToPreview) {
+        setCurrentPage((p) => Math.min(totalSheetsToPreview, p + 1));
+      } else if (diffX < -40 && currentPage > 1) {
+        setCurrentPage((p) => Math.max(1, p - 1));
+      }
+    } else {
+      if (diffY > 50 && currentPage < totalSheetsToPreview) {
+        setCurrentPage((p) => Math.min(totalSheetsToPreview, p + 1));
+      } else if (diffY < -50 && currentPage > 1) {
+        setCurrentPage((p) => Math.max(1, p - 1));
+      }
+    }
+  }, [currentPage, totalSheetsToPreview]);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (Math.abs(e.deltaY) < 25) return;
+    const now = Date.now();
+    if (now - lastWheelTime.current < 260) return;
+    lastWheelTime.current = now;
+
+    if (e.deltaY > 0 && currentPage < totalSheetsToPreview) {
       setCurrentPage((p) => Math.min(totalSheetsToPreview, p + 1));
-    } else if (isRightSwipe && currentPage > 1) {
+    } else if (e.deltaY < 0 && currentPage > 1) {
       setCurrentPage((p) => Math.max(1, p - 1));
     }
   }, [currentPage, totalSheetsToPreview]);
@@ -1205,42 +1233,57 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             </div>
           </div>
 
-          {/* 3. Pages */}
+          {/* 3. Pages Selection / Range */}
           <div className="space-y-2">
-            <label className="block text-xs font-normal text-[#9aa0a6]">Pages</label>
-            <div className="space-y-2.5">
-              <label className="flex items-center gap-2.5 cursor-pointer py-1">
-                <input
-                  type="radio"
-                  name="pages"
-                  checked={pageRangeMode === 'ALL'}
-                  onChange={() => setPageRangeMode('ALL')}
-                  className="accent-[#8ab4f8] w-4 h-4 cursor-pointer"
-                />
-                <span className="text-xs text-[#e8eaed]">All</span>
-              </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-slate-300">Pages to Print</label>
+              <span className="text-[11px] font-mono text-[#8ab4f8]">
+                {pageRangeMode === 'ALL' ? `All (${totalDocPages} ${totalDocPages === 1 ? 'page' : 'pages'})` : `${selectedPages.length} selected`}
+              </span>
+            </div>
 
-              <div className="flex items-center gap-2.5">
-                <input
-                  type="radio"
-                  name="pages"
-                  checked={pageRangeMode === 'RANGE'}
-                  onChange={() => setPageRangeMode('RANGE')}
-                  className="accent-[#8ab4f8] w-4 h-4 cursor-pointer shrink-0"
-                />
+            <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#2b2d30] rounded-xl border border-[#5f6368]/60">
+              <button
+                type="button"
+                onClick={() => setPageRangeMode('ALL')}
+                className={`py-2 px-2 text-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  pageRangeMode === 'ALL'
+                    ? 'bg-[#1a73e8] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                }`}
+              >
+                All Pages ({totalDocPages})
+              </button>
+              <button
+                type="button"
+                onClick={() => setPageRangeMode('RANGE')}
+                className={`py-2 px-2 text-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  pageRangeMode === 'RANGE'
+                    ? 'bg-[#1a73e8] text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                }`}
+              >
+                Custom Range
+              </button>
+            </div>
+
+            {pageRangeMode === 'RANGE' && (
+              <div className="p-3 bg-[#1e2022] rounded-xl border border-slate-700/80 space-y-2 animate-fadeIn">
                 <input
                   type="text"
-                  placeholder="e.g. 1-5, 8, 11-13"
+                  placeholder="e.g. 1-3, 5"
                   value={customPageRange}
-                  onFocus={() => setPageRangeMode('RANGE')}
                   onChange={(e) => {
                     setPageRangeMode('RANGE');
                     setCustomPageRange(e.target.value);
                   }}
-                  className="flex-1 px-3 py-1.5 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs placeholder:text-[#80868b] focus:outline-none focus:border-[#8ab4f8]"
+                  className="w-full px-3 py-2 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs placeholder:text-[#80868b] focus:outline-none focus:border-[#8ab4f8]"
                 />
+                <p className="text-[10px] text-slate-400">
+                  Type individual pages or ranges separated by commas (e.g. 1-2, 4).
+                </p>
               </div>
-            </div>
+            )}
           </div>
 
           {/* 4. Color */}
@@ -1301,68 +1344,161 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 </select>
               </div>
 
-              {/* Scale (%) */}
-              <div className="space-y-2">
-                <label className="block text-xs font-normal text-[#9aa0a6]">Scale (%)</label>
-                <div className="space-y-2">
-                  <label className="flex items-center gap-2.5 cursor-pointer py-1">
-                    <input
-                      type="radio"
-                      name="scale"
-                      checked={scaleMode === 'FIT'}
-                      onChange={() => setScaleMode('FIT')}
-                      className="accent-[#8ab4f8] w-4 h-4 cursor-pointer"
-                    />
-                    <span className="text-xs text-[#e8eaed]">Fit to printable area</span>
+              {/* Page Scale & Fit Setting */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    Page Scaling (Print Zoom)
                   </label>
-
-                  <label className="flex items-center gap-2.5 cursor-pointer py-1">
-                    <input
-                      type="radio"
-                      name="scale"
-                      checked={scaleMode === 'ACTUAL'}
-                      onChange={() => setScaleMode('ACTUAL')}
-                      className="accent-[#8ab4f8] w-4 h-4 cursor-pointer"
-                    />
-                    <span className="text-xs text-[#e8eaed]">Actual size</span>
-                  </label>
-
-                  <div className="flex items-center gap-2.5">
-                    <input
-                      type="radio"
-                      name="scale"
-                      checked={scaleMode === 'CUSTOM'}
-                      onChange={() => setScaleMode('CUSTOM')}
-                      className="accent-[#8ab4f8] w-4 h-4 cursor-pointer shrink-0"
-                    />
-                    <input
-                      type="number"
-                      min={25}
-                      max={400}
-                      value={customScalePercent}
-                      onFocus={() => setScaleMode('CUSTOM')}
-                      onChange={(e) => {
-                        setScaleMode('CUSTOM');
-                        setCustomScalePercent(parseInt(e.target.value) || 100);
-                      }}
-                      className="w-20 px-2.5 py-1.5 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs font-sans focus:outline-none focus:border-[#8ab4f8]"
-                    />
-                  </div>
+                  <span className="text-[11px] font-mono text-[#8ab4f8]">
+                    {scaleMode === 'FIT' ? 'Fit (94%)' : scaleMode === 'ACTUAL' ? '100% (1:1)' : `${customScalePercent}%`}
+                  </span>
                 </div>
+
+                {/* 3 Clear Segmented Options */}
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#2b2d30] rounded-xl border border-[#5f6368]/60">
+                  <button
+                    type="button"
+                    onClick={() => setScaleMode('FIT')}
+                    className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      scaleMode === 'FIT'
+                        ? 'bg-[#1a73e8] text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
+                  >
+                    Fit to Page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScaleMode('ACTUAL')}
+                    className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      scaleMode === 'ACTUAL'
+                        ? 'bg-[#1a73e8] text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
+                  >
+                    Actual (100%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setScaleMode('CUSTOM')}
+                    className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      scaleMode === 'CUSTOM'
+                        ? 'bg-[#1a73e8] text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
+                  >
+                    Custom
+                  </button>
+                </div>
+
+                {/* Short Helper Explanation */}
+                <p className="text-[11px] text-[#9aa0a6] leading-normal">
+                  {scaleMode === 'FIT' && '✓ Automatically fits full page onto paper with clean white margins.'}
+                  {scaleMode === 'ACTUAL' && '✓ Prints at exact original 100% document dimensions.'}
+                  {scaleMode === 'CUSTOM' && '✓ Manually resize document content on the paper sheet.'}
+                </p>
+
+                {/* Custom Scale Slider & Stepper */}
+                {scaleMode === 'CUSTOM' && (
+                  <div className="p-3 bg-[#1e2022] rounded-xl border border-slate-700/80 space-y-2.5 animate-fadeIn">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Scale factor:</span>
+                      <div className="flex items-center gap-1.5 font-mono font-bold text-white">
+                        <button
+                          type="button"
+                          onClick={() => setCustomScalePercent((s) => Math.max(25, s - 5))}
+                          className="w-6 h-6 rounded bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-xs"
+                          title="Decrease scale"
+                        >
+                          -
+                        </button>
+                        <span className="w-12 text-center text-indigo-300">{customScalePercent}%</span>
+                        <button
+                          type="button"
+                          onClick={() => setCustomScalePercent((s) => Math.min(200, s + 5))}
+                          className="w-6 h-6 rounded bg-slate-700 hover:bg-slate-600 flex items-center justify-center text-xs"
+                          title="Increase scale"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+
+                    <input
+                      type="range"
+                      min={25}
+                      max={200}
+                      step={5}
+                      value={customScalePercent}
+                      onChange={(e) => setCustomScalePercent(parseInt(e.target.value, 10) || 100)}
+                      className="w-full accent-indigo-500 cursor-pointer h-1.5 bg-slate-700 rounded-lg"
+                    />
+
+                    {/* Quick Preset Chips */}
+                    <div className="flex items-center justify-between gap-1 pt-1">
+                      {[50, 75, 90, 100, 125, 150].map((pct) => (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => setCustomScalePercent(pct)}
+                          className={`px-2 py-0.5 rounded text-[10px] font-mono border transition-colors cursor-pointer ${
+                            customScalePercent === pct
+                              ? 'bg-indigo-600 text-white border-indigo-500'
+                              : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                          }`}
+                        >
+                          {pct}%
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Pages per Sheet */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-normal text-[#9aa0a6]">Pages per sheet</label>
-                <select
-                  value={pagesPerSheet}
-                  onChange={(e) => setPagesPerSheet(e.target.value as '1' | '2' | '4')}
-                  className="w-full px-3 py-2 rounded-lg bg-[#2b2d30] border border-[#5f6368] text-white text-xs focus:outline-none focus:border-[#8ab4f8] cursor-pointer"
-                >
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="4">4</option>
-                </select>
+                <label className="block text-xs font-semibold text-slate-300">Pages per sheet</label>
+                <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#2b2d30] rounded-xl border border-[#5f6368]/60">
+                  <button
+                    type="button"
+                    onClick={() => setPagesPerSheet('1')}
+                    className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      pagesPerSheet === '1'
+                        ? 'bg-[#1a73e8] text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
+                  >
+                    1 Page
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPagesPerSheet('2')}
+                    className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      pagesPerSheet === '2'
+                        ? 'bg-[#1a73e8] text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
+                  >
+                    2 Side-by-side
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPagesPerSheet('4')}
+                    className={`py-2 px-1 text-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      pagesPerSheet === '4'
+                        ? 'bg-[#1a73e8] text-white shadow-sm'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                    }`}
+                  >
+                    4 in Grid
+                  </button>
+                </div>
+                <p className="text-[11px] text-[#9aa0a6]">
+                  {pagesPerSheet === '1' && 'Print one full document page per paper sheet.'}
+                  {pagesPerSheet === '2' && 'Print 2 pages side-by-side on each sheet (saves paper).'}
+                  {pagesPerSheet === '4' && 'Print 4 pages in a 2×2 grid on each sheet.'}
+                </p>
               </div>
 
               {/* Two-Sided Printing */}
@@ -1464,6 +1600,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
+          onWheel={handleWheel}
         >
           <div
             className="relative bg-white shadow-[0_12px_40px_rgba(0,0,0,0.65)] transition-all duration-150 rounded-xs flex items-center justify-center overflow-hidden border border-slate-400/20 contain-paint"
@@ -1513,8 +1650,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               type="button"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage <= 1}
-              className="p-1 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer touch-manipulation"
-              title="Previous sheet"
+              className="p-1 sm:px-2 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer touch-manipulation flex items-center gap-1"
+              title="Previous page (Scroll up or click)"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -1535,8 +1672,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                 setCurrentPage((p) => Math.min(totalSheetsToPreview, p + 1))
               }
               disabled={currentPage >= totalSheetsToPreview}
-              className="p-1 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer touch-manipulation"
-              title="Next sheet"
+              className="p-1 sm:px-2 rounded-full hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer touch-manipulation flex items-center gap-1"
+              title="Next page (Scroll down or click)"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -1587,41 +1724,43 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           </>
         )}
 
-        {/* Bottom Quick-Action Bar in Preview Canvas: Edit on left side, Confirm & Pay on right bottom */}
-        <div className="w-full px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-2.5 md:gap-3 z-20 shrink-0 bg-[#202124]/95 backdrop-blur-md border-t border-[#3c4043]/70 shadow-lg touch-manipulation">
-          {/* Left Side: Settings Button */}
-          <button
-            type="button"
-            onClick={() => {
-              if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                setActiveTab('settings');
-              } else {
-                const sidebar = document.querySelector('aside');
-                sidebar?.scrollIntoView({ behavior: 'smooth' });
-                const firstInput = sidebar?.querySelector<HTMLInputElement | HTMLSelectElement>('input, select, button');
-                firstInput?.focus();
-              }
-            }}
-            className="flex-1 md:flex-none h-11 md:h-auto py-2 md:py-3 px-3 md:px-6 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:bg-slate-900 border border-slate-600/80 md:border-2 md:border-indigo-400/60 md:hover:border-indigo-300 text-white text-xs sm:text-sm md:text-base font-bold flex items-center justify-center md:justify-start gap-2 md:gap-2.5 shadow-xs md:shadow-md md:shadow-black/40 md:ring-1 md:ring-indigo-500/20 transition-all cursor-pointer active:scale-95 touch-manipulation"
-            title="Print Settings"
-          >
-            <Sliders className="w-4 h-4 md:w-5 md:h-5 text-indigo-300 shrink-0" />
-            <span className="font-extrabold tracking-wide">Settings</span>
-            <span className="hidden md:inline-block text-xs text-slate-300 font-medium border-l border-slate-600/90 pl-2.5 ml-0.5">
-              {modalPaperSize} • {isBw ? 'B&W' : 'Color'} • {modalCopies}x
-            </span>
-          </button>
+        {/* Bottom Quick-Action Bar in Preview Canvas: Settings on left side, Confirm & Pay on right bottom (Only visible in Preview mode) */}
+        {viewMode !== 'canva' && (
+          <div className="w-full px-3 md:px-6 py-2.5 md:py-3 flex items-center justify-between gap-2.5 md:gap-3 z-20 shrink-0 bg-[#202124]/95 backdrop-blur-md border-t border-[#3c4043]/70 shadow-lg touch-manipulation">
+            {/* Left Side: Settings Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                  setActiveTab('settings');
+                } else {
+                  const sidebar = document.querySelector('aside');
+                  sidebar?.scrollIntoView({ behavior: 'smooth' });
+                  const firstInput = sidebar?.querySelector<HTMLInputElement | HTMLSelectElement>('input, select, button');
+                  firstInput?.focus();
+                }
+              }}
+              className="flex-1 md:flex-none h-11 md:h-auto py-2 md:py-3 px-3 md:px-6 rounded-xl bg-slate-800/90 hover:bg-slate-700 active:bg-slate-900 border border-slate-600/80 md:border-2 md:border-indigo-400/60 md:hover:border-indigo-300 text-white text-xs sm:text-sm md:text-base font-bold flex items-center justify-center md:justify-start gap-2 md:gap-2.5 shadow-xs md:shadow-md md:shadow-black/40 md:ring-1 md:ring-indigo-500/20 transition-all cursor-pointer active:scale-95 touch-manipulation"
+              title="Print Settings"
+            >
+              <Sliders className="w-4 h-4 md:w-5 md:h-5 text-indigo-300 shrink-0" />
+              <span className="font-extrabold tracking-wide">Settings</span>
+              <span className="hidden md:inline-block text-xs text-slate-300 font-medium border-l border-slate-600/90 pl-2.5 ml-0.5">
+                {modalPaperSize} • {isBw ? 'B&W' : 'Color'} • {modalCopies}x
+              </span>
+            </button>
 
-          {/* Right Bottom: Confirm & Pay Button */}
-          <button
-            type="button"
-            onClick={handlePrintApply}
-            className="flex-[1.4] md:flex-none h-11 md:h-auto py-2 md:py-3 px-4 md:px-7 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm md:text-base font-extrabold shadow-md md:shadow-lg shadow-emerald-950/60 ring-1 md:ring-2 ring-emerald-400/50 hover:ring-emerald-300 transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1.5 md:gap-2 md:ml-auto touch-manipulation"
-          >
-            <span>Confirm &amp; Pay</span>
-            <span className="text-base md:text-lg leading-none">→</span>
-          </button>
-        </div>
+            {/* Right Bottom: Confirm & Pay Button */}
+            <button
+              type="button"
+              onClick={handlePrintApply}
+              className="flex-[1.4] md:flex-none h-11 md:h-auto py-2 md:py-3 px-4 md:px-7 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-xs sm:text-sm md:text-base font-extrabold shadow-md md:shadow-lg shadow-emerald-950/60 ring-1 md:ring-2 ring-emerald-400/50 hover:ring-emerald-300 transition-all shrink-0 cursor-pointer flex items-center justify-center gap-1.5 md:gap-2 md:ml-auto touch-manipulation"
+            >
+              <span>Confirm &amp; Pay</span>
+              <span className="text-base md:text-lg leading-none">→</span>
+            </button>
+          </div>
+        )}
       </main>
     </div>
   );

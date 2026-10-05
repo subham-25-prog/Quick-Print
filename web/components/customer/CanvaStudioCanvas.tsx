@@ -754,6 +754,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                 ? 'bg-emerald-500 ring-emerald-300'
                 : 'bg-emerald-600 hover:bg-emerald-500 ring-emerald-400/40 shadow-emerald-950/50'
             }`}
+            title="Apply canvas design and open Print Preview"
           >
             {isExporting ? (
               <span className="animate-pulse">Applying...</span>
@@ -765,7 +766,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             ) : (
               <>
                 <Check className="w-4 h-4 stroke-[3]" />
-                <span>Apply</span>
+                <span>Apply &amp; Preview</span>
+                <span className="text-sm leading-none">→</span>
               </>
             )}
           </button>
@@ -1063,13 +1065,31 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       {/* -------------------------------------------------------------
           BOTTOM FOOTER: Status
           ------------------------------------------------------------- */}
-      <div className="w-full bg-[#1e2022] border-t border-[#3c4043] px-3 py-1.5 text-[11px] text-slate-400 flex items-center justify-between z-20">
+      <div className="w-full bg-[#1e2022] border-t border-[#3c4043] px-3.5 py-2 text-xs text-slate-400 flex items-center justify-between z-20">
         <div className="flex items-center gap-2">
           <span>
             {pageCount} {pageCount === 1 ? 'page' : 'pages'} · {items.length} {items.length === 1 ? 'photo' : 'photos'}
           </span>
           <span className="hidden sm:inline-block">· Drag or pinch to resize</span>
         </div>
+
+        <button
+          type="button"
+          onClick={handleExportToPrint}
+          disabled={isExporting || items.length === 0}
+          className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/60 transition-all cursor-pointer touch-manipulation disabled:opacity-50"
+          title="Apply canvas design and open Print Preview"
+        >
+          {isExporting ? (
+            <span className="animate-pulse">Applying...</span>
+          ) : (
+            <>
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>Apply &amp; Open Preview</span>
+              <span className="text-sm leading-none">→</span>
+            </>
+          )}
+        </button>
       </div>
     </div>
   );
