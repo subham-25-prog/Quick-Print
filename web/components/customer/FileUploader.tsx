@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
 import { FileText, Image as ImageIcon, AlertCircle, RefreshCw, X, Plus, Minus, TapGesture } from '@/components/ui/Icons';
 import { BatchFileItem } from '@/types';
 import { detectFilePageCount, calculateBatchTotalPages } from '@/lib/batch-compiler';
@@ -110,55 +109,6 @@ const DocumentPreviewBox = React.memo<{
 });
 DocumentPreviewBox.displayName = 'DocumentPreviewBox';
 
-const BatchCompilationLoader = () => {
-  if (typeof document === 'undefined') return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-slate-900/60 p-4 backdrop-blur-xs">
-      <div
-        role="status"
-        aria-live="polite"
-        className="my-auto w-full max-w-md rounded-3xl border border-slate-200 bg-white p-5 text-center shadow-2xl animate-fade-in-scale sm:p-6"
-      >
-        <div className="flex flex-col items-center space-y-5">
-          <div className="relative my-2 flex items-center justify-center">
-            <div className="absolute h-24 w-24 rounded-full bg-emerald-400/25 opacity-60 animate-ping" />
-            <div className="absolute h-28 w-28 rounded-full bg-emerald-500/10 animate-pulse" />
-            <div className="h-20 w-20 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-emerald-300 p-0.5 animate-spin [animation-duration:2.5s]">
-              <div className="h-full w-full rounded-[14px] bg-white" />
-            </div>
-            <div className="absolute flex h-14 w-14 items-center justify-center rounded-xl border border-emerald-200/80 bg-emerald-50 text-emerald-600 shadow-lg shadow-emerald-600/20">
-              <FileText className="h-7 w-7 animate-pulse" />
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <h4 className="text-lg font-black tracking-tight text-slate-900">
-              Preparing Your Documents…
-            </h4>
-            <p className="text-xs font-medium leading-relaxed text-slate-500">
-              Compiling your files into one print-ready document
-            </p>
-          </div>
-
-          <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-200/80 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800 shadow-xs">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Document preparation in progress</span>
-          </div>
-
-          <div className="relative h-2 w-full max-w-xs overflow-hidden rounded-full border border-slate-200/60 bg-slate-100">
-            <div className="absolute inset-y-0 h-full w-1/2 rounded-full bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 animate-cash-progress" />
-          </div>
-
-          <p className="text-[11px] font-medium text-slate-400">
-            Your files will be ready to preview shortly.
-          </p>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-};
 
 interface BatchFileRowProps {
   item: BatchFileItem;
@@ -265,7 +215,6 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
   allowMultiple = false,
   batchFiles = [],
   onBatchFilesChange,
-  isProcessingBatch = false,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
