@@ -368,7 +368,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     if (onApplyCanvasLayout) {
       await onApplyCanvasLayout(renderedFile);
     }
+    // Switch back to standard preview mode after applying layout
+    setViewMode('preview');
   };
+    // Duplicate block removed
 
   const isPdfFile = useMemo(() => {
     if (isImgFile) return false;
