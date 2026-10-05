@@ -97,7 +97,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
   // Keep parent in sync whenever canvas items change
   useEffect(() => {
-    onItemsChange?.(items);
+    if (items.length > 0) {
+      onItemsChange?.(items);
+    }
   }, [items, onItemsChange]);
 
   // Interaction tracking state
@@ -165,7 +167,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             itemW = (itemH * imgAspect) / paperAspectRatio;
           }
 
-          // Center item on its dedicated page
+          // Center item
           const x = (100 - itemW) / 2;
           const y = (100 - itemH) / 2;
 
@@ -173,7 +175,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             id: `item-${Date.now()}-${i}`,
             src: item.url,
             name: item.name,
-            pageIndex: i, // Assign each initial image to its own page (page 1, page 2, page 3)
+            pageIndex: 0,
             x: Math.max(2, x),
             y: Math.max(2, y),
             width: Math.min(96, Math.max(15, itemW)),
@@ -191,7 +193,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       if (isMounted && loadedItems.length > 0) {
         setItems(loadedItems);
         setSelectedId(loadedItems[0].id);
-        setPageCount(Math.max(1, loadedItems.length));
         onItemsChange?.(loadedItems);
       }
     };
