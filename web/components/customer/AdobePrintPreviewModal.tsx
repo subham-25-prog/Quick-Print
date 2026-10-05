@@ -164,8 +164,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     advancedConfig.watermark || 'NONE'
   );
 
-  // Mobile View Switcher (Settings vs Preview)
-  const [mobileTab, setMobileTab] = useState<'preview' | 'settings'>('preview');
+  // Top Navigation View Switcher (Preview vs Settings vs Canva Studio)
+  const [activeTab, setActiveTab] = useState<'preview' | 'settings' | 'canva'>('preview');
 
   // --- Canvas & Viewer State ---
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -394,6 +394,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     }
     // Switch back to standard preview mode after applying layout
     setViewMode('preview');
+    setActiveTab('preview');
   };
 
   const isPdfFile = useMemo(() => {
@@ -927,26 +928,34 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       className="fixed inset-0 z-50 bg-[#202124] text-slate-100 flex flex-col md:flex-row h-[100dvh] w-screen overflow-hidden font-sans select-none"
     >
       {/* =========================================================================
-          MOBILE TOP NAVIGATION BAR
-          Clean segmented control: [ 📄 Preview ] [ ⚙️ Settings ] + Quick Print Action
+          TOP NAVIGATION BAR: [ 📄 Preview ] [ ⚙️ Settings ] [ ✨ Canva Studio ]
          ========================================================================= */}
-      <header className="md:hidden bg-[#202124] border-b border-[#3c4043]/70 px-3 py-2 flex items-center justify-between shrink-0 shadow-sm z-30">
-        <button
-          type="button"
-          onClick={handleCloseModal}
-          className="min-h-[38px] min-w-[38px] rounded-full flex items-center justify-center text-[#9aa0a6] hover:text-white hover:bg-[#35363a] transition-colors"
-          aria-label="Close and save"
-        >
-          <X className="w-5 h-5" />
-        </button>
+      <header className="bg-[#202124] border-b border-[#3c4043]/70 px-3 sm:px-4 py-2 flex items-center justify-between shrink-0 shadow-sm z-30">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleCloseModal}
+            className="min-h-[36px] min-w-[36px] rounded-full flex items-center justify-center text-[#9aa0a6] hover:text-white hover:bg-[#35363a] transition-colors cursor-pointer"
+            aria-label="Close and save"
+            title="Close (Esc)"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <span className="font-mono text-xs text-white hidden sm:inline-block truncate max-w-[180px]">
+            {fileName}
+          </span>
+        </div>
 
-        {/* Center Segmented Pill Controller */}
+        {/* Center Segmented Pill Controller: [ Preview ] [ Settings ] [ Canva Studio ] */}
         <div className="flex bg-[#2b2d30] p-0.5 rounded-xl border border-slate-700/60 shadow-inner">
           <button
             type="button"
-            onClick={() => setMobileTab('preview')}
+            onClick={() => {
+              setActiveTab('preview');
+              setViewMode('preview');
+            }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              mobileTab === 'preview'
+              activeTab === 'preview' && viewMode === 'preview'
                 ? 'bg-[#1a73e8] text-white shadow-sm'
                 : 'text-[#9aa0a6] hover:text-white'
             }`}
@@ -956,9 +965,17 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           </button>
           <button
             type="button"
-            onClick={() => setMobileTab('settings')}
+            onClick={() => {
+              setActiveTab('settings');
+              if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+                const sidebar = document.querySelector('aside');
+                sidebar?.scrollIntoView({ behavior: 'smooth' });
+                const firstInput = sidebar?.querySelector<HTMLInputElement | HTMLSelectElement>('input, select, button');
+                firstInput?.focus();
+              }
+            }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-              mobileTab === 'settings'
+              activeTab === 'settings'
                 ? 'bg-[#1a73e8] text-white shadow-sm'
                 : 'text-[#9aa0a6] hover:text-white'
             }`}
@@ -966,10 +983,39 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             <Sliders className="w-3.5 h-3.5" />
             <span>Settings</span>
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('canva');
+              setViewMode('canva');
+            }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              viewMode === 'canva' || activeTab === 'canva'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
+                : 'text-purple-300 hover:text-white'
+            }`}
+            title="Open Canva Studio editor"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+            <span>Canva Studio</span>
+          </button>
         </div>
 
-        {/* Spacer on right to keep center segmented control balanced */}
-        <div className="min-h-[38px] min-w-[38px]" aria-hidden="true" />
+        {/* Right Info & Close */}
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-mono text-[#9aa0a6] hidden lg:inline-block">
+            {modalPaperSize} • {modalLayout === 'LANDSCAPE' ? 'Landscape' : 'Portrait'} • {isBw ? 'B&W' : 'Color'}
+          </span>
+          <button
+            type="button"
+            onClick={handleCloseModal}
+            className="px-2.5 py-1 rounded-md text-slate-300 hover:text-white hover:bg-slate-700/80 border border-slate-600/60 transition-colors cursor-pointer flex items-center gap-1 text-[11px] font-medium"
+            title="Save settings & Close (Esc)"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Close</span>
+          </button>
+        </div>
       </header>
 
       {/* =========================================================================
@@ -978,7 +1024,11 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
          ========================================================================= */}
       <aside
         className={`w-full md:w-[320px] lg:w-[340px] bg-[#202124] flex flex-col flex-1 min-h-0 md:flex-none border-r border-[#3c4043]/50 md:h-full overflow-hidden ${
-          mobileTab === 'preview' ? 'hidden md:flex' : 'flex'
+          activeTab === 'settings'
+            ? 'flex'
+            : viewMode === 'canva'
+            ? 'hidden'
+            : 'hidden md:flex'
         }`}
       >
         {/* Header: Title, Dynamic Sheet Count, Help Button */}
@@ -1018,9 +1068,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               type="button"
               onClick={() => {
                 setViewMode('canva');
-                if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                  setMobileTab('preview');
-                }
+                setActiveTab('canva');
               }}
               className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer"
             >
@@ -1287,7 +1335,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           {/* On mobile settings tab: quick view preview link */}
           <button
             type="button"
-            onClick={() => setMobileTab('preview')}
+            onClick={() => setActiveTab('preview')}
             className="flex-1 px-2 py-3 rounded-xl bg-[#2b2d30] hover:bg-[#35363a] text-slate-200 text-sm font-bold border border-slate-600 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm active:scale-95 transition-transform"
           >
             <FileText className="w-4 h-4 text-[#8ab4f8]" />
@@ -1319,7 +1367,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
          ========================================================================= */}
       <main
         className={`flex-1 min-h-0 min-w-0 bg-[#323639] flex flex-col items-center justify-between p-3 sm:p-6 relative overflow-hidden h-full ${
-          mobileTab === 'settings' ? 'hidden md:flex' : 'flex'
+          activeTab === 'settings' ? 'hidden md:flex' : 'flex'
         }`}
       >
         {/* Top Info Bar */}
@@ -1335,35 +1383,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                   : `Pages ${currentSheetPages.join(', ')}`}
               </span>
             )}
-          </div>
-
-          {/* Canva Studio vs Standard Preview Segmented Control */}
-          <div className="flex items-center p-0.5 rounded-xl bg-[#202124] border border-[#3c4043] shadow-inner">
-            <button
-              type="button"
-              onClick={() => setViewMode('preview')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                viewMode === 'preview'
-                  ? 'bg-slate-700 text-white shadow-xs'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Standard Preview</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('canva')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                viewMode === 'canva'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
-                  : 'text-purple-300 hover:text-white'
-              }`}
-              title="Canva-style canvas editor: rearrange, resize, rotate, and add multiple images"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
-              <span>Canva Studio</span>
-            </button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -1394,7 +1413,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             isBw={isBw}
             zoomLevel={zoomLevel}
             onApplyLayout={handleApplyCanvaLayout}
-            onCancel={() => setViewMode('preview')}
+            onCancel={() => {
+              setViewMode('preview');
+              setActiveTab('preview');
+            }}
           />
         ) : (
           <>
@@ -1527,7 +1549,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             type="button"
             onClick={() => {
               if (typeof window !== 'undefined' && window.innerWidth < 768) {
-                setMobileTab('settings');
+                setActiveTab('settings');
               } else {
                 const sidebar = document.querySelector('aside');
                 sidebar?.scrollIntoView({ behavior: 'smooth' });

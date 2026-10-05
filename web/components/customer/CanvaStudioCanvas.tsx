@@ -83,7 +83,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [justApplied, setJustApplied] = useState(false);
   const [history, setHistory] = useState<CanvaImageItem[][]>([]);
-  const [isGuidelineVisible, setIsGuidelineVisible] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -884,10 +883,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                   onPointerUp={handlePointerUp}
                   onPointerCancel={handlePointerUp}
                 >
-                  {/* Subtle Print Safe Margin Guide */}
-                  {isGuidelineVisible && (
-                    <div className="absolute inset-[3.5%] border border-dashed border-slate-300 pointer-events-none z-0" />
-                  )}
 
                   {/* Center alignment guides */}
                   <div className="absolute inset-x-0 top-1/2 h-[1px] border-b border-dashed border-indigo-200/50 pointer-events-none z-0" />
@@ -1066,7 +1061,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       </div>
 
       {/* -------------------------------------------------------------
-          BOTTOM FOOTER: Status & Margins toggle
+          BOTTOM FOOTER: Status
           ------------------------------------------------------------- */}
       <div className="w-full bg-[#1e2022] border-t border-[#3c4043] px-3 py-1.5 text-[11px] text-slate-400 flex items-center justify-between z-20">
         <div className="flex items-center gap-2">
@@ -1075,16 +1070,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           </span>
           <span className="hidden sm:inline-block">· Drag or pinch to resize</span>
         </div>
-
-        <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-slate-400 hover:text-slate-200">
-          <input
-            type="checkbox"
-            checked={isGuidelineVisible}
-            onChange={(e) => setIsGuidelineVisible(e.target.checked)}
-            className="w-3 h-3 rounded text-indigo-600 accent-indigo-600 cursor-pointer"
-          />
-          <span>Margins</span>
-        </label>
       </div>
     </div>
   );
