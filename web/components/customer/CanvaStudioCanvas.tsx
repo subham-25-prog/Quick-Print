@@ -744,33 +744,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             </button>
           )}
 
-          {/* Apply to Print CTA Button */}
-          <button
-            type="button"
-            onClick={handleExportToPrint}
-            disabled={isExporting || items.length === 0}
-            className={`px-3.5 py-1.5 rounded-xl active:scale-95 disabled:opacity-50 text-white text-xs font-black flex items-center gap-1.5 shadow-md ring-1 transition-all cursor-pointer touch-manipulation ${
-              justApplied
-                ? 'bg-emerald-500 ring-emerald-300'
-                : 'bg-emerald-600 hover:bg-emerald-500 ring-emerald-400/40 shadow-emerald-950/50'
-            }`}
-            title="Apply canvas design and open Print Preview"
-          >
-            {isExporting ? (
-              <span className="animate-pulse">Applying...</span>
-            ) : justApplied ? (
-              <>
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>Applied!</span>
-              </>
-            ) : (
-              <>
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>Apply &amp; Preview</span>
-                <span className="text-sm leading-none">→</span>
-              </>
-            )}
-          </button>
+
 
           {onCancel && (
             <button
@@ -1077,11 +1051,20 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           type="button"
           onClick={handleExportToPrint}
           disabled={isExporting || items.length === 0}
-          className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-md shadow-emerald-950/60 transition-all cursor-pointer touch-manipulation disabled:opacity-50"
+          className={`px-4 py-1.5 rounded-xl active:scale-95 disabled:opacity-50 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md transition-all cursor-pointer touch-manipulation ${
+            justApplied
+              ? 'bg-emerald-500 ring-emerald-300'
+              : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950/60'
+          }`}
           title="Apply canvas design and open Print Preview"
         >
           {isExporting ? (
             <span className="animate-pulse">Applying...</span>
+          ) : justApplied ? (
+            <>
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>Applied!</span>
+            </>
           ) : (
             <>
               <Check className="w-4 h-4 stroke-[3]" />
