@@ -196,7 +196,103 @@
   }
 }
 
+/* Spider-Man Rope Descent & Physics Keyframes */
+@keyframes spidermanDrop {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -115%, 0) rotate(0deg);
+  }
+  15% {
+    opacity: 1;
+  }
+  62% {
+    transform: translate3d(0, 10px, 0) rotate(3deg);
+  }
+  78% {
+    transform: translate3d(0, -6px, 0) rotate(-2deg);
+  }
+  90% {
+    transform: translate3d(0, 3px, 0) rotate(1deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+}
+
+@keyframes spidermanZipUp {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  18% {
+    transform: translate3d(0, 12px, 0) scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -140%, 0) scale(0.9);
+  }
+}
+
+@keyframes spidermanPendulum {
+  0%, 100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+
+@keyframes comicPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-12deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.1) rotate(3deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes webPulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3), 0 0 30px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.5), 0 0 45px rgba(59, 130, 246, 0.4);
+  }
+}
+
 /* Premium Animation Utility Classes */
+.animate-spiderman-drop {
+  animation: spidermanDrop 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+.animate-spiderman-zip {
+  animation: spidermanZipUp 0.65s cubic-bezier(0.55, 0, 0.1, 1) both;
+  will-change: transform, opacity;
+}
+
+.animate-spiderman-pendulum {
+  animation: spidermanPendulum 3.6s ease-in-out infinite;
+  transform-origin: top center;
+  will-change: transform;
+}
+
+.animate-comic-pop {
+  animation: comicPop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  will-change: transform, opacity;
+}
+
+.animate-web-pulse {
+  animation: webPulseGlow 3s ease-in-out infinite;
+}
+
 .animate-fade-in-up {
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: transform, opacity;
