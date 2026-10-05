@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback, useDeferredValue } from 'react';
 import { AdvancedPrintConfig, PaperSize, ColorMode, PrintSides, PricingConfig } from '@/types';
 import { UploadedFileState } from './FileUploader';
-import { CanvaStudioCanvas } from './CanvaStudioCanvas';
+import { CanvaStudioCanvas, CanvaImageItem } from './CanvaStudioCanvas';
 import {
   ChevronDown,
   ChevronUp,
@@ -124,6 +124,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 }) => {
   // --- Canva Studio State ---
   const [viewMode, setViewMode] = useState<'preview' | 'canva'>('preview');
+  const [canvaSnapshotUrl, setCanvaSnapshotUrl] = useState<string | null>(null);
+  const [savedCanvaItems, setSavedCanvaItems] = useState<CanvaImageItem[]>([]);
 
   // --- Sidebar Settings State ---
   const [modalCopies, setModalCopies] = useState<number>(copies || 1);
@@ -351,7 +353,13 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     return list;
   }, [activePreviewUrl, isImgFile, fileName, batchFiles]);
 
-  const handleApplyCanvaLayout = async (renderedFile: File) => {
+  const handleApplyCanvaLayout = async (renderedFile: File, previewDataUrl?: string) => {
+    if (previewDataUrl) {
+      setCanvaSnapshotUrl(previewDataUrl);
+      const img = new Image();
+      img.src = previewDataUrl;
+      imageElementCache.current.set(previewDataUrl, img);
+    }
     try {
       const newUrl = URL.createObjectURL(renderedFile);
       setLocalObjectUrl(newUrl);
@@ -360,7 +368,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     if (onApplyCanvasLayout) {
       await onApplyCanvasLayout(renderedFile);
     }
-    setViewMode('preview');
   };
 
   const isPdfFile = useMemo(() => {
@@ -803,7 +810,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         const offsetY = targetY + (targetH - scaledH) / 2;
 
         // Render actual uploaded document
-        if (isImgFile && activePreviewUrl) {
+        if (canvaSnapshotUrl) {
+          await renderImageSlot(ctx, canvaSnapshotUrl, offsetX, offsetY, scaledW, scaledH);
+        } else if (isImgFile && activePreviewUrl) {
           await renderImageSlot(ctx, activePreviewUrl, offsetX, offsetY, scaledW, scaledH);
         } else if (pdfDoc && pageToDraw <= pdfDoc.numPages) {
           await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
@@ -866,6 +875,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     activePreviewUrl,
     isImgFile,
     pdfDoc,
+    canvaSnapshotUrl,
     drawPreviewUnavailable,
     renderImageSlot,
     renderPdfSlot,
@@ -1348,6 +1358,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         {viewMode === 'canva' ? (
           <CanvaStudioCanvas
             initialImages={canvaInitialImages}
+            savedItems={savedCanvaItems}
+            onItemsChange={setSavedCanvaItems}
             paperSize={modalPaperSize}
             isLandscape={isLandscape}
             paperAspectRatio={paperAspectRatio}

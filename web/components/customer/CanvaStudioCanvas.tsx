@@ -29,12 +29,14 @@ export interface CanvaImageItem {
 
 export interface CanvaStudioCanvasProps {
   initialImages: Array<{ url: string; name: string }>;
+  savedItems?: CanvaImageItem[];
+  onItemsChange?: (items: CanvaImageItem[]) => void;
   paperSize: string;
   isLandscape: boolean;
   paperAspectRatio: number;
   isBw: boolean;
   zoomLevel: number;
-  onApplyLayout: (file: File) => Promise<void> | void;
+  onApplyLayout: (file: File, previewDataUrl?: string) => Promise<void> | void;
   onCancel?: () => void;
 }
 
@@ -42,6 +44,8 @@ type DragMode = 'move' | 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w' | 'ro
 
 export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   initialImages,
+  savedItems,
+  onItemsChange,
   paperSize,
   isLandscape,
   paperAspectRatio,
@@ -50,9 +54,20 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   onApplyLayout,
   onCancel,
 }) => {
-  const [items, setItems] = useState<CanvaImageItem[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [items, setItems] = useState<CanvaImageItem[]>(() => {
+    if (savedItems && savedItems.length > 0) {
+      return savedItems;
+    }
+    return [];
+  });
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    if (savedItems && savedItems.length > 0) {
+      return savedItems[0].id;
+    }
+    return null;
+  });
   const [isExporting, setIsExporting] = useState(false);
+  const [justApplied, setJustApplied] = useState(false);
   const [history, setHistory] = useState<CanvaImageItem[][]>([]);
   const [isGuidelineVisible, setIsGuidelineVisible] = useState(true);
 
@@ -63,6 +78,14 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   // High-performance 120 FPS animation frame reference for mobile touch
   const rafId = useRef<number | null>(null);
   const pendingItemUpdate = useRef<CanvaImageItem | null>(null);
+  const hasInitialized = useRef(Boolean(savedItems && savedItems.length > 0));
+
+  // Keep parent in sync whenever canvas items change
+  useEffect(() => {
+    if (items.length > 0) {
+      onItemsChange?.(items);
+    }
+  }, [items, onItemsChange]);
 
   // Interaction tracking state
   const dragRef = useRef<{
@@ -99,9 +122,15 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     });
   }, []);
 
-  // Initialize items from initialImages on mount
+  // Initialize items from initialImages only once on initial mount if not already populated
   useEffect(() => {
+    if (hasInitialized.current) return;
+    if (items.length > 0) {
+      hasInitialized.current = true;
+      return;
+    }
     if (initialImages.length === 0) return;
+    hasInitialized.current = true;
 
     let isMounted = true;
     const initItems = async () => {
@@ -148,6 +177,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       if (isMounted && loadedItems.length > 0) {
         setItems(loadedItems);
         setSelectedId(loadedItems[0].id);
+        onItemsChange?.(loadedItems);
       }
     };
 
@@ -156,7 +186,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       isMounted = false;
       if (rafId.current) cancelAnimationFrame(rafId.current);
     };
-  }, [initialImages, loadImage, paperAspectRatio]);
+  }, [initialImages, loadImage, paperAspectRatio, items.length, onItemsChange]);
 
   // Add new image files to canvas
   const handleAddFiles = useCallback(
@@ -449,14 +479,43 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   // -------------------------------------------------------------
   // High-Resolution Print Export (Generates print-ready PDF/Image)
   // -------------------------------------------------------------
+  const getPaperPoints = (size: string, landscape: boolean) => {
+    const s = (size || 'A4').toUpperCase();
+    let w = 595.28;
+    let h = 841.89;
+    if (s === 'LETTER') {
+      w = 612;
+      h = 792;
+    } else if (s === 'LEGAL') {
+      w = 612;
+      h = 1008;
+    } else if (s === 'A3') {
+      w = 841.89;
+      h = 1190.55;
+    } else if (s === 'TABLOID') {
+      w = 792;
+      h = 1224;
+    }
+    return landscape ? { width: h, height: w } : { width: w, height: h };
+  };
+
   const handleExportToPrint = async () => {
     if (items.length === 0) return;
     setIsExporting(true);
 
     try {
-      // 300 DPI Print Resolution Dimensions (A4: 2480 x 3508 px)
-      const standardWidth = isLandscape ? 3508 : 2480;
-      const standardHeight = isLandscape ? 2480 : 3508;
+      // 300 DPI Print Resolution Dimensions strictly matching paperAspectRatio
+      const baseDimension = 3508;
+      let standardWidth: number;
+      let standardHeight: number;
+
+      if (isLandscape) {
+        standardWidth = baseDimension;
+        standardHeight = Math.round(baseDimension / paperAspectRatio);
+      } else {
+        standardHeight = baseDimension;
+        standardWidth = Math.round(baseDimension * paperAspectRatio);
+      }
 
       const exportCanvas = document.createElement('canvas');
       exportCanvas.width = standardWidth;
@@ -498,17 +557,18 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         ctx.restore();
       }
 
-      // 4. Convert canvas to JPEG blob
+      // 4. Convert canvas to JPEG blob and preview data URL
       const jpegBlob = await new Promise<Blob | null>((resolve) =>
         exportCanvas.toBlob(resolve, 'image/jpeg', 0.95)
       );
 
       if (!jpegBlob) throw new Error('Failed to render canvas image');
 
+      const previewDataUrl = exportCanvas.toDataURL('image/jpeg', 0.95);
+
       // 5. Wrap into a 1-page PDF matching exact paperSize points
       const pdfDoc = await PDFDocument.create();
-      const pdfWidth = isLandscape ? 841.89 : 595.28;
-      const pdfHeight = isLandscape ? 595.28 : 841.89;
+      const { width: pdfWidth, height: pdfHeight } = getPaperPoints(paperSize, isLandscape);
 
       const page = pdfDoc.addPage([pdfWidth, pdfHeight]);
       const imageBytes = await jpegBlob.arrayBuffer();
@@ -529,7 +589,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         { type: 'application/pdf' }
       );
 
-      await onApplyLayout(finalPdfFile);
+      await onApplyLayout(finalPdfFile, previewDataUrl);
+      setJustApplied(true);
+      setTimeout(() => setJustApplied(false), 2500);
     } catch (err) {
       console.error('Failed to export Canva layout:', err);
       alert('Could not render printable layout. Please try again.');
@@ -628,10 +690,19 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             type="button"
             onClick={handleExportToPrint}
             disabled={isExporting || items.length === 0}
-            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-50 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-950/50 ring-1 ring-emerald-400/40 transition-all cursor-pointer touch-manipulation"
+            className={`px-3.5 py-1.5 rounded-xl active:scale-95 disabled:opacity-50 text-white text-xs font-black flex items-center gap-1.5 shadow-md ring-1 transition-all cursor-pointer touch-manipulation ${
+              justApplied
+                ? 'bg-emerald-500 ring-emerald-300'
+                : 'bg-emerald-600 hover:bg-emerald-500 ring-emerald-400/40 shadow-emerald-950/50'
+            }`}
           >
             {isExporting ? (
               <span className="animate-pulse">Applying...</span>
+            ) : justApplied ? (
+              <>
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Applied!</span>
+              </>
             ) : (
               <>
                 <Check className="w-4 h-4 stroke-[3]" />
