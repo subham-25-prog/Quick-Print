@@ -1591,10 +1591,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             isBw={isBw}
             zoomLevel={zoomLevel}
             onApplyLayout={handleApplyCanvaLayout}
-            onCancel={() => {
-              setViewMode('preview');
-              setActiveTab('preview');
-            }}
           />
         ) : (
           <>

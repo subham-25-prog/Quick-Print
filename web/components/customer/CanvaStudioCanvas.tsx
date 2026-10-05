@@ -9,7 +9,6 @@ import {
   Upload,
   Check,
   RotateCcw,
-  X,
   Plus,
 } from '@/components/ui/Icons';
 import { PDFDocument } from 'pdf-lib';
@@ -54,7 +53,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   isBw,
   zoomLevel,
   onApplyLayout,
-  onCancel,
 }) => {
   const [items, setItems] = useState<CanvaImageItem[]>(() => {
     if (savedItems && savedItems.length > 0) {
@@ -707,7 +705,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           TOP TOOLBAR: Add Image, + Add Page, Undo, & Apply
           ------------------------------------------------------------- */}
       <div className="w-full bg-[#1e2022] border-b border-[#3c4043] px-3 py-2 flex items-center justify-between gap-2 shrink-0 z-30 shadow-md">
-        {/* Left Side: Add Image and Add Page buttons */}
+        {/* Left Side: Add Image button */}
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -719,23 +717,12 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             <span>+ Add Image</span>
           </button>
 
-          {/* Add Page Button like Canva */}
-          <button
-            type="button"
-            onClick={handleAddPage}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-indigo-300 hover:text-white text-xs font-extrabold flex items-center gap-1.5 border border-slate-700/80 shadow-xs transition-all cursor-pointer touch-manipulation"
-            title="Add a same-sized blank page"
-          >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>+ Add Page</span>
-          </button>
-
           <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-300 font-bold uppercase hidden sm:inline-block">
             {paperSize} • {pageCount} {pageCount === 1 ? 'page' : 'pages'}
           </span>
         </div>
 
-        {/* Right Side: Undo, Apply CTA, and Close */}
+        {/* Right Side: Undo */}
         <div className="flex items-center gap-1.5 sm:gap-2">
           {history.length > 0 && (
             <button
@@ -745,19 +732,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
               title="Undo"
             >
               <RotateCcw className="w-4 h-4" />
-            </button>
-          )}
-
-
-
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer touch-manipulation ml-0.5"
-              title="Close Canva Studio"
-            >
-              <X className="w-4 h-4" />
             </button>
           )}
         </div>
