@@ -24,10 +24,10 @@ function isPng(item: BatchItem): boolean {
   return item.file.type === 'image/png' || item.name.toLowerCase().endsWith('.png');
 }
 
-function batchFileName(items: BatchItem[], totalPages: number): string {
+function batchFileName(items: BatchItem[], _totalPages: number): string {
   return items.length === 1
     ? items[0].name
-    : `Batch_${items.length}_Documents_${totalPages}_Pages.pdf`;
+    : (items[0]?.name ? `${items[0].name.replace(/\.[^/.]+$/, '')}.pdf` : 'Print_Document.pdf');
 }
 
 async function imageBytesForPrint(item: BatchItem): Promise<{ bytes: ArrayBuffer; isPng: boolean }> {

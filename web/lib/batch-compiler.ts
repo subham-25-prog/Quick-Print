@@ -13,10 +13,10 @@ type BatchWorkerResult = {
   message: string;
 };
 
-function batchFileName(items: BatchFileItem[], totalPages: number): string {
+function batchFileName(items: BatchFileItem[], _totalPages: number): string {
   return items.length === 1
     ? items[0].name
-    : `Batch_${items.length}_Documents_${totalPages}_Pages.pdf`;
+    : (items[0]?.name ? `${items[0].name.replace(/\.[^/.]+$/, '')}.pdf` : 'Print_Document.pdf');
 }
 
 function assertBatchSize(size: number) {

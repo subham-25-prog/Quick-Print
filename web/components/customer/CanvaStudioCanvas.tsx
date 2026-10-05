@@ -664,7 +664,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       const pdfBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
       const finalPdfFile = new File(
         [pdfBlob],
-        `Canva_Design_${Date.now()}.pdf`,
+        'Custom_Design.pdf',
         { type: 'application/pdf' }
       );
 
@@ -810,12 +810,12 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
               >
                 {/* Page Header Bar with Page Number & Actions */}
                 <div
-                  className="flex items-center justify-between w-full max-w-md px-1 text-xs font-bold text-slate-400"
+                  className="flex items-center justify-between w-full px-1 text-xs font-bold text-slate-400"
                   style={{
                     width: isLandscape
-                      ? `${Math.round(480 * (zoomLevel / 100))}px`
-                      : `${Math.round(360 * (zoomLevel / 100))}px`,
-                    maxWidth: '94%',
+                      ? `${Math.round(860 * (zoomLevel / 100))}px`
+                      : `${Math.round(620 * (zoomLevel / 100))}px`,
+                    maxWidth: '96%',
                   }}
                 >
                   <div className="flex items-center gap-2">
@@ -874,10 +874,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                   style={{
                     aspectRatio: `${paperAspectRatio}`,
                     width: isLandscape
-                      ? `${Math.round(480 * (zoomLevel / 100))}px`
-                      : `${Math.round(360 * (zoomLevel / 100))}px`,
-                    maxWidth: '94%',
-                    maxHeight: '74vh',
+                      ? `${Math.round(860 * (zoomLevel / 100))}px`
+                      : `${Math.round(620 * (zoomLevel / 100))}px`,
+                    maxWidth: '96%',
+                    maxHeight: '85vh',
                   }}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}

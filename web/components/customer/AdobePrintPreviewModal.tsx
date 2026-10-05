@@ -128,6 +128,22 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   const [canvaSnapshotUrls, setCanvaSnapshotUrls] = useState<string[]>([]);
   const [savedCanvaItems, setSavedCanvaItems] = useState<CanvaImageItem[]>([]);
 
+  // Clean, customer-friendly display document title (no robotic Batch_Order or internal filenames)
+  const displayFileName = useMemo(() => {
+    const raw = fileName || uploadedFile?.fileName || uploadedFile?.file?.name || '';
+    if (!raw) return 'Print Document';
+    if (/^Batch[_-]/i.test(raw) || /Batch_Order/i.test(raw)) {
+      if (batchFiles && batchFiles.length > 0) {
+        return batchFiles[0].name;
+      }
+      return 'Print Document';
+    }
+    if (/^Canva_Design_\d+/i.test(raw)) {
+      return 'Custom Design.pdf';
+    }
+    return raw;
+  }, [fileName, uploadedFile, batchFiles]);
+
   // --- Sidebar Settings State ---
   const [modalCopies, setModalCopies] = useState<number>(copies || 1);
   const [modalLayout, setModalLayout] = useState<'PORTRAIT' | 'LANDSCAPE'>(
@@ -774,8 +790,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     if (!ctx) return;
 
     // Crisp Retina-optimized canvas dimensions
-    const baseW = isLandscape ? 960 : 680;
-    const baseH = isLandscape ? 680 : 960;
+    const baseW = isLandscape ? 1200 : 850;
+    const baseH = isLandscape ? 850 : 1200;
 
     if (canvas.width !== baseW) canvas.width = baseW;
     if (canvas.height !== baseH) canvas.height = baseH;
@@ -941,8 +957,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           >
             <X className="w-5 h-5" />
           </button>
-          <span className="font-mono text-xs text-white hidden sm:inline-block truncate max-w-[180px]">
-            {fileName}
+          <span className="font-mono text-xs text-white hidden sm:inline-block truncate max-w-[280px]">
+            {displayFileName}
           </span>
         </div>
 
@@ -1372,9 +1388,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       >
         {/* Top Info Bar */}
         <div className="w-full flex items-center justify-between text-xs text-[#9aa0a6] px-2 shrink-0 z-10 gap-2 flex-wrap pb-2 border-b border-[#3c4043]/50">
-          <div className="flex items-center gap-2 truncate max-w-[200px] sm:max-w-xs">
+          <div className="flex items-center gap-2 truncate max-w-[240px] sm:max-w-md">
             <span className="truncate font-mono text-[11px] text-white">
-              {fileName}
+              {displayFileName}
             </span>
             {pageRangeMode === 'RANGE' && currentSheetPages.length > 0 && (
               <span className="px-1.5 py-0.5 text-[10px] font-mono bg-blue-500/20 text-blue-300 rounded border border-blue-500/30 shrink-0">
@@ -1432,10 +1448,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             style={{
               aspectRatio: `${paperAspectRatio}`,
               width: isLandscape
-                ? `${Math.round(440 * (zoomLevel / 100))}px`
-                : `${Math.round(330 * (zoomLevel / 100))}px`,
-              maxWidth: '92%',
-              maxHeight: '68vh',
+                ? `${Math.round(860 * (zoomLevel / 100))}px`
+                : `${Math.round(620 * (zoomLevel / 100))}px`,
+              maxWidth: '96%',
+              maxHeight: '84vh',
               transform: `rotate(${rotationAngle}deg) translateZ(0)`,
               willChange: 'transform',
               filter: isBw ? 'grayscale(100%)' : 'none',
