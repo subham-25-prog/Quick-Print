@@ -413,6 +413,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
 
   const handleRemoveSingle = () => {
     onFileUploaded(null);
+    onBatchFilesChange?.([]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -465,7 +466,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           </div>
         )}
 
-        {batchFiles.length === 0 ? (
+        {batchFiles.length === 0 && !uploadedFile ? (
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -499,7 +500,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
               </div>
             </div>
           </div>
-        ) : (
+        ) : batchFiles.length > 0 ? (
           <div className="space-y-2.5">
             {/* Batch items list */}
             <div className="space-y-2">
@@ -542,7 +543,41 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
               </div>
             )}
           </div>
-        )}
+        ) : uploadedFile ? (
+          <div className="animate-fade-in-scale p-3.5 rounded-2xl border border-emerald-300 bg-emerald-50/40 flex items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3 min-w-0 flex-1 select-none">
+              <DocumentPreviewBox
+                file={uploadedFile.file}
+                name={uploadedFile.fileName}
+                pageCount={uploadedFile.pageCount}
+                fallbackUrl={uploadedFile.signedUrl || uploadedFile.previewUrl}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="text-xs sm:text-sm font-semibold text-slate-800 truncate" title={uploadedFile.fileName}>
+                  {uploadedFile.fileName}
+                </div>
+                <div className="text-[11px] text-emerald-700 font-medium mt-1 flex items-center gap-2 flex-wrap">
+                  <span>
+                    Detected: {uploadedFile.pageCount} {uploadedFile.pageCount === 1 ? 'page' : 'pages'}
+                  </span>
+                  {uploadedFile.fileSizeBytes > 0 && (
+                    <span className="text-slate-400">
+                      · {formatFileSize(uploadedFile.fileSizeBytes)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleRemoveSingle}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all shrink-0 cursor-pointer"
+              title="Remove document"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : null}
       </div>
       </ErrorBoundary>
     );

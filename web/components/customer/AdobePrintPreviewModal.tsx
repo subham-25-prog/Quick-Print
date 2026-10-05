@@ -717,8 +717,12 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       slotW: number,
       slotH: number
     ): Promise<void> => {
+      // Clean white paper background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(slotX, slotY, slotW, slotH);
+
       for (const item of pageItems) {
-        let img = imageElementCache.current.get(item.src);
+        let img = item.originalImg || imageElementCache.current.get(item.src);
         if (!img || !img.complete || img.naturalWidth === 0) {
           try {
             img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -950,10 +954,10 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
         const pageSnapshot = canvaSnapshotUrls[pageToDraw - 1] || (pageToDraw === 1 ? canvaSnapshotUrl : null);
 
-        if (pageCanvaItems.length > 0) {
-          await renderCanvaPageItems(ctx, pageCanvaItems, offsetX, offsetY, scaledW, scaledH);
-        } else if (pageSnapshot) {
+        if (pageSnapshot) {
           await renderImageSlot(ctx, pageSnapshot, offsetX, offsetY, scaledW, scaledH);
+        } else if (pageCanvaItems.length > 0) {
+          await renderCanvaPageItems(ctx, pageCanvaItems, offsetX, offsetY, scaledW, scaledH);
         } else if (pdfDoc && pageToDraw <= pdfDoc.numPages) {
           await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
         } else if (batchFiles && batchFiles.length >= pageToDraw && batchFiles[pageToDraw - 1]?.file) {

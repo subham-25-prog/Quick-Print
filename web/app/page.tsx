@@ -864,9 +864,17 @@ export default function CustomerHomePage() {
               onApplyCanvasLayout={async (newFile: File) => {
                 try {
                   const uploadRes = await uploadDocumentFile(newFile);
+                  const customBatchItem: BatchFileItem = {
+                    id: uploadRes.uploadId || `custom-canva-${Date.now()}`,
+                    file: newFile,
+                    name: newFile.name || 'Customized_Print_Document.pdf',
+                    size: newFile.size,
+                    pageCount: uploadRes.pageCount || 1,
+                    copies: 1,
+                  };
                   setUploadedFile({ ...uploadRes, file: newFile });
-                  setBatchFiles([]);
-                  setBatchPreviewFile(null);
+                  setBatchFiles([customBatchItem]);
+                  setBatchPreviewFile(newFile);
                 } catch (e) {
                   console.error('Failed to upload customized layout:', e);
                 }

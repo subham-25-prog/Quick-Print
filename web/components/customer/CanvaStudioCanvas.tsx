@@ -613,28 +613,32 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
         // Draw each item at full print resolution
         for (const item of pageItems) {
-          let img = item.originalImg;
-          if (!img || !img.complete) {
-            img = await loadImage(item.src);
+          try {
+            let img = item.originalImg;
+            if (!img || !img.complete || img.naturalWidth === 0) {
+              img = await loadImage(item.src);
+            }
+
+            const px = (item.x / 100) * standardWidth;
+            const py = (item.y / 100) * standardHeight;
+            const pw = (item.width / 100) * standardWidth;
+            const ph = (item.height / 100) * standardHeight;
+
+            ctx.save();
+            ctx.translate(px + pw / 2, py + ph / 2);
+            if (item.rotation) {
+              ctx.rotate((item.rotation * Math.PI) / 180);
+            }
+
+            if (isBw) {
+              ctx.filter = 'grayscale(100%)';
+            }
+
+            ctx.drawImage(img, -pw / 2, -ph / 2, pw, ph);
+            ctx.restore();
+          } catch (itemErr) {
+            console.error(`Failed to load image for item ${item.name || item.id} during export:`, itemErr);
           }
-
-          const px = (item.x / 100) * standardWidth;
-          const py = (item.y / 100) * standardHeight;
-          const pw = (item.width / 100) * standardWidth;
-          const ph = (item.height / 100) * standardHeight;
-
-          ctx.save();
-          ctx.translate(px + pw / 2, py + ph / 2);
-          if (item.rotation) {
-            ctx.rotate((item.rotation * Math.PI) / 180);
-          }
-
-          if (isBw) {
-            ctx.filter = 'grayscale(100%)';
-          }
-
-          ctx.drawImage(img, -pw / 2, -ph / 2, pw, ph);
-          ctx.restore();
         }
 
         // Convert page canvas to JPEG blob
