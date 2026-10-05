@@ -503,7 +503,6 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
           disabled={isInspectingBatch}
         />
 
-        {isProcessingBatch && <BatchCompilationLoader />}
 
         {error && (
           <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between">

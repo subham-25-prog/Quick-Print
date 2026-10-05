@@ -78,48 +78,7 @@ export default function CustomerHomePage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
-  // Build a multi-file document shortly after the list settles. Preview and
-  // checkout then reuse this exact promise instead of making Cash wait for the
-  // entire merge on its first tap.
-  useEffect(() => {
-    if (batchFiles.length < 2) return;
-    const batchSourceBytes = batchFiles.reduce((total, item) => total + item.size, 0);
-    // Preparing a large selection just because it was added wastes battery,
-    // memory and network if the customer keeps editing the batch. It will be
-    // prepared on the explicit Preview action instead.
-    if (batchSourceBytes > EAGER_BATCH_PREPARATION_LIMIT_BYTES) return;
-
-    let cancelled = false;
-    const signature = getBatchSignature(batchFiles);
-    const timer = window.setTimeout(() => {
-      setIsProcessingBatch(true);
-      void checkoutPreparation
-        .prepareDocument(batchFiles)
-        .then((compiledFile) => {
-          if (cancelled) return;
-          setBatchPreviewFile(compiledFile);
-          lastCompiledBatchSig.current = signature;
-
-          // Only warm PDF.js after the CPU-heavy merge has completed. This
-          // keeps file selection responsive and makes the later Preview tap
-          // faster without eagerly loading the renderer for every upload.
-          void import('@/components/customer/AdobePrintPreviewModal')
-            .then((mod) => mod.getPdfJs?.())
-            .catch(() => {});
-        })
-        .catch(() => {
-          // The explicit Preview/checkout path will show a user-facing error.
-        })
-        .finally(() => {
-          if (!cancelled) setIsProcessingBatch(false);
-        });
-    }, 500);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [batchFiles, checkoutPreparation]);
+  // Eager batch merge removed - customers can preview and customize directly in Canva Studio
 
   // The payment selector is small, but it is code-split. Fetch it after a
   // document is selected so Confirm & Pay opens immediately without loading
@@ -906,19 +865,8 @@ export default function CustomerHomePage() {
                 try {
                   const uploadRes = await uploadDocumentFile(newFile);
                   setUploadedFile(uploadRes);
-                  if (hasBatch) {
-                    setBatchFiles([
-                      {
-                        id: `batch-${Date.now()}`,
-                        file: newFile,
-                        name: newFile.name,
-                        size: newFile.size,
-                        pageCount: 1,
-                        copies: 1,
-                      },
-                    ]);
-                    setBatchPreviewFile(newFile);
-                  }
+                  setBatchFiles([]);
+                  setBatchPreviewFile(null);
                 } catch (e) {
                   console.error('Failed to upload customized layout:', e);
                 }

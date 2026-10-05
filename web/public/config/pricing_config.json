@@ -52,6 +52,6 @@
     "allowCustomerNotes": true,
     "minOrderAmount": 1,
     "urgentFee": 0,
-    "allowMultipleFiles": true
+    "allowMultipleFiles": false
   }
 }

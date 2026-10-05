@@ -125,6 +125,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   // --- Canva Studio State ---
   const [viewMode, setViewMode] = useState<'preview' | 'canva'>('preview');
   const [canvaSnapshotUrl, setCanvaSnapshotUrl] = useState<string | null>(null);
+  const [canvaSnapshotUrls, setCanvaSnapshotUrls] = useState<string[]>([]);
   const [savedCanvaItems, setSavedCanvaItems] = useState<CanvaImageItem[]>([]);
 
   // --- Sidebar Settings State ---
@@ -353,17 +354,40 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     return list;
   }, [activePreviewUrl, isImgFile, fileName, batchFiles]);
 
-  const handleApplyCanvaLayout = async (renderedFile: File, previewDataUrl?: string) => {
+  const handleApplyCanvaLayout = async (
+    renderedFile: File,
+    previewDataUrl?: string,
+    allPagePreviews?: string[]
+  ) => {
     if (previewDataUrl) {
       setCanvaSnapshotUrl(previewDataUrl);
       const img = new Image();
       img.src = previewDataUrl;
       imageElementCache.current.set(previewDataUrl, img);
     }
+    if (allPagePreviews && allPagePreviews.length > 0) {
+      setCanvaSnapshotUrls(allPagePreviews);
+      allPagePreviews.forEach((url) => {
+        const img = new Image();
+        img.src = url;
+        imageElementCache.current.set(url, img);
+      });
+    }
     try {
       const newUrl = URL.createObjectURL(renderedFile);
       setLocalObjectUrl(newUrl);
     } catch {}
+
+    try {
+      const pdfjs = await getPdfJs();
+      const arrayBuffer = await renderedFile.arrayBuffer();
+      const doc = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      setPdfDoc(doc);
+      setPdfPageCount(doc.numPages);
+      setIsPdfLoading(false);
+    } catch (err) {
+      console.error('Error loading Canva layout PDF in preview:', err);
+    }
 
     if (onApplyCanvasLayout) {
       await onApplyCanvasLayout(renderedFile);
@@ -371,7 +395,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     // Switch back to standard preview mode after applying layout
     setViewMode('preview');
   };
-    // Duplicate block removed
 
   const isPdfFile = useMemo(() => {
     if (isImgFile) return false;
@@ -813,12 +836,13 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         const offsetY = targetY + (targetH - scaledH) / 2;
 
         // Render actual uploaded document
-        if (canvaSnapshotUrl) {
-          await renderImageSlot(ctx, canvaSnapshotUrl, offsetX, offsetY, scaledW, scaledH);
-        } else if (isImgFile && activePreviewUrl) {
-          await renderImageSlot(ctx, activePreviewUrl, offsetX, offsetY, scaledW, scaledH);
+        const pageSnapshot = canvaSnapshotUrls[pageToDraw - 1] || (pageToDraw === 1 ? canvaSnapshotUrl : null);
+        if (pageSnapshot) {
+          await renderImageSlot(ctx, pageSnapshot, offsetX, offsetY, scaledW, scaledH);
         } else if (pdfDoc && pageToDraw <= pdfDoc.numPages) {
           await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
+        } else if (isImgFile && activePreviewUrl) {
+          await renderImageSlot(ctx, activePreviewUrl, offsetX, offsetY, scaledW, scaledH);
         } else {
           drawPreviewUnavailable(ctx, offsetX, offsetY, scaledW, scaledH);
         }
@@ -879,6 +903,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     isImgFile,
     pdfDoc,
     canvaSnapshotUrl,
+    canvaSnapshotUrls,
     drawPreviewUnavailable,
     renderImageSlot,
     renderPdfSlot,
