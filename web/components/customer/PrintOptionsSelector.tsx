@@ -63,12 +63,11 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
   };
 
   return (
-    <div className="space-y-4 contain-layout text-white">
+    <div className="space-y-4 contain-layout">
       {/* 1. Paper Size & Type */}
       <div>
-        <label className="block text-[10px] font-black uppercase tracking-wider text-slate-300 mb-2 select-none flex items-center gap-1.5">
-          <span className="text-red-400">📄</span>
-          <span>Paper Size & Type</span>
+        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 select-none">
+          Paper Size & Type
         </label>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           {/* A4 Standard */}
@@ -78,18 +77,18 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
               onClick={() => onPaperSizeChange('A4')}
               className={`p-3 rounded-2xl border text-center transition-all duration-150 card-hover-lift active-press flex flex-col items-center justify-center relative cursor-pointer select-none ${
                 paperSize === 'A4'
-                  ? 'border-red-500 bg-red-950/40 text-white ring-2 ring-red-500/50 shadow-md shadow-red-950/30'
-                  : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-6 h-7 border border-slate-700 rounded-xs flex items-center justify-center text-red-400 mb-1.5 shadow-2xs">
+              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5 shadow-2xs">
                 <FileText className="w-3.5 h-3.5" />
               </div>
               <div className="font-bold text-xs">A4 Standard</div>
-              <div className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
+              <div className="text-[10px] text-slate-500 font-medium leading-tight mt-0.5">
                 210×297 mm
               </div>
-              <div className="mt-1.5 px-2 py-0.5 rounded-md bg-slate-900 text-[10px] font-bold text-amber-300 border border-slate-800">
+              <div className="mt-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold text-slate-800">
                 {formatCurrency(getPaperRate('A4'))}/page
               </div>
             </button>
@@ -102,18 +101,18 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
               onClick={() => onPaperSizeChange('A3')}
               className={`p-3 rounded-2xl border text-center transition-all duration-150 card-hover-lift active-press flex flex-col items-center justify-center relative cursor-pointer select-none ${
                 paperSize === 'A3'
-                  ? 'border-red-500 bg-red-950/40 text-white ring-2 ring-red-500/50 shadow-md shadow-red-950/30'
-                  : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-6 h-7 border border-slate-700 rounded-xs flex items-center justify-center text-red-400 mb-1.5 shadow-2xs">
+              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5 shadow-2xs">
                 <FileText className="w-3.5 h-3.5" />
               </div>
               <div className="font-bold text-xs">A3 Poster</div>
-              <div className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
+              <div className="text-[10px] text-slate-500 font-medium leading-tight mt-0.5">
                 297×420 mm
               </div>
-              <div className="mt-1.5 px-2 py-0.5 rounded-md bg-slate-900 text-[10px] font-bold text-amber-300 border border-slate-800">
+              <div className="mt-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold text-slate-800">
                 {formatCurrency(getPaperRate('A3'))}/page
               </div>
             </button>
@@ -126,18 +125,18 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
               onClick={() => onPaperSizeChange('LEGAL')}
               className={`p-3 rounded-2xl border text-center transition-all duration-150 card-hover-lift active-press flex flex-col items-center justify-center relative cursor-pointer select-none ${
                 paperSize === 'LEGAL'
-                  ? 'border-red-500 bg-red-950/40 text-white ring-2 ring-red-500/50 shadow-md shadow-red-950/30'
-                  : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-6 h-7 border border-slate-700 rounded-xs flex items-center justify-center text-red-400 mb-1.5 shadow-2xs">
+              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5 shadow-2xs">
                 <FileText className="w-3.5 h-3.5" />
               </div>
               <div className="font-bold text-xs">Legal / Stamp</div>
-              <div className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
+              <div className="text-[10px] text-slate-500 font-medium leading-tight mt-0.5">
                 216×356 mm
               </div>
-              <div className="mt-1.5 px-2 py-0.5 rounded-md bg-slate-900 text-[10px] font-bold text-amber-300 border border-slate-800">
+              <div className="mt-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold text-slate-800">
                 {formatCurrency(getPaperRate('LEGAL'))}/page
               </div>
             </button>
@@ -150,18 +149,18 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
               onClick={() => onPaperSizeChange('PHOTO')}
               className={`p-3 rounded-2xl border text-center transition-all duration-150 card-hover-lift active-press flex flex-col items-center justify-center relative cursor-pointer select-none ${
                 paperSize === 'PHOTO'
-                  ? 'border-red-500 bg-red-950/40 text-white ring-2 ring-red-500/50 shadow-md shadow-red-950/30'
-                  : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-6 h-7 border border-slate-700 rounded-xs flex items-center justify-center text-red-400 mb-1.5 shadow-2xs">
+              <div className="w-6 h-7 border border-slate-300 rounded-xs flex items-center justify-center text-slate-400 mb-1.5 shadow-2xs">
                 <ImageIcon className="w-3.5 h-3.5" />
               </div>
               <div className="font-bold text-xs">Photo Glossy</div>
-              <div className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
-                Premium Glossy
+              <div className="text-[10px] text-slate-500 font-medium leading-tight mt-0.5">
+                240 GSM Glossy
               </div>
-              <div className="mt-1.5 px-2 py-0.5 rounded-md bg-slate-900 text-[10px] font-bold text-amber-300 border border-slate-800">
+              <div className="mt-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold text-slate-800">
                 {formatCurrency(getPaperRate('PHOTO'))}/page
               </div>
             </button>
@@ -175,18 +174,18 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
               onClick={() => onPaperSizeChange(paper.id)}
               className={`p-3 rounded-2xl border text-center transition-all duration-150 card-hover-lift active-press flex flex-col items-center justify-center relative cursor-pointer select-none ${
                 paperSize === paper.id
-                  ? 'border-red-500 bg-red-950/40 text-white ring-2 ring-red-500/50 shadow-md shadow-red-950/30'
-                  : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-6 h-7 border border-slate-700 rounded-xs flex items-center justify-center text-cyan-400 mb-1.5 shadow-2xs">
+              <div className="w-6 h-7 border border-cyan-300 rounded-xs flex items-center justify-center text-cyan-600 mb-1.5 bg-cyan-50 shadow-2xs">
                 <FileText className="w-3.5 h-3.5" />
               </div>
-              <div className="font-bold text-xs text-white">{paper.name}</div>
-              <div className="text-[10px] text-slate-400 font-medium leading-tight mt-0.5">
+              <div className="font-bold text-xs text-slate-900">{paper.name}</div>
+              <div className="text-[10px] text-slate-500 font-medium leading-tight mt-0.5">
                 {paper.description || 'Custom Paper'}
               </div>
-              <div className="mt-1.5 px-2 py-0.5 rounded-md bg-slate-900 text-[10px] font-bold text-amber-300 border border-slate-800">
+              <div className="mt-1.5 px-2 py-0.5 rounded-md bg-slate-100 text-[10px] font-bold text-slate-800">
                 {formatCurrency(getPaperRate(paper.id))}/page
               </div>
             </button>
@@ -197,9 +196,8 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
       {/* 2. Color Mode */}
       {pricing?.form_fields?.allowColorPrinting !== false ? (
         <div>
-          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-300 mb-2 select-none flex items-center gap-1.5">
-            <span className="text-blue-400">🎨</span>
-            <span>Color Mode</span>
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 select-none">
+            Color Mode
           </label>
           <div className="grid grid-cols-2 gap-2.5">
             <button
@@ -207,14 +205,14 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
               onClick={() => onColorModeChange('BW')}
               className={`p-3 rounded-2xl border text-center transition-all duration-150 card-hover-lift active-press flex flex-col items-center justify-center cursor-pointer select-none ${
                 colorMode === 'BW'
-                  ? 'border-red-500 bg-red-950/40 text-white ring-2 ring-red-500/50 shadow-md shadow-red-950/30'
-                  : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-4 h-4 rounded-full bg-slate-300 mb-1.5 shadow-xs" />
-              <div className="font-bold text-xs text-white">Black & White</div>
-              <div className="text-[10px] text-slate-400 font-medium">Standard Xerox</div>
-              <div className="text-[10px] text-amber-300 font-bold mt-1">
+              <div className="w-4 h-4 rounded-full bg-slate-900 mb-1.5 shadow-xs" />
+              <div className="font-bold text-xs text-slate-900">Black & White</div>
+              <div className="text-[10px] text-slate-500 font-medium">Standard Xerox</div>
+              <div className="text-[10px] text-indigo-600 font-bold mt-1">
                 From {formatCurrency(pricing?.a4_bw_per_page || 2)}/pg
               </div>
             </button>
@@ -224,14 +222,14 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
               onClick={() => onColorModeChange('COLOR')}
               className={`p-3 rounded-2xl border text-center transition-all duration-150 card-hover-lift active-press flex flex-col items-center justify-center cursor-pointer select-none ${
                 colorMode === 'COLOR'
-                  ? 'border-red-500 bg-red-950/40 text-white ring-2 ring-red-500/50 shadow-md shadow-red-950/30'
-                  : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
               <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-pink-500 via-amber-400 to-indigo-500 mb-1.5 shadow-xs" />
-              <div className="font-bold text-xs text-white">Full Color</div>
-              <div className="text-[10px] text-slate-400 font-medium">Vibrant Spider-Laser</div>
-              <div className="text-[10px] text-amber-300 font-bold mt-1">
+              <div className="font-bold text-xs text-slate-900">Full Color</div>
+              <div className="text-[10px] text-slate-500 font-medium">Vibrant Laser</div>
+              <div className="text-[10px] text-indigo-600 font-bold mt-1">
                 From {formatCurrency(pricing?.a4_color_per_page || 10)}/pg
               </div>
             </button>
@@ -242,9 +240,8 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
       {/* 3. Print Sides */}
       {pricing?.form_fields?.allowDoubleSided !== false ? (
         <div>
-          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-300 mb-2 select-none flex items-center gap-1.5">
-            <span className="text-amber-400">📑</span>
-            <span>Print Sides</span>
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 select-none">
+            Print Sides
           </label>
           <div className="grid grid-cols-2 gap-2.5">
             <button
@@ -252,15 +249,15 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
               onClick={() => onPrintSidesChange('SINGLE')}
               className={`p-3 rounded-2xl border text-center transition-all duration-150 card-hover-lift active-press flex flex-col items-center justify-center cursor-pointer select-none ${
                 printSides === 'SINGLE'
-                  ? 'border-red-500 bg-red-950/40 text-white ring-2 ring-red-500/50 shadow-md shadow-red-950/30'
-                  : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-5 h-5 rounded-md bg-red-600 text-white font-bold text-[11px] flex items-center justify-center mb-1 shadow-2xs">
+              <div className="w-5 h-5 rounded-md bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center mb-1 shadow-2xs">
                 1
               </div>
-              <div className="font-bold text-xs text-white">Single Sided</div>
-              <div className="text-[10px] text-slate-400 font-medium">1 side only</div>
+              <div className="font-bold text-xs text-slate-900">Single Sided</div>
+              <div className="text-[10px] text-slate-500 font-medium">1 side only</div>
             </button>
 
             <button
@@ -268,15 +265,15 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
               onClick={() => onPrintSidesChange('DOUBLE')}
               className={`p-3 rounded-2xl border text-center transition-all duration-150 card-hover-lift active-press flex flex-col items-center justify-center cursor-pointer select-none ${
                 printSides === 'DOUBLE'
-                  ? 'border-red-500 bg-red-950/40 text-white ring-2 ring-red-500/50 shadow-md shadow-red-950/30'
-                  : 'border-slate-800 bg-slate-950/60 text-slate-300 hover:border-slate-700 hover:bg-slate-900'
+                  ? 'border-indigo-600 bg-indigo-50/70 text-indigo-950 ring-1 ring-indigo-600 shadow-2xs'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
               }`}
             >
-              <div className="w-5 h-5 rounded-md bg-blue-600 text-white font-bold text-[11px] flex items-center justify-center mb-1 shadow-2xs">
+              <div className="w-5 h-5 rounded-md bg-indigo-600 text-white font-bold text-[11px] flex items-center justify-center mb-1 shadow-2xs">
                 2
               </div>
-              <div className="font-bold text-xs text-white">Both Sides</div>
-              <div className="text-[10px] text-slate-400 font-medium">Back to back</div>
+              <div className="font-bold text-xs text-slate-900">Both Sides</div>
+              <div className="text-[10px] text-slate-500 font-medium">Back to back</div>
             </button>
           </div>
         </div>
@@ -285,26 +282,25 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
       {/* 4. Number of Copies */}
       {!hasMultipleFiles && (
         <div>
-          <label className="block text-[10px] font-black uppercase tracking-wider text-slate-300 mb-2 select-none flex items-center gap-1.5">
-            <span className="text-emerald-400">🔢</span>
-            <span>Number of Copies</span>
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 select-none">
+            Number of Copies
           </label>
-          <div className="flex items-center justify-between border border-slate-800 rounded-2xl bg-slate-950/80 p-1 shadow-2xs">
+          <div className="flex items-center justify-between border border-slate-200 rounded-2xl bg-white p-1 shadow-2xs">
             <button
               type="button"
               onClick={() => onCopiesChange(Math.max(1, copies - 1))}
               disabled={copies <= 1}
-              className="w-10 h-9 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white font-bold text-sm flex items-center justify-center stepper-btn cursor-pointer border border-slate-800"
+              className="w-10 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 font-bold text-sm flex items-center justify-center stepper-btn cursor-pointer"
             >
               -
             </button>
-            <span className="font-black text-sm text-amber-300 select-none">
+            <span className="font-bold text-sm text-slate-800 select-none">
               {copies} {copies === 1 ? 'Copy' : 'Copies'}
             </span>
             <button
               type="button"
               onClick={() => onCopiesChange(Math.min(100, copies + 1))}
-              className="w-10 h-9 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm flex items-center justify-center stepper-btn cursor-pointer border border-slate-800"
+              className="w-10 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center stepper-btn cursor-pointer"
             >
               +
             </button>
