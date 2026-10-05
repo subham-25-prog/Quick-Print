@@ -10,6 +10,7 @@ import {
   Check,
   RotateCcw,
   Plus,
+  Sparkles,
 } from '@/components/ui/Icons';
 import { PDFDocument } from 'pdf-lib';
 
@@ -1170,6 +1171,28 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Whole-Page Backdrop Blur & Loading Modal Overlay when Tapping Apply */}
+      {isExporting && (
+        <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in pointer-events-auto select-none">
+          <div className="bg-[#1e2022]/95 border border-slate-700/80 p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 max-w-xs w-full text-center backdrop-blur-xl animate-scale-up">
+            {/* Animated Spinner with Sparkles */}
+            <div className="relative flex items-center justify-center w-14 h-14">
+              <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+              <Sparkles className="w-6 h-6 text-indigo-400 animate-pulse" />
+            </div>
+
+            <div className="space-y-1">
+              <h4 className="text-sm font-extrabold text-white tracking-wide">Applying Custom Design...</h4>
+              <p className="text-xs text-slate-400">Preparing high-res print layout &amp; generating preview</p>
+            </div>
+
+            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+              <div className="bg-indigo-500 h-full w-full animate-pulse rounded-full" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
