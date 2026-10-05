@@ -25,6 +25,10 @@ export interface CanvaImageItem {
   rotation: number; // degrees (0 - 360)
   zIndex: number;
   aspectRatio: number; // width / height
+  cropTop?: number; // 0 to 100 (% cropped from top)
+  cropBottom?: number; // 0 to 100 (% cropped from bottom)
+  cropLeft?: number; // 0 to 100 (% cropped from left)
+  cropRight?: number; // 0 to 100 (% cropped from right)
   originalImg?: HTMLImageElement;
 }
 
@@ -472,12 +476,17 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
       updatedItem.rotation = angleDeg;
     } else {
-      // Corner & Edge Resizing
+      // Corner Resizing & Face Handle Cropping
       const MIN_SIZE_PERCENT = 6;
       let newW = initialItem.width;
       let newH = initialItem.height;
       let newX = initialItem.x;
       let newY = initialItem.y;
+
+      let cTop = initialItem.cropTop || 0;
+      let cBottom = initialItem.cropBottom || 0;
+      let cLeft = initialItem.cropLeft || 0;
+      let cRight = initialItem.cropRight || 0;
 
       if (mode === 'se') {
         newW = Math.max(MIN_SIZE_PERCENT, initialItem.width + deltaXPercent);
@@ -495,16 +504,44 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
         newX = initialItem.x + (initialItem.width - newW);
         newY = initialItem.y + (initialItem.height - newH);
-      } else if (mode === 'e') {
-        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width + deltaXPercent);
-      } else if (mode === 'w') {
-        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - deltaXPercent);
-        newX = initialItem.x + (initialItem.width - newW);
-      } else if (mode === 's') {
-        newH = Math.max(MIN_SIZE_PERCENT, initialItem.height + deltaYPercent);
       } else if (mode === 'n') {
-        newH = Math.max(MIN_SIZE_PERCENT, initialItem.height - deltaYPercent);
-        newY = initialItem.y + (initialItem.height - newH);
+        // Face handle: Crop Top
+        const pctChange = (deltaYPercent / Math.max(0.1, initialItem.height)) * (100 - cTop - cBottom);
+        const nextCropTop = Math.max(0, Math.min(85, cTop + pctChange));
+        const actualPctDiff = nextCropTop - cTop;
+        const yOffsetPercent = (actualPctDiff / Math.max(0.1, 100 - cTop - cBottom)) * initialItem.height;
+
+        cTop = nextCropTop;
+        newY = initialItem.y + yOffsetPercent;
+        newH = Math.max(MIN_SIZE_PERCENT, initialItem.height - yOffsetPercent);
+      } else if (mode === 's') {
+        // Face handle: Crop Bottom
+        const pctChange = (-deltaYPercent / Math.max(0.1, initialItem.height)) * (100 - cTop - cBottom);
+        const nextCropBottom = Math.max(0, Math.min(85, cBottom + pctChange));
+        const actualPctDiff = nextCropBottom - cBottom;
+        const heightReductionPercent = (actualPctDiff / Math.max(0.1, 100 - cTop - cBottom)) * initialItem.height;
+
+        cBottom = nextCropBottom;
+        newH = Math.max(MIN_SIZE_PERCENT, initialItem.height - heightReductionPercent);
+      } else if (mode === 'w') {
+        // Face handle: Crop Left
+        const pctChange = (deltaXPercent / Math.max(0.1, initialItem.width)) * (100 - cLeft - cRight);
+        const nextCropLeft = Math.max(0, Math.min(85, cLeft + pctChange));
+        const actualPctDiff = nextCropLeft - cLeft;
+        const xOffsetPercent = (actualPctDiff / Math.max(0.1, 100 - cLeft - cRight)) * initialItem.width;
+
+        cLeft = nextCropLeft;
+        newX = initialItem.x + xOffsetPercent;
+        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - xOffsetPercent);
+      } else if (mode === 'e') {
+        // Face handle: Crop Right
+        const pctChange = (-deltaXPercent / Math.max(0.1, initialItem.width)) * (100 - cLeft - cRight);
+        const nextCropRight = Math.max(0, Math.min(85, cRight + pctChange));
+        const actualPctDiff = nextCropRight - cRight;
+        const widthReductionPercent = (actualPctDiff / Math.max(0.1, 100 - cLeft - cRight)) * initialItem.width;
+
+        cRight = nextCropRight;
+        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - widthReductionPercent);
       }
 
       // Constrain resize strictly inside 0-100% sheet bounds
@@ -517,6 +554,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       updatedItem.height = newH;
       updatedItem.x = newX;
       updatedItem.y = newY;
+      updatedItem.cropTop = cTop;
+      updatedItem.cropBottom = cBottom;
+      updatedItem.cropLeft = cLeft;
+      updatedItem.cropRight = cRight;
     }
 
     pendingItemUpdate.current = updatedItem;
@@ -641,11 +682,21 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
               ctx.rotate((item.rotation * Math.PI) / 180);
             }
 
+            const cropLeft = item.cropLeft || 0;
+            const cropRight = item.cropRight || 0;
+            const cropTop = item.cropTop || 0;
+            const cropBottom = item.cropBottom || 0;
+
+            const sx = (cropLeft / 100) * img.naturalWidth;
+            const sy = (cropTop / 100) * img.naturalHeight;
+            const sw = (Math.max(1, 100 - cropLeft - cropRight) / 100) * img.naturalWidth;
+            const sh = (Math.max(1, 100 - cropTop - cropBottom) / 100) * img.naturalHeight;
+
             if (isBw) {
               ctx.filter = 'grayscale(100%)';
             }
 
-            ctx.drawImage(img, -pw / 2, -ph / 2, pw, ph);
+            ctx.drawImage(img, sx, sy, sw, sh, -pw / 2, -ph / 2, pw, ph);
             ctx.restore();
           } catch (itemErr) {
             console.error(`Failed to load image for item ${item.name || item.id} during export:`, itemErr);
@@ -863,13 +914,33 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                           filter: isBw ? 'grayscale(100%)' : 'none',
                         }}
                       >
-                        {/* Image Element */}
-                        <img
-                          src={item.src}
-                          alt={item.name}
-                          draggable={false}
-                          className="w-full h-full object-fill block select-none pointer-events-none"
-                        />
+                        {/* Image Element with Crop Container */}
+                        <div className="w-full h-full overflow-hidden relative pointer-events-none select-none">
+                          {(() => {
+                            const cTop = item.cropTop || 0;
+                            const cBottom = item.cropBottom || 0;
+                            const cLeft = item.cropLeft || 0;
+                            const cRight = item.cropRight || 0;
+                            const visW = Math.max(1, 100 - cLeft - cRight);
+                            const visH = Math.max(1, 100 - cTop - cBottom);
+
+                            return (
+                              <img
+                                src={item.src}
+                                alt={item.name}
+                                draggable={false}
+                                className="absolute max-w-none max-h-none select-none pointer-events-none"
+                                style={{
+                                  width: `${(100 / visW) * 100}%`,
+                                  height: `${(100 / visH) * 100}%`,
+                                  left: `-${(cLeft / visW) * 100}%`,
+                                  top: `-${(cTop / visH) * 100}%`,
+                                  objectFit: 'fill',
+                                }}
+                              />
+                            );
+                          })()}
+                        </div>
 
                         {/* Canva Active Selection Frame & Floating Action Toolbar */}
                         {isSelected && (
