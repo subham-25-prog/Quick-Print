@@ -6,14 +6,9 @@ import {
   Trash2,
   Copy,
   RotateCw,
-  Layers,
-  Grid,
-  Maximize2,
-  AlignCenter,
   Upload,
   Check,
   RotateCcw,
-  Sparkles,
   X,
 } from '@/components/ui/Icons';
 import { PDFDocument } from 'pdf-lib';
@@ -64,6 +59,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // High-performance 120 FPS animation frame reference for mobile touch
+  const rafId = useRef<number | null>(null);
+  const pendingItemUpdate = useRef<CanvaImageItem | null>(null);
 
   // Interaction tracking state
   const dragRef = useRef<{
@@ -155,6 +154,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     void initItems();
     return () => {
       isMounted = false;
+      if (rafId.current) cancelAnimationFrame(rafId.current);
     };
   }, [initialImages, loadImage, paperAspectRatio]);
 
@@ -172,17 +172,17 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           const img = await loadImage(objectUrl);
           const imgAspect = img.naturalWidth / (img.naturalHeight || 1);
 
-          let itemW = 50;
+          let itemW = 55;
           let itemH = (itemW / imgAspect) * paperAspectRatio;
-          if (itemH > 50) {
-            itemH = 50;
+          if (itemH > 55) {
+            itemH = 55;
             itemW = (itemH * imgAspect) / paperAspectRatio;
           }
 
           // Offset added items slightly
           const offset = ((items.length + i) % 5) * 4;
-          const x = Math.min(80, Math.max(5, 25 + offset));
-          const y = Math.min(80, Math.max(5, 25 + offset));
+          const x = Math.min(75, Math.max(5, 20 + offset));
+          const y = Math.min(75, Math.max(5, 20 + offset));
 
           const nextZ = items.reduce((max, it) => Math.max(max, it.zIndex), 0) + 1;
           newItems.push({
@@ -241,17 +241,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     [items, selectedId]
   );
 
-  // Update selected item attributes
-  const updateSelectedItem = useCallback(
-    (updater: (prev: CanvaImageItem) => CanvaImageItem) => {
-      if (!selectedId) return;
-      setItems((prev) =>
-        prev.map((it) => (it.id === selectedId ? updater(it) : it))
-      );
-    },
-    [selectedId]
-  );
-
   // Quick Action: Delete
   const handleDeleteSelected = useCallback(() => {
     if (!selectedId) return;
@@ -268,8 +257,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     const duplicated: CanvaImageItem = {
       ...selectedItem,
       id: `copy-${Date.now()}`,
-      x: Math.min(90, selectedItem.x + 4),
-      y: Math.min(90, selectedItem.y + 4),
+      x: Math.min(85, selectedItem.x + 5),
+      y: Math.min(85, selectedItem.y + 5),
       zIndex: maxZ,
     };
     setItems((prev) => [...prev, duplicated]);
@@ -280,230 +269,15 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const handleRotate90 = useCallback(() => {
     if (!selectedId) return;
     pushHistory(items);
-    updateSelectedItem((it) => ({
-      ...it,
-      rotation: (it.rotation + 90) % 360,
-    }));
-  }, [items, selectedId, updateSelectedItem, pushHistory]);
-
-  // Quick Action: Layer Ordering
-  const handleBringToFront = useCallback(() => {
-    if (!selectedId) return;
-    const maxZ = items.reduce((max, it) => Math.max(max, it.zIndex), 0) + 1;
-    updateSelectedItem((it) => ({ ...it, zIndex: maxZ }));
-  }, [items, selectedId, updateSelectedItem]);
-
-  const handleSendToBack = useCallback(() => {
-    if (!selectedId) return;
-    const minZ = items.reduce((min, it) => Math.min(min, it.zIndex), 0) - 1;
-    updateSelectedItem((it) => ({ ...it, zIndex: minZ }));
-  }, [items, selectedId, updateSelectedItem]);
-
-  // Quick Action: Center Item
-  const handleCenterItem = useCallback(
-    (axis: 'both' | 'h' | 'v') => {
-      if (!selectedItem) return;
-      pushHistory(items);
-      updateSelectedItem((it) => ({
-        ...it,
-        x: axis === 'h' || axis === 'both' ? (100 - it.width) / 2 : it.x,
-        y: axis === 'v' || axis === 'both' ? (100 - it.height) / 2 : it.y,
-      }));
-    },
-    [items, selectedItem, updateSelectedItem, pushHistory]
-  );
-
-  // Quick Action: Fit to Page / Full Bleed
-  const handleFitToPage = useCallback(() => {
-    if (!selectedItem) return;
-    pushHistory(items);
-    const aspect = selectedItem.aspectRatio;
-    let w = 92;
-    let h = (w / aspect) * paperAspectRatio;
-    if (h > 92) {
-      h = 92;
-      w = (h * aspect) / paperAspectRatio;
-    }
-    updateSelectedItem((it) => ({
-      ...it,
-      width: w,
-      height: h,
-      x: (100 - w) / 2,
-      y: (100 - h) / 2,
-      rotation: 0,
-    }));
-  }, [items, selectedItem, paperAspectRatio, updateSelectedItem, pushHistory]);
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === selectedId ? { ...it, rotation: (it.rotation + 90) % 360 } : it
+      )
+    );
+  }, [items, selectedId, pushHistory]);
 
   // -------------------------------------------------------------
-  // Preset Templates (1-Click Canva Magic)
-  // -------------------------------------------------------------
-  const applyPresetLayout = useCallback(
-    (preset: 'single' | '2-horizontal' | '2-vertical' | '4-grid' | 'passport-6' | 'passport-8') => {
-      if (items.length === 0) return;
-      pushHistory(items);
-
-      if (preset === 'single') {
-        const item = items[0];
-        const aspect = item.aspectRatio;
-        let w = 90;
-        let h = (w / aspect) * paperAspectRatio;
-        if (h > 90) {
-          h = 90;
-          w = (h * aspect) / paperAspectRatio;
-        }
-        setItems([
-          {
-            ...item,
-            x: (100 - w) / 2,
-            y: (100 - h) / 2,
-            width: w,
-            height: h,
-            rotation: 0,
-            zIndex: 1,
-          },
-        ]);
-        setSelectedId(item.id);
-        return;
-      }
-
-      if (preset === '2-horizontal') {
-        // Stacked (Front & Back ID card style)
-        const img1 = items[0];
-        const img2 = items[1] || items[0];
-        const itemH = 38;
-        const itemW1 = Math.min(88, (itemH * img1.aspectRatio) / paperAspectRatio);
-        const itemW2 = Math.min(88, (itemH * img2.aspectRatio) / paperAspectRatio);
-
-        const newItems: CanvaImageItem[] = [
-          {
-            ...img1,
-            id: `p1-${Date.now()}-0`,
-            width: itemW1,
-            height: itemH,
-            x: (100 - itemW1) / 2,
-            y: 8,
-            rotation: 0,
-            zIndex: 1,
-          },
-          {
-            ...img2,
-            id: `p1-${Date.now()}-1`,
-            width: itemW2,
-            height: itemH,
-            x: (100 - itemW2) / 2,
-            y: 54,
-            rotation: 0,
-            zIndex: 2,
-          },
-        ];
-        setItems(newItems);
-        setSelectedId(newItems[0].id);
-        return;
-      }
-
-      if (preset === '2-vertical') {
-        // Side-by-side
-        const img1 = items[0];
-        const img2 = items[1] || items[0];
-        const itemW = 42;
-        const itemH1 = Math.min(85, (itemW / img1.aspectRatio) * paperAspectRatio);
-        const itemH2 = Math.min(85, (itemW / img2.aspectRatio) * paperAspectRatio);
-
-        const newItems: CanvaImageItem[] = [
-          {
-            ...img1,
-            id: `p2-${Date.now()}-0`,
-            width: itemW,
-            height: itemH1,
-            x: 6,
-            y: (100 - itemH1) / 2,
-            rotation: 0,
-            zIndex: 1,
-          },
-          {
-            ...img2,
-            id: `p2-${Date.now()}-1`,
-            width: itemW,
-            height: itemH2,
-            x: 52,
-            y: (100 - itemH2) / 2,
-            rotation: 0,
-            zIndex: 2,
-          },
-        ];
-        setItems(newItems);
-        setSelectedId(newItems[0].id);
-        return;
-      }
-
-      if (preset === '4-grid') {
-        // 2x2 Grid
-        const sourceList = [
-          items[0],
-          items[1] || items[0],
-          items[2] || items[0],
-          items[3] || items[1] || items[0],
-        ];
-        const w = 42;
-        const h = 42;
-        const coords = [
-          { x: 6, y: 6 },
-          { x: 52, y: 6 },
-          { x: 6, y: 52 },
-          { x: 52, y: 52 },
-        ];
-
-        const newItems: CanvaImageItem[] = sourceList.map((srcItem, idx) => ({
-          ...srcItem,
-          id: `p4-${Date.now()}-${idx}`,
-          width: w,
-          height: h,
-          x: coords[idx].x,
-          y: coords[idx].y,
-          rotation: 0,
-          zIndex: idx + 1,
-        }));
-        setItems(newItems);
-        setSelectedId(newItems[0].id);
-        return;
-      }
-
-      if (preset === 'passport-6' || preset === 'passport-8') {
-        // Standard Indian / International Passport photo sheet (3.5 x 4.5 cm proportion ~ 0.77 aspect)
-        const photoSource = selectedItem || items[0];
-        const cols = preset === 'passport-6' ? 2 : 2;
-        const rows = preset === 'passport-6' ? 3 : 4;
-
-        const photoW = 38;
-        const photoH = (photoW / 0.77) * paperAspectRatio * 0.45; // ~22% height
-        const marginX = (100 - cols * photoW) / (cols + 1);
-        const marginY = (100 - rows * photoH) / (rows + 1);
-
-        const newItems: CanvaImageItem[] = [];
-        for (let r = 0; r < rows; r++) {
-          for (let c = 0; c < cols; c++) {
-            const idx = r * cols + c;
-            newItems.push({
-              ...photoSource,
-              id: `passport-${Date.now()}-${idx}`,
-              width: photoW,
-              height: photoH,
-              x: marginX + c * (photoW + marginX),
-              y: marginY + r * (photoH + marginY),
-              rotation: 0,
-              zIndex: idx + 1,
-            });
-          }
-        }
-        setItems(newItems);
-        setSelectedId(newItems[0].id);
-      }
-    },
-    [items, selectedItem, paperAspectRatio, pushHistory]
-  );
-
-  // -------------------------------------------------------------
-  // Pointer Event Handlers for Drag, Corner Resize & Rotation
+  // Mobile-Optimized Pointer Event Handlers (Butter-Smooth 120 FPS)
   // -------------------------------------------------------------
   const handlePointerDown = (
     e: React.PointerEvent,
@@ -511,7 +285,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     mode: DragMode
   ) => {
     e.stopPropagation();
-    e.preventDefault();
 
     const sheet = sheetRef.current;
     if (!sheet) return;
@@ -533,11 +306,15 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       centerY: itemCenterY,
     };
 
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!dragRef.current) return;
+    e.preventDefault();
+
     const { mode, startX, startY, initialItem, sheetWidth, sheetHeight, centerX, centerY } =
       dragRef.current;
 
@@ -546,6 +323,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
     const deltaXPercent = (deltaXPixels / sheetWidth) * 100;
     const deltaYPercent = (deltaYPixels / sheetHeight) * 100;
+
+    let updatedItem: CanvaImageItem = { ...initialItem };
 
     if (mode === 'move') {
       let nextX = initialItem.x + deltaXPercent;
@@ -561,15 +340,13 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         nextY = 50 - initialItem.height / 2;
       }
 
-      // Constrain within sheet boundaries
+      // Constrain inside sheet
       nextX = Math.max(-initialItem.width + 5, Math.min(95, nextX));
       nextY = Math.max(-initialItem.height + 5, Math.min(95, nextY));
 
-      updateSelectedItem((it) => ({ ...it, x: nextX, y: nextY }));
-      return;
-    }
-
-    if (mode === 'rotate') {
+      updatedItem.x = nextX;
+      updatedItem.y = nextY;
+    } else if (mode === 'rotate') {
       const sheet = sheetRef.current;
       if (!sheet) return;
       const rect = sheet.getBoundingClientRect();
@@ -580,65 +357,90 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       let angleDeg = Math.round((angleRad * 180) / Math.PI) + 90;
       if (angleDeg < 0) angleDeg += 360;
 
-      // Snap to 45 degree increments if close
+      // Snap to 45 degree increments
       const nearest45 = Math.round(angleDeg / 45) * 45;
-      if (Math.abs(angleDeg - nearest45) < 4) {
+      if (Math.abs(angleDeg - nearest45) < 5) {
         angleDeg = nearest45 % 360;
       }
 
-      updateSelectedItem((it) => ({ ...it, rotation: angleDeg }));
-      return;
+      updatedItem.rotation = angleDeg;
+    } else {
+      // Corner & Edge Resizing
+      const MIN_SIZE_PERCENT = 6;
+      let newW = initialItem.width;
+      let newH = initialItem.height;
+      let newX = initialItem.x;
+      let newY = initialItem.y;
+
+      if (mode === 'se') {
+        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width + deltaXPercent);
+        newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
+      } else if (mode === 'sw') {
+        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - deltaXPercent);
+        newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
+        newX = initialItem.x + (initialItem.width - newW);
+      } else if (mode === 'ne') {
+        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width + deltaXPercent);
+        newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
+        newY = initialItem.y + (initialItem.height - newH);
+      } else if (mode === 'nw') {
+        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - deltaXPercent);
+        newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
+        newX = initialItem.x + (initialItem.width - newW);
+        newY = initialItem.y + (initialItem.height - newH);
+      } else if (mode === 'e') {
+        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width + deltaXPercent);
+      } else if (mode === 'w') {
+        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - deltaXPercent);
+        newX = initialItem.x + (initialItem.width - newW);
+      } else if (mode === 's') {
+        newH = Math.max(MIN_SIZE_PERCENT, initialItem.height + deltaYPercent);
+      } else if (mode === 'n') {
+        newH = Math.max(MIN_SIZE_PERCENT, initialItem.height - deltaYPercent);
+        newY = initialItem.y + (initialItem.height - newH);
+      }
+
+      updatedItem.width = newW;
+      updatedItem.height = newH;
+      updatedItem.x = newX;
+      updatedItem.y = newY;
     }
 
-    // Corner and edge resizing
-    const MIN_SIZE_PERCENT = 5;
-    let newW = initialItem.width;
-    let newH = initialItem.height;
-    let newX = initialItem.x;
-    let newY = initialItem.y;
+    pendingItemUpdate.current = updatedItem;
 
-    if (mode === 'se') {
-      newW = Math.max(MIN_SIZE_PERCENT, initialItem.width + deltaXPercent);
-      newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
-    } else if (mode === 'sw') {
-      newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - deltaXPercent);
-      newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
-      newX = initialItem.x + (initialItem.width - newW);
-    } else if (mode === 'ne') {
-      newW = Math.max(MIN_SIZE_PERCENT, initialItem.width + deltaXPercent);
-      newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
-      newY = initialItem.y + (initialItem.height - newH);
-    } else if (mode === 'nw') {
-      newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - deltaXPercent);
-      newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
-      newX = initialItem.x + (initialItem.width - newW);
-      newY = initialItem.y + (initialItem.height - newH);
-    } else if (mode === 'e') {
-      newW = Math.max(MIN_SIZE_PERCENT, initialItem.width + deltaXPercent);
-    } else if (mode === 'w') {
-      newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - deltaXPercent);
-      newX = initialItem.x + (initialItem.width - newW);
-    } else if (mode === 's') {
-      newH = Math.max(MIN_SIZE_PERCENT, initialItem.height + deltaYPercent);
-    } else if (mode === 'n') {
-      newH = Math.max(MIN_SIZE_PERCENT, initialItem.height - deltaYPercent);
-      newY = initialItem.y + (initialItem.height - newH);
+    // Throttle rendering with requestAnimationFrame for 60/120 FPS on mobile
+    if (rafId.current === null) {
+      rafId.current = requestAnimationFrame(() => {
+        rafId.current = null;
+        if (pendingItemUpdate.current) {
+          const toApply = pendingItemUpdate.current;
+          setItems((prev) =>
+            prev.map((it) => (it.id === toApply.id ? toApply : it))
+          );
+        }
+      });
     }
-
-    updateSelectedItem((it) => ({
-      ...it,
-      width: newW,
-      height: newH,
-      x: newX,
-      y: newY,
-    }));
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    if (rafId.current !== null) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = null;
+    }
+
+    if (pendingItemUpdate.current) {
+      const finalItem = pendingItemUpdate.current;
+      setItems((prev) =>
+        prev.map((it) => (it.id === finalItem.id ? finalItem : it))
+      );
+      pendingItemUpdate.current = null;
+    }
+
     if (dragRef.current) {
       pushHistory(items);
       dragRef.current = null;
     }
+
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {}
@@ -652,8 +454,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     setIsExporting(true);
 
     try {
-      // 300 DPI Print Resolution Dimensions
-      // Standard A4: 2480 x 3508 pixels
+      // 300 DPI Print Resolution Dimensions (A4: 2480 x 3508 px)
       const standardWidth = isLandscape ? 3508 : 2480;
       const standardHeight = isLandscape ? 2480 : 3508;
 
@@ -684,7 +485,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         const ph = (item.height / 100) * standardHeight;
 
         ctx.save();
-        // Translate to item center for rotation
         ctx.translate(px + pw / 2, py + ph / 2);
         if (item.rotation) {
           ctx.rotate((item.rotation * Math.PI) / 180);
@@ -694,7 +494,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           ctx.filter = 'grayscale(100%)';
         }
 
-        // Draw image centered
         ctx.drawImage(img, -pw / 2, -ph / 2, pw, ph);
         ctx.restore();
       }
@@ -708,7 +507,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
       // 5. Wrap into a 1-page PDF matching exact paperSize points
       const pdfDoc = await PDFDocument.create();
-      // Points: A4 is 595.28 x 841.89
       const pdfWidth = isLandscape ? 841.89 : 595.28;
       const pdfHeight = isLandscape ? 595.28 : 841.89;
 
@@ -743,7 +541,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="flex-1 w-full h-full flex flex-col min-h-0 bg-[#26282b] text-slate-100 select-none overflow-hidden"
+      className="flex-1 w-full h-full flex flex-col min-h-0 bg-[#26282b] text-slate-100 select-none overflow-hidden touch-none overscroll-none"
     >
       {/* Hidden File Input for Adding Multiple Images */}
       <input
@@ -761,205 +559,105 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       />
 
       {/* -------------------------------------------------------------
-          TOP CANVA TOOLBAR: Add Photos, Quick Presets & Editing Controls
+          CLEAN SIMPLIFIED TOOLBAR: Add Image, Rotate, Duplicate, Delete & Apply
           ------------------------------------------------------------- */}
-      <div className="w-full bg-[#1e2022] border-b border-[#3c4043] px-3 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30 shadow-md">
-        {/* Left Side: Adding Photos & Presets */}
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+      <div className="w-full bg-[#1e2022] border-b border-[#3c4043] px-3 py-2 flex items-center justify-between gap-2 shrink-0 z-30 shadow-md">
+        {/* Left Side: Add Image button */}
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-            title="Upload photo from device or paste with Ctrl+V"
+            className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation"
+            title="Upload photo from device"
           >
-            <Upload className="w-3.5 h-3.5" />
-            <span>+ Add Photo</span>
+            <Upload className="w-4 h-4" />
+            <span>+ Add Image</span>
           </button>
 
-          <div className="h-4 w-[1px] bg-slate-700 hidden sm:block" />
-
-          {/* Quick Layout Presets */}
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] uppercase font-bold text-slate-400 hidden md:inline-block mr-1">
-              Presets:
-            </span>
-            <button
-              type="button"
-              onClick={() => applyPresetLayout('single')}
-              className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold flex items-center gap-1 border border-slate-700/80 transition-colors"
-              title="Full Sheet single photo"
-            >
-              <Maximize2 className="w-3 h-3 text-indigo-400" />
-              <span>Full Page</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => applyPresetLayout('2-horizontal')}
-              className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold flex items-center gap-1 border border-slate-700/80 transition-colors"
-              title="2-Up Stacked (Front & Back ID card style)"
-            >
-              <span>💳 ID Card 2-Up</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => applyPresetLayout('2-vertical')}
-              className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold flex items-center gap-1 border border-slate-700/80 transition-colors hidden sm:flex"
-              title="2-Up Side by Side"
-            >
-              <span>📑 2-Up Side</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => applyPresetLayout('4-grid')}
-              className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-semibold flex items-center gap-1 border border-slate-700/80 transition-colors"
-              title="4-Up Grid (2x2)"
-            >
-              <Grid className="w-3 h-3 text-cyan-400" />
-              <span>4-Grid</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => applyPresetLayout('passport-6')}
-              className="px-2 py-1 rounded bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 text-[11px] font-bold flex items-center gap-1 transition-colors"
-              title="Passport photo 6-pack grid"
-            >
-              <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>Passport (6)</span>
-            </button>
-          </div>
+          <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-300 font-bold uppercase hidden sm:inline-block">
+            {paperSize}
+          </span>
         </div>
 
-        {/* Right Side: Selected Item Actions (Rotate, Duplicate, Delete) */}
-        <div className="flex items-center gap-1 sm:gap-1.5 ml-auto">
-          {selectedItem ? (
-            <>
+        {/* Right Side: Selected Actions & Apply */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {selectedItem && (
+            <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-700/80">
               <button
                 type="button"
                 onClick={handleRotate90}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-colors"
+                className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors touch-manipulation"
                 title="Rotate 90° Clockwise"
               >
-                <RotateCw className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleCenterItem('both')}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-colors hidden sm:flex"
-                title="Center on Page"
-              >
-                <AlignCenter className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleFitToPage}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-colors hidden md:flex"
-                title="Fit to Page"
-              >
-                <Maximize2 className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleBringToFront}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-colors hidden sm:flex"
-                title="Bring Forward"
-              >
-                <Layers className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleSendToBack}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-colors hidden md:flex"
-                title="Send to Back"
-              >
-                <Layers className="w-3.5 h-3.5 opacity-60" />
+                <RotateCw className="w-4 h-4" />
               </button>
 
               <button
                 type="button"
                 onClick={handleDuplicateSelected}
-                className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-colors"
+                className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors touch-manipulation"
                 title="Duplicate Image"
               >
-                <Copy className="w-3.5 h-3.5" />
+                <Copy className="w-4 h-4" />
               </button>
 
               <button
                 type="button"
                 onClick={handleDeleteSelected}
-                className="p-1.5 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-rose-300 hover:text-rose-100 transition-colors"
+                className="p-1.5 rounded-lg text-rose-400 hover:text-rose-200 hover:bg-rose-950/60 transition-colors touch-manipulation"
                 title="Delete Image"
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
               </button>
-            </>
-          ) : (
-            <span className="text-[11px] text-slate-500 italic hidden sm:inline-block">
-              Click photo to resize &amp; move
-            </span>
+            </div>
           )}
 
           {history.length > 0 && (
             <button
               type="button"
               onClick={handleUndo}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700/80 transition-colors"
-              title="Undo last action"
+              className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition-colors touch-manipulation"
+              title="Undo"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-4 h-4" />
             </button>
           )}
-
-          <div className="h-4 w-[1px] bg-slate-700 mx-1" />
 
           {/* Apply to Print CTA Button */}
           <button
             type="button"
             onClick={handleExportToPrint}
             disabled={isExporting || items.length === 0}
-            className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-50 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-950/50 ring-1 ring-emerald-400/40 transition-all cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 disabled:opacity-50 text-white text-xs font-black flex items-center gap-1.5 shadow-md shadow-emerald-950/50 ring-1 ring-emerald-400/40 transition-all cursor-pointer touch-manipulation"
           >
             {isExporting ? (
-              <span className="animate-pulse">Rendering...</span>
+              <span className="animate-pulse">Applying...</span>
             ) : (
               <>
-                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                <span>Apply Layout</span>
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>Apply</span>
               </>
             )}
           </button>
 
-          {/* Paper Size Pill & Exit */}
-          <div className="flex items-center gap-1.5">
-            <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-300 font-bold uppercase hidden sm:inline-block">
-              {paperSize}
-            </span>
-            {onCancel && (
-              <button
-                type="button"
-                onClick={onCancel}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
-                title="Exit Canva Studio"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          {onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer touch-manipulation ml-0.5"
+              title="Close Canva Studio"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
       {/* -------------------------------------------------------------
-          CENTER INTERACTIVE WORKSPACE: Paper Sheet with Drag & Handles
+          CENTER INTERACTIVE WORKSPACE: Paper Sheet with Touch-Optimized Drag
           ------------------------------------------------------------- */}
       <div
-        className="flex-1 w-full flex items-center justify-center p-2 sm:p-4 overflow-auto relative cursor-default"
+        className="flex-1 w-full flex items-center justify-center p-2 sm:p-4 overflow-hidden relative cursor-default touch-none overscroll-none"
         onClick={() => setSelectedId(null)}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -972,7 +670,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         {/* Printable Paper Canvas Sheet */}
         <div
           ref={sheetRef}
-          className="relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border border-slate-400/40 overflow-hidden"
+          className="relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border border-slate-400/40 overflow-hidden touch-none"
           style={{
             aspectRatio: `${paperAspectRatio}`,
             width: isLandscape
@@ -983,6 +681,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           }}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
         >
           {/* Subtle Print Safe Margin Guide */}
           {isGuidelineVisible && (
@@ -1001,7 +700,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
               <div
                 key={item.id}
                 onPointerDown={(e) => handlePointerDown(e, item, 'move')}
-                className={`absolute select-none cursor-move transition-shadow ${
+                className={`absolute select-none cursor-move touch-none transition-shadow will-change-transform ${
                   isSelected ? 'z-20' : ''
                 }`}
                 style={{
@@ -1023,63 +722,63 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                   className="w-full h-full object-fill block select-none pointer-events-none"
                 />
 
-                {/* Canva Active Selection Frame & Handles */}
+                {/* Canva Active Selection Frame & Touch-Friendly Handles */}
                 {isSelected && (
-                  <div className="absolute -inset-[2px] border-2 border-indigo-600 pointer-events-auto">
+                  <div className="absolute -inset-[2px] border-2 border-indigo-600 pointer-events-auto touch-none">
                     {/* Dimension Badge */}
                     <div className="absolute -top-7 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-indigo-600 text-white font-mono text-[9px] font-bold tracking-wider shadow-sm pointer-events-none whitespace-nowrap">
                       {Math.round(item.width)}% × {Math.round(item.height)}%
                       {item.rotation !== 0 && ` (${item.rotation}°)`}
                     </div>
 
-                    {/* Top Rotation Knob with Connecting Stem */}
+                    {/* Top Rotation Knob */}
                     <div
                       onPointerDown={(e) => handlePointerDown(e, item, 'rotate')}
-                      className="absolute -top-6 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center transition-transform hover:scale-110"
+                      className="absolute -top-7 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125"
                       title="Drag to rotate"
                     >
-                      <RotateCw className="w-2.5 h-2.5 text-indigo-600 pointer-events-none" />
+                      <RotateCw className="w-3.5 h-3.5 text-indigo-600 pointer-events-none" />
                     </div>
-                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-[1.5px] h-2 bg-indigo-600 pointer-events-none" />
+                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-[2px] h-2 bg-indigo-600 pointer-events-none" />
 
-                    {/* Corner Resize Handles */}
+                    {/* Touch-Friendly Corner Resize Handles (18px touch area on mobile) */}
                     {/* NW Handle */}
                     <div
                       onPointerDown={(e) => handlePointerDown(e, item, 'nw')}
-                      className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-indigo-600 rounded-full hover:scale-125 transition-transform cursor-nwse-resize shadow-xs"
+                      className="absolute -top-2.5 -left-2.5 w-5 h-5 sm:w-3.5 sm:h-3.5 bg-white border-2 border-indigo-600 rounded-full hover:scale-125 transition-transform cursor-nwse-resize shadow-md touch-none"
                     />
                     {/* NE Handle */}
                     <div
                       onPointerDown={(e) => handlePointerDown(e, item, 'ne')}
-                      className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-indigo-600 rounded-full hover:scale-125 transition-transform cursor-nesw-resize shadow-xs"
+                      className="absolute -top-2.5 -right-2.5 w-5 h-5 sm:w-3.5 sm:h-3.5 bg-white border-2 border-indigo-600 rounded-full hover:scale-125 transition-transform cursor-nesw-resize shadow-md touch-none"
                     />
                     {/* SE Handle */}
                     <div
                       onPointerDown={(e) => handlePointerDown(e, item, 'se')}
-                      className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-indigo-600 rounded-full hover:scale-125 transition-transform cursor-nwse-resize shadow-xs"
+                      className="absolute -bottom-2.5 -right-2.5 w-5 h-5 sm:w-3.5 sm:h-3.5 bg-white border-2 border-indigo-600 rounded-full hover:scale-125 transition-transform cursor-nwse-resize shadow-md touch-none"
                     />
                     {/* SW Handle */}
                     <div
                       onPointerDown={(e) => handlePointerDown(e, item, 'sw')}
-                      className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-indigo-600 rounded-full hover:scale-125 transition-transform cursor-nesw-resize shadow-xs"
+                      className="absolute -bottom-2.5 -left-2.5 w-5 h-5 sm:w-3.5 sm:h-3.5 bg-white border-2 border-indigo-600 rounded-full hover:scale-125 transition-transform cursor-nesw-resize shadow-md touch-none"
                     />
 
                     {/* Mid-edge stretch handles */}
                     <div
                       onPointerDown={(e) => handlePointerDown(e, item, 'n')}
-                      className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-1.5 bg-white border border-indigo-600 rounded-xs cursor-ns-resize"
+                      className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-4 h-2 bg-white border border-indigo-600 rounded-xs cursor-ns-resize touch-none"
                     />
                     <div
                       onPointerDown={(e) => handlePointerDown(e, item, 's')}
-                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-1.5 bg-white border border-indigo-600 rounded-xs cursor-ns-resize"
+                      className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-2 bg-white border border-indigo-600 rounded-xs cursor-ns-resize touch-none"
                     />
                     <div
                       onPointerDown={(e) => handlePointerDown(e, item, 'w')}
-                      className="absolute top-1/2 -left-1 -translate-y-1/2 w-1.5 h-3 bg-white border border-indigo-600 rounded-xs cursor-ew-resize"
+                      className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-2 h-4 bg-white border border-indigo-600 rounded-xs cursor-ew-resize touch-none"
                     />
                     <div
                       onPointerDown={(e) => handlePointerDown(e, item, 'e')}
-                      className="absolute top-1/2 -right-1 -translate-y-1/2 w-1.5 h-3 bg-white border border-indigo-600 rounded-xs cursor-ew-resize"
+                      className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-2 h-4 bg-white border border-indigo-600 rounded-xs cursor-ew-resize touch-none"
                     />
                   </div>
                 )}
@@ -1089,18 +788,18 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
           {/* Empty Sheet Placeholder */}
           {items.length === 0 && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-slate-400">
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-slate-400 touch-none">
               <ImageIcon className="w-10 h-10 mb-2 text-slate-300 stroke-[1.5]" />
               <p className="text-xs font-bold text-slate-600 mb-1">Canvas is Empty</p>
               <p className="text-[11px] text-slate-400 max-w-[200px] mb-3">
-                Click "+ Add Photo" or paste an image (Ctrl+V) onto the canvas.
+                Tap "+ Add Image" to place photos onto the page.
               </p>
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-xs cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold shadow-sm cursor-pointer touch-manipulation"
               >
-                + Add Photo
+                + Add Image
               </button>
             </div>
           )}
@@ -1108,30 +807,25 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       </div>
 
       {/* -------------------------------------------------------------
-          BOTTOM FOOTER: Helpful status & keyboard shortcuts
+          BOTTOM FOOTER: Clean status & Print margins toggle
           ------------------------------------------------------------- */}
       <div className="w-full bg-[#1e2022] border-t border-[#3c4043] px-3 py-1.5 text-[11px] text-slate-400 flex items-center justify-between z-20">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <span>
-            {items.length} {items.length === 1 ? 'photo' : 'photos'} on sheet
+            {items.length} {items.length === 1 ? 'photo' : 'photos'}
           </span>
-          <span className="hidden sm:inline-block">·</span>
-          <span className="hidden sm:inline-block">
-            Paste images with <kbd className="px-1 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px]">Ctrl+V</kbd>
-          </span>
+          <span className="hidden sm:inline-block">· Drag or pinch to resize</span>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-slate-400 hover:text-slate-200">
-            <input
-              type="checkbox"
-              checked={isGuidelineVisible}
-              onChange={(e) => setIsGuidelineVisible(e.target.checked)}
-              className="w-3 h-3 rounded text-indigo-600 accent-indigo-600 cursor-pointer"
-            />
-            <span>Print Margins</span>
-          </label>
-        </div>
+        <label className="flex items-center gap-1 cursor-pointer select-none text-[10px] text-slate-400 hover:text-slate-200">
+          <input
+            type="checkbox"
+            checked={isGuidelineVisible}
+            onChange={(e) => setIsGuidelineVisible(e.target.checked)}
+            className="w-3 h-3 rounded text-indigo-600 accent-indigo-600 cursor-pointer"
+          />
+          <span>Margins</span>
+        </label>
       </div>
     </div>
   );

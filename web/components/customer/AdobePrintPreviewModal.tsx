@@ -974,7 +974,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-purple-200/80 leading-relaxed font-medium">
-              Rearrange, resize, rotate, add multiple images, or use Passport photo &amp; ID card grids.
+              Rearrange, resize, rotate, and add multiple images on a single page.
             </p>
             <button
               type="button"
