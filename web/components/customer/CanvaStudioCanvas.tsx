@@ -54,7 +54,7 @@ export interface CanvaStudioCanvasProps {
 type DragMode = 'move' | 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w' | 'rotate';
 
 const MAX_CROP_PER_AXIS = 90;
-const MIN_CANVAS_ZOOM = 40;
+const MIN_CANVAS_ZOOM = 10;
 const MAX_CANVAS_ZOOM = 200;
 
 function normalizeCropPair(first?: number, second?: number): [number, number] {
@@ -129,6 +129,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const panRafId = useRef<number | null>(null);
   const canvasZoomRef = useRef(canvasZoom);
   const targetCanvasZoomRef = useRef(canvasZoom);
+  const hasManualCanvasZoom = useRef(false);
+  const previousExternalZoom = useRef(zoomLevel);
   const pendingItemUpdate = useRef<CanvaImageItem | null>(null);
   const pendingGestureUpdate = useRef<{
     zoom?: number;
@@ -184,13 +186,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     setHistory((prev) => [...prev.slice(-15), newItems]);
   }, []);
 
-  useEffect(() => {
-    const nextZoom = Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, zoomLevel || 100));
-    canvasZoomRef.current = nextZoom;
-    targetCanvasZoomRef.current = nextZoom;
-    setCanvasZoom(nextZoom);
-  }, [zoomLevel]);
-
   useEffect(() => () => {
     if (gestureRafId.current !== null) cancelAnimationFrame(gestureRafId.current);
     if (zoomAnimationRafId.current !== null) cancelAnimationFrame(zoomAnimationRafId.current);
@@ -208,7 +203,19 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     workspace.scrollTop = scroll.top;
   }, [canvasZoom]);
 
+  const setCanvasZoomImmediately = useCallback((requestedZoom: number) => {
+    const nextZoom = Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, requestedZoom));
+    if (zoomAnimationRafId.current !== null) {
+      cancelAnimationFrame(zoomAnimationRafId.current);
+      zoomAnimationRafId.current = null;
+    }
+    canvasZoomRef.current = nextZoom;
+    targetCanvasZoomRef.current = nextZoom;
+    setCanvasZoom(nextZoom);
+  }, []);
+
   const smoothlySetCanvasZoom = useCallback((requestedZoom: number) => {
+    hasManualCanvasZoom.current = true;
     // A button/wheel zoom should not reuse an old pinch focal point.
     pendingGestureScroll.current = null;
     targetCanvasZoomRef.current = Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, requestedZoom));
@@ -232,6 +239,67 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
     zoomAnimationRafId.current = requestAnimationFrame(animate);
   }, []);
+
+  const fitCanvasToWorkspace = useCallback(() => {
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
+
+    const baseWidth = isLandscape ? 860 : 620;
+    const baseHeight = baseWidth / paperAspectRatio;
+    // The page toolbar lives inside the scroll area, so reserve room for it
+    // as well as the workspace padding. This makes the whole sheet visible
+    // on short phones, landscape phones and tablets.
+    const availableWidth = Math.max(1, workspace.clientWidth - 16);
+    const availableHeight = Math.max(1, workspace.clientHeight - 56);
+    const fitZoom = Math.min(100, (availableWidth / baseWidth) * 100, (availableHeight / baseHeight) * 100);
+
+    hasManualCanvasZoom.current = false;
+    setCanvasZoomImmediately(fitZoom);
+    workspace.scrollLeft = 0;
+    workspace.scrollTop = 0;
+  }, [isLandscape, paperAspectRatio, setCanvasZoomImmediately]);
+
+  // Fit the complete page when the editor opens and whenever an unzoomed
+  // device rotates or changes size. Manual zoom is intentionally preserved.
+  useLayoutEffect(() => {
+    const workspace = workspaceRef.current;
+    if (!workspace) return;
+    let frameId: number | null = null;
+    const fitIfNeeded = () => {
+      if (hasManualCanvasZoom.current) return;
+      if (frameId !== null) cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(() => {
+        frameId = null;
+        if (!hasManualCanvasZoom.current) fitCanvasToWorkspace();
+      });
+    };
+
+    fitIfNeeded();
+    if (typeof ResizeObserver === 'undefined') {
+      return () => {
+        window.removeEventListener('orientationchange', fitIfNeeded);
+        if (frameId !== null) cancelAnimationFrame(frameId);
+      };
+    }
+    const observer = new ResizeObserver(fitIfNeeded);
+    observer.observe(workspace);
+    window.addEventListener('orientationchange', fitIfNeeded);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('orientationchange', fitIfNeeded);
+      if (frameId !== null) cancelAnimationFrame(frameId);
+    };
+  }, [fitCanvasToWorkspace]);
+
+  // A genuine external reset (for example, reopening the document) opts back
+  // into responsive fit. Ignore the initial prop so it cannot overwrite the
+  // first measured mobile fit.
+  useEffect(() => {
+    if (previousExternalZoom.current === zoomLevel) return;
+    previousExternalZoom.current = zoomLevel;
+    hasManualCanvasZoom.current = false;
+    requestAnimationFrame(fitCanvasToWorkspace);
+  }, [zoomLevel, fitCanvasToWorkspace]);
 
   const flushGestureUpdate = useCallback(() => {
     const pending = pendingGestureUpdate.current;
@@ -1215,7 +1283,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                   className="flex items-center justify-between w-full px-1"
                   style={{
                     width: `${displayedPageWidth}px`,
-                    maxWidth: canvasZoom <= 100 ? '96%' : 'none',
                   }}
                 >
                   <div className="flex items-center gap-2">
@@ -1274,8 +1341,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                   style={{
                     aspectRatio: `${paperAspectRatio}`,
                     width: `${displayedPageWidth}px`,
-                    maxWidth: canvasZoom <= 100 ? '96%' : 'none',
-                    maxHeight: canvasZoom <= 100 ? 'calc(100dvh - 250px)' : 'none',
                   }}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
@@ -1594,9 +1659,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => smoothlySetCanvasZoom(100)}
+              onClick={fitCanvasToWorkspace}
               className="min-w-9 px-1 h-6 rounded-lg hover:bg-slate-700 text-[9px] font-mono font-bold transition-colors"
-              title="Fit canvas at 100%"
+              title="Fit complete page to screen"
             >
               {Math.round(canvasZoom)}%
             </button>
