@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { PricingConfig, CustomAddon, CustomPaperType } from '@/types';
 import { defaultPricingConfig } from '@/lib/config';
 import { useInitialPricing } from '@/lib/initial-pricing';
 import { publishShopNameUpdate } from '@/lib/shop-sync';
 import {
-  Save,
   CheckCircle2,
   AlertCircle,
   RefreshCw,
@@ -24,8 +23,14 @@ import {
 export default function AdminSettingsPage() {
   const [form, setForm] = useState<PricingConfig>(useInitialPricing());
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('saved');
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  const isLoadedRef = useRef(false);
+  const lastSavedFormRef = useRef<string>('');
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const formRef = useRef<PricingConfig>(form);
+  formRef.current = form;
 
   // Custom Option Form State
   const [newAddonName, setNewAddonName] = useState('');
@@ -46,6 +51,32 @@ export default function AdminSettingsPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const performSave = useCallback(async (dataToSave: PricingConfig) => {
+    try {
+      setSaveStatus('saving');
+      const res = await fetch('/api/admin/pricing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pricing: dataToSave }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.pricing) {
+        lastSavedFormRef.current = JSON.stringify(dataToSave);
+        publishShopNameUpdate(dataToSave.shop_name || defaultPricingConfig.shop_name || '', dataToSave);
+        if (JSON.stringify(formRef.current) === JSON.stringify(dataToSave)) {
+          setSaveStatus('saved');
+        }
+      } else {
+        throw new Error(data.error || 'Failed to update shop settings');
+      }
+    } catch (err) {
+      console.error('Auto-save error:', err);
+      setSaveStatus('error');
+      showToast(err instanceof Error ? err.message : 'Error auto-saving settings', 'error');
+    }
+  }, []);
+
   useEffect(() => {
     fetch('/api/admin/pricing')
       .then((res) => res.json())
@@ -55,10 +86,78 @@ export default function AdminSettingsPage() {
             data.pricing.shop_name = defaultPricingConfig.shop_name;
           }
           setForm(data.pricing);
+          lastSavedFormRef.current = JSON.stringify(data.pricing);
+        } else {
+          lastSavedFormRef.current = JSON.stringify(formRef.current);
         }
       })
-      .catch((err) => console.error('Failed to initialize settings:', err))
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        console.error('Failed to initialize settings:', err);
+        lastSavedFormRef.current = JSON.stringify(formRef.current);
+      })
+      .finally(() => {
+        isLoadedRef.current = true;
+        setLoading(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!isLoadedRef.current) return;
+
+    const currentStr = JSON.stringify(form);
+    if (currentStr === lastSavedFormRef.current) return;
+
+    setSaveStatus('saving');
+
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    saveTimeoutRef.current = setTimeout(() => {
+      void performSave(form);
+    }, 600);
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [form, performSave]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (saveTimeoutRef.current && JSON.stringify(formRef.current) !== lastSavedFormRef.current) {
+        try {
+          fetch('/api/admin/pricing', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pricing: formRef.current }),
+            keepalive: true,
+          });
+        } catch {}
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+        const currentData = formRef.current;
+        if (JSON.stringify(currentData) !== lastSavedFormRef.current) {
+          try {
+            fetch('/api/admin/pricing', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ pricing: currentData }),
+              keepalive: true,
+            });
+            publishShopNameUpdate(currentData.shop_name || defaultPricingConfig.shop_name || '', currentData);
+          } catch {}
+        }
+      }
+    };
   }, []);
 
   const handleChange = (field: keyof PricingConfig, value: any) => {
@@ -219,30 +318,6 @@ export default function AdminSettingsPage() {
     showToast('Removed custom page specification', 'success');
   };
 
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const res = await fetch('/api/admin/pricing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pricing: form }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.pricing) {
-        setForm(data.pricing);
-        publishShopNameUpdate(data.pricing.shop_name || form.shop_name, data.pricing);
-        showToast('Shop configuration & rates saved! Customer page updated live.', 'success');
-      } else {
-        throw new Error(data.error || 'Failed to update shop settings');
-      }
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Error saving shop settings', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-100 flex flex-col">
@@ -286,7 +361,7 @@ export default function AdminSettingsPage() {
       )}
 
       <main className="max-w-xl mx-auto w-full px-4 pt-4 space-y-4 flex-1">
-        {/* Page Title & Save Header Card */}
+        {/* Page Title & Auto-Save Status Header Card */}
         <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-2xs flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs shrink-0">
@@ -298,24 +373,39 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-extrabold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50 shrink-0"
-          >
-            {saving ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+          <div className="flex items-center shrink-0">
+            {saveStatus === 'saving' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs animate-pulse">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-600" />
                 <span>Saving...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-3.5 h-3.5" />
-                <span>Save All</span>
-              </>
+              </span>
             )}
-          </button>
+            {saveStatus === 'saved' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Auto-saved</span>
+              </span>
+            )}
+            {saveStatus === 'error' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                <span>Save failed</span>
+                <button
+                  type="button"
+                  onClick={() => performSave(form)}
+                  className="ml-1 underline hover:text-rose-900 cursor-pointer"
+                >
+                  Retry
+                </button>
+              </span>
+            )}
+            {saveStatus === 'idle' && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium bg-slate-50 text-slate-500 border border-slate-200 shadow-2xs">
+                <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
+                <span>Auto-save on</span>
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Section 1: Store Branding */}
@@ -1402,26 +1492,11 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Bottom Floating Save Bar */}
-        <div className="pt-2 flex justify-end">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all cursor-pointer disabled:opacity-50"
-          >
-            {saving ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Saving Settings...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Save All Shop Settings & Live Rates</span>
-              </>
-            )}
-          </button>
+        {/* Auto-save footer notice */}
+        <div className="pt-2 pb-4 text-center">
+          <p className="text-[11px] text-slate-400 font-medium">
+            All modifications and rate changes save automatically in real-time.
+          </p>
         </div>
 
         {/* Developer Attribution */}

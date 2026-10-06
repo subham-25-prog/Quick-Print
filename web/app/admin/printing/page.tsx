@@ -11,7 +11,6 @@ Printer,
 CheckCircle2,
 AlertCircle,
 RefreshCw,
-Save,
 Play,
 Trash2,
 Download
@@ -129,7 +128,6 @@ PrinterCard.displayName = 'PrinterCard';
 export default function AdminPrintingSettingsPage() {
   const [form, setForm] = useState<PricingConfig>(useInitialPricing());
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   // Printer Management State
@@ -260,29 +258,6 @@ export default function AdminPrintingSettingsPage() {
       showToast('Network error forgetting printer', 'error');
     }
   }, [loadPrinters]);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const res = await fetch('/api/admin/pricing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pricing: { ...form, selected_printer: undefined } }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.pricing) {
-        setForm((prev) => ({ ...data.pricing, selected_printer: prev.selected_printer }));
-        showToast('Printing settings saved successfully!', 'success');
-      } else {
-        throw new Error(data.error || 'Failed to update printing settings');
-      }
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Error saving settings', 'error');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleStartAgent = () => {
     window.location.href = 'quickprint://start';
@@ -511,26 +486,11 @@ export default function AdminPrintingSettingsPage() {
           )}
         </section>
 
-        {/* Bottom Save Bar */}
-        <div className="pt-2 flex justify-end">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full sm:w-auto px-8 py-3.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all cursor-pointer disabled:opacity-50"
-          >
-            {saving ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Saving Settings...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Save All Printing Settings</span>
-              </>
-            )}
-          </button>
+        {/* Auto-save confirmation */}
+        <div className="pt-2 text-center">
+          <p className="text-[11px] text-slate-400 font-medium">
+            Printer selections save automatically in real-time.
+          </p>
         </div>
 
         {/* Developer Attribution */}
