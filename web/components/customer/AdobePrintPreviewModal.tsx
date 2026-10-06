@@ -1338,33 +1338,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
         {/* Scrollable Form Settings */}
         <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-5 text-xs text-[#e8eaed]">
-          {/* Canva Studio Quick Launch Card */}
-          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-purple-950/80 via-indigo-950/70 to-slate-900 border border-purple-500/40 space-y-2.5 shadow-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-purple-200 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-amber-300 animate-spin [animation-duration:8s]" />
-                <span>Canva Studio Mode</span>
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-purple-500/30 text-[9px] font-black text-purple-300 uppercase tracking-wider border border-purple-400/30">
-                Custom Page
-              </span>
-            </div>
-            <p className="text-[11px] text-purple-200/80 leading-relaxed font-medium">
-              Rearrange, resize, rotate, and add multiple images on a single page.
-            </p>
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode('canva');
-                setActiveTab('canva');
-              }}
-              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md active:scale-95 transition-all cursor-pointer"
-            >
-              <span>{viewMode === 'canva' ? 'Editing in Canva Studio' : 'Open Canva Studio'}</span>
-              <span>🎨</span>
-            </button>
-          </div>
-
           {/* 1. Copies with Stepper for easy mobile tapping */}
           <div className="space-y-1.5">
             <label className="block text-xs font-normal text-[#9aa0a6]">Copies</label>

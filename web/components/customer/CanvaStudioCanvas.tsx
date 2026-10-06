@@ -250,7 +250,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     // as well as the workspace padding. This makes the whole sheet visible
     // on short phones, landscape phones and tablets.
     const availableWidth = Math.max(1, workspace.clientWidth - 16);
-    const availableHeight = Math.max(1, workspace.clientHeight - 56);
+    const availableHeight = Math.max(1, workspace.clientHeight - 72);
     const fitZoom = Math.min(100, (availableWidth / baseWidth) * 100, (availableHeight / baseHeight) * 100);
 
     hasManualCanvasZoom.current = false;
@@ -1219,7 +1219,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="flex-1 w-full h-full flex flex-col min-h-0 bg-[#26282b] text-slate-100 select-none overflow-hidden"
+      className="relative flex-1 w-full h-full flex flex-col min-h-0 bg-[#26282b] text-slate-100 select-none overflow-hidden"
     >
       {/* Hidden File Input for Adding Multiple Images */}
       <input
@@ -1236,13 +1236,50 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         }}
       />
 
+      {/* Fixed editor actions: these sit above the scrollable/zoomable sheet
+          so they never move, shrink, or disappear while navigating a page. */}
+      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-40 flex max-w-[calc(100%-16px)] items-center gap-1.5 rounded-xl border border-slate-600/90 bg-[#1e2022]/95 p-1.5 shadow-xl backdrop-blur-md">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="h-8 px-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-[11px] font-extrabold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation whitespace-nowrap"
+          title="Upload image from device"
+        >
+          <Upload className="w-3.5 h-3.5" />
+          <span>Add Image</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setSelectedId(null);
+            handleDuplicatePage(activePageIndex);
+          }}
+          className="h-8 px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 hover:text-white border border-slate-700 text-[11px] font-extrabold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation whitespace-nowrap"
+          title="Copy current page"
+        >
+          <Copy className="w-3.5 h-3.5" />
+          <span>Copy Page</span>
+        </button>
+        {pageCount > 1 && (
+          <button
+            type="button"
+            onClick={() => handleDeletePage(activePageIndex)}
+            className="w-8 h-8 rounded-lg text-rose-400 hover:text-rose-200 hover:bg-rose-950/60 transition-colors flex items-center justify-center"
+            title="Delete current page"
+            aria-label="Delete current page"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+
       {/* -------------------------------------------------------------
           CENTER CANVAS WORKSPACE
           The selected page is edited at full size.
           ------------------------------------------------------------- */}
       <div
         ref={workspaceRef}
-        className={`flex-1 w-full flex flex-col ${canvasZoom > 100 ? 'items-start cursor-grab active:cursor-grabbing' : 'items-center cursor-default'} p-2 sm:p-3 overflow-auto relative`}
+        className={`flex-1 w-full flex flex-col ${canvasZoom > 100 ? 'items-start cursor-grab active:cursor-grabbing' : 'items-center cursor-default'} px-2 pb-2 pt-14 sm:px-3 sm:pb-3 sm:pt-14 overflow-auto relative`}
         onClick={() => setSelectedId(null)}
         onPointerDown={handleWorkspacePointerDown}
         onPointerMove={handleWorkspacePointerMove}
@@ -1279,53 +1316,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                 key={`page-container-${pageIdx}`}
                 className="flex flex-col items-center gap-2 w-full shrink-0"
               >
-                <div
-                  className="flex items-center justify-between w-full px-1"
-                  style={{
-                    width: `${displayedPageWidth}px`,
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation"
-                      title="Upload image from device"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      <span>Add Image</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedId(null);
-                        handleDuplicatePage(activePageIndex);
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 hover:text-white border border-slate-700 text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation"
-                      title="Copy current page"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>Copy Page</span>
-                    </button>
-                  </div>
-
-                  {pageCount > 1 && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeletePage(pageIdx);
-                        }}
-                        className="p-1 rounded-lg text-rose-400 hover:text-rose-200 hover:bg-rose-950/60 transition-colors"
-                        title="Delete Page"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
-
                 {/* Printable Paper Canvas Sheet (Blank Same-Sized Page) */}
                 <div
                   data-canva-page={pageIdx}
