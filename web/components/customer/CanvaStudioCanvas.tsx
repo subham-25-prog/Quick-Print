@@ -489,30 +489,41 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const handleAddFiles = useCallback(
     async (files: FileList | File[]) => {
       const newItems: CanvaImageItem[] = [];
+      const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
+      if (imageFiles.length === 0) return;
 
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        if (!file.type.startsWith('image/')) continue;
+      // Keep a multi-select visible. Previously each image was a 55% tile
+      // with only a tiny offset and the same z-index, so the final image
+      // covered the rest and made a multi-image import look like one image.
+      const columns = Math.ceil(Math.sqrt(imageFiles.length));
+      const rows = Math.ceil(imageFiles.length / columns);
+      const pageMargin = 5;
+      const gridGap = 3;
+      const cellWidth = (100 - pageMargin * 2 - gridGap * (columns - 1)) / columns;
+      const cellHeight = (100 - pageMargin * 2 - gridGap * (rows - 1)) / rows;
+      const baseZIndex = items.reduce((max, item) => Math.max(max, item.zIndex || 0), 0);
+
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
 
         const objectUrl = URL.createObjectURL(file);
         try {
           const img = await loadImage(objectUrl);
           const imgAspect = img.naturalWidth / (img.naturalHeight || 1);
 
-          let itemW = 55;
+          const column = i % columns;
+          const row = Math.floor(i / columns);
+          let itemW = Math.min(cellWidth, (cellHeight * imgAspect) / paperAspectRatio);
           let itemH = (itemW / imgAspect) * paperAspectRatio;
-          if (itemH > 55) {
-            itemH = 55;
+          if (itemH > cellHeight) {
+            itemH = cellHeight;
             itemW = (itemH * imgAspect) / paperAspectRatio;
           }
 
-          // Offset added items slightly
-          const pageItemsCount = items.filter((it) => (it.pageIndex ?? 0) === activePageIndex).length;
-          const offset = ((pageItemsCount + i) % 5) * 4;
-          const x = Math.min(75, Math.max(5, 20 + offset));
-          const y = Math.min(75, Math.max(5, 20 + offset));
-
-          const nextZ = items.reduce((max, it) => Math.max(max, it.zIndex), 0) + 1;
+          const cellX = pageMargin + column * (cellWidth + gridGap);
+          const cellY = pageMargin + row * (cellHeight + gridGap);
+          const x = cellX + (cellWidth - itemW) / 2;
+          const y = cellY + (cellHeight - itemH) / 2;
           newItems.push({
             id: `img-${Date.now()}-${i}`,
             src: objectUrl,
@@ -523,12 +534,13 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             width: itemW,
             height: itemH,
             rotation: 0,
-            zIndex: nextZ,
+            zIndex: baseZIndex + i + 1,
             aspectRatio: imgAspect,
             originalImg: img,
           });
         } catch (e) {
           console.error('Error adding image:', e);
+          URL.revokeObjectURL(objectUrl);
         }
       }
 
