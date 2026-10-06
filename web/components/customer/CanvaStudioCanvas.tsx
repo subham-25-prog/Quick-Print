@@ -992,32 +992,16 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                 key={`page-container-${pageIdx}`}
                 className="flex flex-col items-center gap-2 w-full shrink-0"
               >
-                {/* Page Header Bar with Page Number & Actions */}
-                <div
-                  className="flex items-center justify-between w-full px-1 text-xs font-bold text-slate-400"
-                  style={{
-                    width: isLandscape
-                      ? `${Math.round(860 * (canvasZoom / 100))}px`
-                      : `${Math.round(620 * (canvasZoom / 100))}px`,
-                    maxWidth: canvasZoom <= 100 ? '96%' : 'none',
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-0.5 rounded-lg border text-[11px] font-bold ${
-                        isActivePage
-                          ? 'bg-indigo-600/30 border-indigo-500/50 text-indigo-300'
-                          : 'bg-slate-800/80 border-slate-700/60 text-slate-400'
-                      }`}
-                    >
-                      Page {pageIdx + 1} of {pageCount}
-                    </span>
-                    <span className="text-[10px] text-slate-500 font-mono">
-                      {pageItems.length} {pageItems.length === 1 ? 'image' : 'images'}
-                    </span>
-                  </div>
-
-                  {pageCount > 1 && (
+                {pageCount > 1 && (
+                  <div
+                    className="flex justify-end w-full px-1"
+                    style={{
+                      width: isLandscape
+                        ? `${Math.round(860 * (canvasZoom / 100))}px`
+                        : `${Math.round(620 * (canvasZoom / 100))}px`,
+                      maxWidth: canvasZoom <= 100 ? '96%' : 'none',
+                    }}
+                  >
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
@@ -1031,8 +1015,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Printable Paper Canvas Sheet (Blank Same-Sized Page) */}
                 <div
