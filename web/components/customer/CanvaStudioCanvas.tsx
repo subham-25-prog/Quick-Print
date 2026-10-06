@@ -968,11 +968,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       />
 
       {/* -------------------------------------------------------------
-          TOP TOOLBAR: Add Image, + Add Page, Undo, & Apply
+          TOP TOOLBAR & HORIZONTAL PAGE COLLECTION
           ------------------------------------------------------------- */}
-      <div className="w-full bg-[#1e2022] border-b border-[#3c4043] px-3 py-2 flex items-center justify-between gap-2 shrink-0 z-30 shadow-md">
-        {/* Left Side: Add Image button */}
-        <div className="flex items-center gap-2">
+      <div className="w-full bg-[#1e2022] border-b border-[#3c4043] px-3 py-2 flex items-center gap-3 shrink-0 z-30 shadow-md">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -983,50 +982,22 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             <span>+ Add Image</span>
           </button>
 
-          <span className="px-2 py-1 rounded bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-300 font-bold uppercase hidden sm:inline-block">
-            {paperSize} • {pageCount} {pageCount === 1 ? 'page' : 'pages'}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-800 p-1 text-slate-200">
           <button
             type="button"
-            onClick={() => setCanvasZoom((current) => Math.max(MIN_CANVAS_ZOOM, current - 10))}
-            className="w-7 h-7 rounded-lg hover:bg-slate-700 text-base font-bold transition-colors"
-            title="Zoom out"
-            aria-label="Zoom out"
+            onClick={() => {
+              setSelectedId(null);
+              handleDuplicatePage(activePageIndex);
+            }}
+            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 hover:text-white border border-slate-700 text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation"
+            title="Copy current page"
           >
-            −
-          </button>
-          <button
-            type="button"
-            onClick={() => setCanvasZoom(100)}
-            className="min-w-12 px-1 h-7 rounded-lg hover:bg-slate-700 text-[10px] font-mono font-bold transition-colors"
-            title="Reset zoom"
-          >
-            {Math.round(canvasZoom)}%
-          </button>
-          <button
-            type="button"
-            onClick={() => setCanvasZoom((current) => Math.min(MAX_CANVAS_ZOOM, current + 10))}
-            className="w-7 h-7 rounded-lg hover:bg-slate-700 text-base font-bold transition-colors"
-            title="Zoom in"
-            aria-label="Zoom in"
-          >
-            +
+            <Copy className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Copy Page</span>
           </button>
         </div>
 
-      </div>
-
-      {/* -------------------------------------------------------------
-          PAGE COLLECTION
-          Keep the document pages in a horizontal, Canva-style filmstrip so
-          customers can scan and switch pages without a tall column of sheets.
-          ------------------------------------------------------------- */}
-      <div className="w-full shrink-0 bg-[#202124] border-b border-[#3c4043] px-3 py-2">
         <div
-          className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]"
+          className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]"
           role="tablist"
           aria-label="Document pages"
         >
@@ -1101,7 +1072,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           The selected page is edited at full size.
           ------------------------------------------------------------- */}
       <div
-        className="flex-1 w-full flex flex-col items-center p-3 sm:p-6 overflow-auto relative cursor-default"
+        className="flex-1 w-full flex flex-col items-center p-2 sm:p-3 overflow-auto relative cursor-default"
         onClick={() => setSelectedId(null)}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -1111,7 +1082,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           }
         }}
       >
-        <div className="flex flex-col items-center gap-6 w-full pb-10">
+        <div className="flex flex-col items-center gap-3 w-full pb-2">
           {[activePageIndex].map((pageIdx) => {
             const pageItems = items.filter((it) => (it.pageIndex ?? 0) === pageIdx);
             const isActivePage = activePageIndex === pageIdx;
@@ -1146,19 +1117,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDuplicatePage(pageIdx);
-                      }}
-                      className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                      title="Duplicate Page"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                    {pageCount > 1 && (
+                  {pageCount > 1 && (
+                    <div className="flex items-center gap-1">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1170,8 +1130,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Printable Paper Canvas Sheet (Blank Same-Sized Page) */}
@@ -1192,7 +1152,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                       ? `${Math.round(860 * (canvasZoom / 100))}px`
                       : `${Math.round(620 * (canvasZoom / 100))}px`,
                     maxWidth: canvasZoom <= 100 ? '96%' : 'none',
-                    maxHeight: '85vh',
+                    maxHeight: 'calc(100dvh - 250px)',
                   }}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
