@@ -41,7 +41,7 @@ interface AdobePrintPreviewModalProps {
   onCopiesChange?: (val: number) => void;
   onProceedToOrder?: () => void;
   onApplyCanvasLayout?: (file: File) => Promise<void> | void;
-  batchFiles?: Array<{ name: string; file: File; id?: string }>;
+  batchFiles?: Array<{ name: string; file: File; id?: string; pageCount?: number; copies?: number }>;
   savedCanvaItems?: CanvaImageItem[];
   onCanvaItemsChange?: (items: CanvaImageItem[]) => void;
 }
@@ -133,6 +133,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   const [appliedCanvaItems, setAppliedCanvaItems] = useState<CanvaImageItem[]>(() => propsSavedCanvaItems ?? []);
   const [isCanvaApplied, setIsCanvaApplied] = useState<boolean>(() => Boolean(propsSavedCanvaItems && propsSavedCanvaItems.length > 0));
   const [canvaInitialImages, setCanvaInitialImages] = useState<Array<{ url: string; name: string }>>([]);
+  const [batchPdfDocuments, setBatchPdfDocuments] = useState<Map<number, any>>(new Map());
 
   // Clean, customer-friendly display document title (no robotic Batch_Order or internal filenames)
   const displayFileName = useMemo(() => {
@@ -229,6 +230,24 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     if (pageCount && pageCount > 0) return pageCount;
     return 1;
   }, [isCanvaApplied, canvaSnapshotUrls.length, pdfPageCount, appliedCanvaItems, canvaMaxPage, batchFiles, pageCount]);
+
+  // Keep a page-by-page source map for mixed uploads. Previewing source PDF
+  // pages directly avoids blank pages from PDFs whose resources are altered
+  // when a batch is merged for printing.
+  const batchPageSources = useMemo(() => {
+    const pages: Array<{ fileIndex: number; pageNumber: number; isPdf: boolean }> = [];
+    batchFiles?.forEach((file, fileIndex) => {
+      const isPdf = file.file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const pageTotal = Math.max(1, file.pageCount || 1);
+      const copies = Math.max(1, file.copies || 1);
+      for (let copy = 0; copy < copies; copy++) {
+        for (let pageNumber = 1; pageNumber <= pageTotal; pageNumber++) {
+          pages.push({ fileIndex, pageNumber, isPdf });
+        }
+      }
+    });
+    return pages;
+  }, [batchFiles]);
 
   // Sync state with incoming props when modal opens
   useEffect(() => {
@@ -533,6 +552,45 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     clearCanvasCache(pdfPageCache.current);
     imageElementCache.current.clear();
   }, [isOpen, uploadedFile?.file, uploadedFile?.uploadId, fileName, isPdfFile, isCanvaApplied]);
+
+  // Load original PDFs in a mixed batch independently of the compiled print
+  // PDF. PDF.js can then render their pages exactly as Canvas Studio does.
+  useEffect(() => {
+    if (!isOpen || !batchFiles?.length) {
+      setBatchPdfDocuments(new Map());
+      return;
+    }
+
+    let active = true;
+    const loadBatchPdfDocuments = async () => {
+      const pdfEntries = batchFiles
+        .map((file, index) => ({ file, index }))
+        .filter(({ file }) => file.file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'));
+      if (pdfEntries.length === 0) {
+        if (active) setBatchPdfDocuments(new Map());
+        return;
+      }
+
+      try {
+        const pdfjs = await getPdfJs();
+        const documents = await Promise.all(
+          pdfEntries.map(async ({ file, index }) => {
+            const doc = await pdfjs.getDocument({ data: new Uint8Array(await file.file.arrayBuffer()) }).promise;
+            return [index, doc] as const;
+          })
+        );
+        if (active) setBatchPdfDocuments(new Map(documents));
+      } catch (error) {
+        console.error('Failed to load an original PDF page for preview:', error);
+        if (active) setBatchPdfDocuments(new Map());
+      }
+    };
+
+    void loadBatchPdfDocuments();
+    return () => {
+      active = false;
+    };
+  }, [isOpen, batchFiles]);
 
   // --- Load actual uploaded PDF document ---
   useEffect(() => {
@@ -1065,16 +1123,25 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
         } else {
           // UNTIL TAPPING APPLY: Render previous / original uploaded document!
-          if (pdfDoc && pageToDraw <= pdfDoc.numPages) {
-            await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
-          } else if (batchFiles && batchFiles.length >= pageToDraw && batchFiles[pageToDraw - 1]?.file) {
-            const bFile = batchFiles[pageToDraw - 1];
-            if (bFile.file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(bFile.name)) {
-              const bUrl = URL.createObjectURL(bFile.file);
+          const batchSource = batchPageSources[pageToDraw - 1];
+          if (batchSource && batchFiles?.[batchSource.fileIndex]?.file) {
+            const sourceFile = batchFiles[batchSource.fileIndex];
+            if (batchSource.isPdf) {
+              const sourcePdf = batchPdfDocuments.get(batchSource.fileIndex);
+              if (sourcePdf) {
+                await renderPdfSlot(ctx, sourcePdf, batchSource.pageNumber, offsetX, offsetY, scaledW, scaledH);
+              } else {
+                drawPreviewUnavailable(ctx, offsetX, offsetY, scaledW, scaledH);
+              }
+            } else if (sourceFile.file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(sourceFile.name)) {
+              const bUrl = URL.createObjectURL(sourceFile.file);
               await renderImageSlot(ctx, bUrl, offsetX, offsetY, scaledW, scaledH);
+              URL.revokeObjectURL(bUrl);
             } else {
               drawPreviewUnavailable(ctx, offsetX, offsetY, scaledW, scaledH);
             }
+          } else if (pdfDoc && pageToDraw <= pdfDoc.numPages) {
+            await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
           } else if (isImgFile && activePreviewUrl) {
             await renderImageSlot(ctx, activePreviewUrl, offsetX, offsetY, scaledW, scaledH);
           } else {
@@ -1142,6 +1209,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     isCanvaApplied,
     appliedCanvaItems,
     batchFiles,
+    batchPageSources,
+    batchPdfDocuments,
     viewMode,
     renderCanvaPageItems,
     drawPreviewUnavailable,
