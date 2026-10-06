@@ -972,8 +972,14 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           The selected page is edited at full size.
           ------------------------------------------------------------- */}
       <div
-        className="flex-1 w-full flex flex-col items-center p-2 sm:p-3 overflow-auto relative cursor-default"
+        className={`flex-1 w-full flex flex-col ${canvasZoom > 100 ? 'items-start' : 'items-center'} p-2 sm:p-3 overflow-auto relative cursor-default`}
         onClick={() => setSelectedId(null)}
+        onWheel={(e) => {
+          if (!e.ctrlKey && !e.metaKey) return;
+          e.preventDefault();
+          const delta = e.deltaY < 0 ? 10 : -10;
+          setCanvasZoom((current) => Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, current + delta)));
+        }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -1060,7 +1066,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                       ? `${Math.round(860 * (canvasZoom / 100))}px`
                       : `${Math.round(620 * (canvasZoom / 100))}px`,
                     maxWidth: canvasZoom <= 100 ? '96%' : 'none',
-                    maxHeight: 'calc(100dvh - 250px)',
+                    maxHeight: canvasZoom <= 100 ? 'calc(100dvh - 250px)' : 'none',
                   }}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
@@ -1153,11 +1159,11 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                                   e.stopPropagation();
                                   handleDuplicateSelected();
                                 }}
-                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-indigo-600 active:scale-95 text-slate-200 hover:text-white transition-all text-xs font-bold cursor-pointer shadow-xs"
+                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 active:scale-95 text-slate-200 hover:text-white transition-all cursor-pointer shadow-xs"
                                 title="Copy / Duplicate Image"
+                                aria-label="Copy image"
                               >
                                 <Copy className="w-3.5 h-3.5" />
-                                <span className="text-[11px]">Copy</span>
                               </button>
 
                               <button
@@ -1180,11 +1186,11 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                                   e.stopPropagation();
                                   handleDeleteSelected();
                                 }}
-                                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-600 active:scale-95 text-rose-300 hover:text-white transition-all text-xs font-bold cursor-pointer shadow-xs"
+                                className="p-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-600 active:scale-95 text-rose-300 hover:text-white transition-all cursor-pointer shadow-xs"
                                 title="Remove / Delete Image"
+                                aria-label="Remove image"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
-                                <span className="text-[11px]">Remove</span>
                               </button>
                             </div>
 
@@ -1355,10 +1361,40 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       <div className="w-full bg-[#1e2022] border-t border-[#3c4043] px-3.5 py-2 text-xs text-slate-400 flex flex-wrap items-center justify-between gap-2 z-20">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span>{items.length} {items.length === 1 ? 'image' : 'images'}</span>
-          <span className="hidden sm:inline-block">· Pinch blank canvas to zoom · Pinch selected image to resize</span>
+          <span className="hidden sm:inline-block">· Pinch or Ctrl/Cmd + scroll to zoom · Pinch selected image to resize</span>
         </div>
 
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-800 p-1 text-slate-200">
+            <button
+              type="button"
+              onClick={() => setCanvasZoom((current) => Math.max(MIN_CANVAS_ZOOM, current - 10))}
+              disabled={canvasZoom <= MIN_CANVAS_ZOOM}
+              className="w-7 h-7 rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-transparent text-base font-bold transition-colors"
+              title="Zoom out"
+              aria-label="Zoom out"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              onClick={() => setCanvasZoom(100)}
+              className="min-w-11 px-1 h-7 rounded-lg hover:bg-slate-700 text-[10px] font-mono font-bold transition-colors"
+              title="Fit canvas at 100%"
+            >
+              {Math.round(canvasZoom)}%
+            </button>
+            <button
+              type="button"
+              onClick={() => setCanvasZoom((current) => Math.min(MAX_CANVAS_ZOOM, current + 10))}
+              disabled={canvasZoom >= MAX_CANVAS_ZOOM}
+              className="w-7 h-7 rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-transparent text-base font-bold transition-colors"
+              title="Zoom in"
+              aria-label="Zoom in"
+            >
+              +
+            </button>
+          </div>
           {history.length > 0 && (
             <button
               type="button"
