@@ -1053,7 +1053,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                 title={`Page ${pageIdx + 1}`}
               >
                 <span
-                  className="relative block w-14 sm:w-16 overflow-hidden bg-white shadow-sm"
+                  className="relative block w-11 sm:w-12 overflow-hidden bg-white shadow-sm"
                   style={{ aspectRatio: `${paperAspectRatio}` }}
                 >
                   {pageItems.map((item) => (
@@ -1087,7 +1087,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
               setSelectedId(null);
               handleAddPage();
             }}
-            className="shrink-0 self-stretch min-h-[82px] px-3 rounded-lg border-2 border-dashed border-indigo-500/60 text-indigo-300 hover:border-indigo-400 hover:bg-indigo-500/10 hover:text-white transition-colors text-xs font-bold flex flex-col items-center justify-center gap-1"
+            className="shrink-0 self-stretch min-h-[68px] px-2.5 rounded-lg border-2 border-dashed border-indigo-500/60 text-indigo-300 hover:border-indigo-400 hover:bg-indigo-500/10 hover:text-white transition-colors text-[11px] font-bold flex flex-col items-center justify-center gap-1"
             title="Add page"
           >
             <Plus className="w-4 h-4" />
