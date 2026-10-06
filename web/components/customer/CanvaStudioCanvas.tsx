@@ -26,6 +26,10 @@ export interface CanvaImageItem {
   rotation: number; // degrees (0 - 360)
   zIndex: number;
   aspectRatio: number; // width / height
+  // The paper ratio used when width/height percentages were calculated. It
+  // lets the editor preserve a photo frame's real shape if the user changes
+  // between portrait and landscape after placing it.
+  pageAspectRatio?: number;
   cropTop?: number; // 0 to 100 (% cropped from top)
   cropBottom?: number; // 0 to 100 (% cropped from bottom)
   cropLeft?: number; // 0 to 100 (% cropped from left)
@@ -85,6 +89,48 @@ function zoomCropSource(item: CanvaImageItem, scale: number): CanvaImageItem {
   const [cropLeft, cropRight] = zoomCropAxis(item.cropLeft, item.cropRight, scale);
   const [cropTop, cropBottom] = zoomCropAxis(item.cropTop, item.cropBottom, scale);
   return { ...item, cropLeft, cropRight, cropTop, cropBottom };
+}
+
+// Item geometry is stored as percentages of the page axes. When the paper
+// switches from portrait to landscape (or back), the axes no longer have the
+// same physical ratio. Recalculate width around the existing centre so the
+// image frame keeps its shape rather than being stretched.
+function reflowItemForPaperAspect(
+  item: CanvaImageItem,
+  targetAspectRatio: number
+): CanvaImageItem {
+  const sourceAspectRatio = item.pageAspectRatio || targetAspectRatio;
+  const targetAspect = Math.max(0.01, targetAspectRatio);
+
+  if (
+    Math.abs(sourceAspectRatio - targetAspect) < 0.0001 &&
+    item.pageAspectRatio === targetAspectRatio
+  ) {
+    return item;
+  }
+
+  let width = Math.max(0.01, item.width * (sourceAspectRatio / targetAspect));
+  let height = Math.max(0.01, item.height);
+
+  // An edge-to-edge design may not fit after an orientation change. Scale it
+  // uniformly to keep its aspect ratio and make it remain entirely printable.
+  const fitScale = Math.min(1, 100 / width, 100 / height);
+  width *= fitScale;
+  height *= fitScale;
+
+  const centerX = item.x + item.width / 2;
+  const centerY = item.y + item.height / 2;
+  const x = Math.max(0, Math.min(100 - width, centerX - width / 2));
+  const y = Math.max(0, Math.min(100 - height, centerY - height / 2));
+
+  return {
+    ...item,
+    x,
+    y,
+    width,
+    height,
+    pageAspectRatio: targetAspectRatio,
+  };
 }
 
 export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
@@ -165,6 +211,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   }>({});
   const pendingGestureScroll = useRef<{ left: number; top: number } | null>(null);
   const hasInitialized = useRef(Boolean(savedItems && savedItems.length > 0));
+  const currentPaperAspectRatio = useRef(paperAspectRatio);
 
   // Keep parent in sync whenever canvas items change
   useEffect(() => {
@@ -172,6 +219,30 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       onItemsChange?.(items);
     }
   }, [items, onItemsChange]);
+
+  // A page orientation can be changed while this editor is mounted. Keep the
+  // currently placed frames proportional to their photos instead of allowing
+  // percentage dimensions from the previous paper ratio to stretch them.
+  useEffect(() => {
+    const previousAspectRatio = currentPaperAspectRatio.current;
+    currentPaperAspectRatio.current = paperAspectRatio;
+
+    setItems((currentItems) => {
+      let changed = false;
+      const nextItems = currentItems.map((item) => {
+        // Older saved layouts did not persist their source paper ratio. Their
+        // first open uses the current page as the baseline; later changes are
+        // reflowed normally.
+        const baselineItem = item.pageAspectRatio
+          ? item
+          : { ...item, pageAspectRatio: previousAspectRatio };
+        const nextItem = reflowItemForPaperAspect(baselineItem, paperAspectRatio);
+        if (nextItem !== item) changed = true;
+        return nextItem;
+      });
+      return changed ? nextItems : currentItems;
+    });
+  }, [paperAspectRatio]);
 
   // Interaction tracking state
   const dragRef = useRef<{
@@ -579,6 +650,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             rotation: 0,
             zIndex: i + 1,
             aspectRatio: imgAspect,
+            pageAspectRatio: paperAspectRatio,
             originalImg: img,
           });
         } catch (err) {
@@ -706,6 +778,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             rotation: 0,
             zIndex: baseZIndex + i + 1,
             aspectRatio: imgAspect,
+            pageAspectRatio: paperAspectRatio,
             originalImg: img,
           });
         } catch (e) {
