@@ -986,31 +986,64 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         newX = initialItem.x + initialItem.width / 2 + pageShiftX - newWidth / 2;
         newY = initialItem.y + initialItem.height / 2 + pageShiftY - newHeight / 2;
       };
+      const placeFrameFromFixedCorner = (
+        newWidth: number,
+        newHeight: number,
+        fixedCorner: 'nw' | 'ne' | 'se' | 'sw'
+      ) => {
+        const signs = {
+          nw: [-1, -1], ne: [1, -1], se: [1, 1], sw: [-1, 1],
+        } as const;
+        const [cornerX, cornerY] = signs[fixedCorner];
+        const rotateLocalPoint = (x: number, y: number) => ({
+          x: x * Math.cos(rotationRadians) - y * Math.sin(rotationRadians),
+          y: x * Math.sin(rotationRadians) + y * Math.cos(rotationRadians),
+        });
+        const initialCenterX = (initialItem.x + initialItem.width / 2) * sheetWidth / 100;
+        const initialCenterY = (initialItem.y + initialItem.height / 2) * sheetHeight / 100;
+        const oldCorner = rotateLocalPoint(
+          cornerX * initialItem.width * sheetWidth / 200,
+          cornerY * initialItem.height * sheetHeight / 200
+        );
+        const newCorner = rotateLocalPoint(
+          cornerX * newWidth * sheetWidth / 200,
+          cornerY * newHeight * sheetHeight / 200
+        );
+        const newCenterX = initialCenterX + oldCorner.x - newCorner.x;
+        const newCenterY = initialCenterY + oldCorner.y - newCorner.y;
+        newX = (newCenterX - newWidth * sheetWidth / 200) * 100 / sheetWidth;
+        newY = (newCenterY - newHeight * sheetHeight / 200) * 100 / sheetHeight;
+      };
 
-      if (mode === 'se') {
-        const maxWidth = Math.min(100 - initialItem.x, (100 - initialItem.y) * frameRatio);
-        newW = Math.max(Math.min(minWidth, maxWidth), Math.min(maxWidth, initialItem.width + deltaXPercent));
+      if (mode === 'se' || mode === 'sw' || mode === 'ne' || mode === 'nw') {
+        // Resolve pointer movement against the rotated image axes. A corner
+        // at 180° is visually on the opposite screen side, but it must still
+        // expand and contract in the direction the user drags it.
+        const cornerSigns = {
+          se: [1, 1], sw: [-1, 1], ne: [1, -1], nw: [-1, -1],
+        } as const;
+        const oppositeCorner = { se: 'nw', sw: 'ne', ne: 'sw', nw: 'se' } as const;
+        const [signX, signY] = cornerSigns[mode];
+        const pixelFrameRatio = Math.max(
+          0.01,
+          (initialItem.width * sheetWidth) / Math.max(0.01, initialItem.height * sheetHeight)
+        );
+        const fromHorizontal = localDeltaXPixels * signX;
+        const fromVertical = localDeltaYPixels * signY * pixelFrameRatio;
+        const widthDeltaPixels =
+          Math.abs(fromHorizontal) >= Math.abs(fromVertical) ? fromHorizontal : fromVertical;
+        const widthDeltaPercent = (widthDeltaPixels / sheetWidth) * 100;
+        const maxWidth = mode === 'se'
+          ? Math.min(100 - initialItem.x, (100 - initialItem.y) * frameRatio)
+          : mode === 'sw'
+          ? Math.min(initialItem.x + initialItem.width, (100 - initialItem.y) * frameRatio)
+          : mode === 'ne'
+          ? Math.min(100 - initialItem.x, (initialItem.y + initialItem.height) * frameRatio)
+          : Math.min(initialItem.x + initialItem.width, (initialItem.y + initialItem.height) * frameRatio);
+
+        newW = Math.max(Math.min(minWidth, maxWidth), Math.min(maxWidth, initialItem.width + widthDeltaPercent));
         newH = newW / frameRatio;
-      } else if (mode === 'sw') {
-        const right = initialItem.x + initialItem.width;
-        const maxWidth = Math.min(right, (100 - initialItem.y) * frameRatio);
-        newW = Math.max(Math.min(minWidth, maxWidth), Math.min(maxWidth, initialItem.width - deltaXPercent));
-        newH = newW / frameRatio;
-        newX = right - newW;
-      } else if (mode === 'ne') {
-        const bottom = initialItem.y + initialItem.height;
-        const maxWidth = Math.min(100 - initialItem.x, bottom * frameRatio);
-        newW = Math.max(Math.min(minWidth, maxWidth), Math.min(maxWidth, initialItem.width + deltaXPercent));
-        newH = newW / frameRatio;
-        newY = bottom - newH;
-      } else if (mode === 'nw') {
-        const right = initialItem.x + initialItem.width;
-        const bottom = initialItem.y + initialItem.height;
-        const maxWidth = Math.min(right, bottom * frameRatio);
-        newW = Math.max(Math.min(minWidth, maxWidth), Math.min(maxWidth, initialItem.width - deltaXPercent));
-        newH = newW / frameRatio;
-        newX = right - newW;
-        newY = bottom - newH;
+        placeFrameFromFixedCorner(newW, newH, oppositeCorner[mode]);
       } else if (mode === 'n') {
         const visibleHeight = Math.max(0.1, 100 - cTop - cBottom);
         const pctChange = (localDeltaYPercent / Math.max(0.1, initialItem.height)) * visibleHeight;
