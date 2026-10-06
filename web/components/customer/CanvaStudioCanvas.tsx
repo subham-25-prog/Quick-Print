@@ -54,6 +54,8 @@ export interface CanvaStudioCanvasProps {
 type DragMode = 'move' | 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w' | 'rotate';
 
 const MAX_CROP_PER_AXIS = 90;
+const MIN_CANVAS_ZOOM = 40;
+const MAX_CANVAS_ZOOM = 200;
 
 function normalizeCropPair(first?: number, second?: number): [number, number] {
   const safeFirst = Math.max(0, first || 0);
@@ -102,7 +104,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [justApplied, setJustApplied] = useState(false);
   const [history, setHistory] = useState<CanvaImageItem[][]>([]);
-  const [canvasZoom, setCanvasZoom] = useState(() => Math.max(50, Math.min(160, zoomLevel || 100)));
+  const [canvasZoom, setCanvasZoom] = useState(() => Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, zoomLevel || 100)));
 
   // An upload can be represented by the same object URL more than once while
   // the preview is being prepared. Seed the editor from each source only once.
@@ -120,7 +122,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
   // High-performance 120 FPS animation frame reference for mobile touch
   const rafId = useRef<number | null>(null);
+  const gestureRafId = useRef<number | null>(null);
   const pendingItemUpdate = useRef<CanvaImageItem | null>(null);
+  const pendingGestureUpdate = useRef<{ zoom?: number; item?: CanvaImageItem }>({});
   const hasInitialized = useRef(Boolean(savedItems && savedItems.length > 0));
 
   // Keep parent in sync whenever canvas items change
@@ -158,8 +162,29 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   }, []);
 
   useEffect(() => {
-    setCanvasZoom(Math.max(50, Math.min(160, zoomLevel || 100)));
+    setCanvasZoom(Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, zoomLevel || 100)));
   }, [zoomLevel]);
+
+  useEffect(() => () => {
+    if (gestureRafId.current !== null) cancelAnimationFrame(gestureRafId.current);
+  }, []);
+
+  const flushGestureUpdate = useCallback(() => {
+    const pending = pendingGestureUpdate.current;
+    pendingGestureUpdate.current = {};
+    gestureRafId.current = null;
+    if (typeof pending.zoom === 'number') setCanvasZoom(pending.zoom);
+    if (pending.item) {
+      setItems((previous) => previous.map((item) => (item.id === pending.item!.id ? pending.item! : item)));
+    }
+  }, []);
+
+  const scheduleGestureUpdate = useCallback((update: { zoom?: number; item?: CanvaImageItem }) => {
+    pendingGestureUpdate.current = update;
+    if (gestureRafId.current === null) {
+      gestureRafId.current = requestAnimationFrame(flushGestureUpdate);
+    }
+  }, [flushGestureUpdate]);
 
   const beginTouchGesture = useCallback((e: React.PointerEvent, itemId?: string) => {
     if (e.pointerType !== 'touch') return false;
@@ -199,7 +224,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     const scale = Math.max(0.25, Math.min(4, distance / gesture.startDistance));
 
     if (gesture.mode === 'canvas') {
-      setCanvasZoom(Math.max(50, Math.min(160, gesture.startZoom * scale)));
+      scheduleGestureUpdate({ zoom: Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, gesture.startZoom * scale)) });
       return true;
     }
 
@@ -224,15 +249,23 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       width,
       height,
     };
-    setItems((previous) => previous.map((item) => (item.id === resized.id ? resized : item)));
+    scheduleGestureUpdate({ item: resized });
     return true;
-  }, []);
+  }, [scheduleGestureUpdate]);
 
   const endTouchGesture = useCallback((e: React.PointerEvent) => {
     if (e.pointerType !== 'touch') return false;
     touchPointers.current.delete(e.pointerId);
     const gesture = pinchRef.current;
     if (!gesture || touchPointers.current.size >= 2) return false;
+    if (gestureRafId.current !== null) {
+      cancelAnimationFrame(gestureRafId.current);
+      gestureRafId.current = null;
+      const pending = pendingGestureUpdate.current;
+      pendingGestureUpdate.current = {};
+      if (typeof pending.zoom === 'number') setCanvasZoom(pending.zoom);
+      if (pending.item) setItems((previous) => previous.map((item) => (item.id === pending.item!.id ? pending.item! : item)));
+    }
     if (gesture.mode === 'resize' && !gesture.historySaved) {
       pushHistory(gesture.initialItems);
     }
@@ -955,6 +988,34 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           </span>
         </div>
 
+        <div className="flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-800 p-1 text-slate-200">
+          <button
+            type="button"
+            onClick={() => setCanvasZoom((current) => Math.max(MIN_CANVAS_ZOOM, current - 10))}
+            className="w-7 h-7 rounded-lg hover:bg-slate-700 text-base font-bold transition-colors"
+            title="Zoom out"
+            aria-label="Zoom out"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            onClick={() => setCanvasZoom(100)}
+            className="min-w-12 px-1 h-7 rounded-lg hover:bg-slate-700 text-[10px] font-mono font-bold transition-colors"
+            title="Reset zoom"
+          >
+            {Math.round(canvasZoom)}%
+          </button>
+          <button
+            type="button"
+            onClick={() => setCanvasZoom((current) => Math.min(MAX_CANVAS_ZOOM, current + 10))}
+            className="w-7 h-7 rounded-lg hover:bg-slate-700 text-base font-bold transition-colors"
+            title="Zoom in"
+            aria-label="Zoom in"
+          >
+            +
+          </button>
+        </div>
 
       </div>
 
