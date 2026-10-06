@@ -279,14 +279,39 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   // Reset Canva applied state when opening fresh documents without applied Canva layout
   useEffect(() => {
     if (!isOpen) return;
-    if (!propsSavedCanvaItems || propsSavedCanvaItems.length === 0) {
+    // Do not discard an in-memory editor draft while the parent is receiving
+    // the matching saved layout. That short React update window previously
+    // made images disappear after switching Preview -> Canva Studio.
+    if (
+      (!propsSavedCanvaItems || propsSavedCanvaItems.length === 0) &&
+      draftCanvaItems.length === 0 &&
+      appliedCanvaItems.length === 0
+    ) {
       setIsCanvaApplied(false);
       setCanvaSnapshotUrl(null);
       setCanvaSnapshotUrls([]);
       setDraftCanvaItems([]);
       setAppliedCanvaItems([]);
     }
-  }, [isOpen, uploadedFile?.file, uploadedFile?.uploadId, fileName, propsSavedCanvaItems]);
+  }, [
+    isOpen,
+    uploadedFile?.file,
+    uploadedFile?.uploadId,
+    fileName,
+    propsSavedCanvaItems,
+    draftCanvaItems.length,
+    appliedCanvaItems.length,
+  ]);
+
+  // The page-level state is the durable copy of a completed layout. If this
+  // modal receives it after a preview transition, restore an empty local
+  // draft instead of opening the editor with an empty canvas.
+  useEffect(() => {
+    if (!propsSavedCanvaItems || propsSavedCanvaItems.length === 0) return;
+    setDraftCanvaItems((current) => current.length === 0 ? propsSavedCanvaItems : current);
+    setAppliedCanvaItems((current) => current.length === 0 ? propsSavedCanvaItems : current);
+    setIsCanvaApplied(true);
+  }, [propsSavedCanvaItems]);
 
   const buildUpdatedConfig = useCallback((): AdvancedPrintConfig => ({
     pageRangeMode,
@@ -1731,10 +1756,21 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         }`}
       >
 
-        {viewMode === 'canva' ? (
+        {/* Keep the editor mounted while previewing. This preserves its live
+            image sources and avoids remount races when switching back. */}
+        <div
+          className={`absolute inset-0 ${viewMode === 'canva' ? 'z-30 visible' : 'z-0 invisible pointer-events-none'}`}
+          aria-hidden={viewMode !== 'canva'}
+        >
           <CanvaStudioCanvas
             initialImages={canvaInitialImages}
-            savedItems={draftCanvaItems.length > 0 ? draftCanvaItems : appliedCanvaItems}
+            savedItems={
+              draftCanvaItems.length > 0
+                ? draftCanvaItems
+                : appliedCanvaItems.length > 0
+                ? appliedCanvaItems
+                : propsSavedCanvaItems
+            }
             onItemsChange={setDraftCanvaItems}
             paperSize={modalPaperSize}
             isLandscape={isLandscape}
@@ -1743,7 +1779,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             zoomLevel={zoomLevel}
             onApplyLayout={handleApplyCanvaLayout}
           />
-        ) : (
+        </div>
+
+        {viewMode !== 'canva' && (
           <>
             {/* Centered Document Canvas Container */}
         <div 
