@@ -16,6 +16,7 @@ interface PrintOptionsSelectorProps {
   onCopiesChange: (val: number) => void;
   pricing: PricingConfig;
   hasMultipleFiles?: boolean;
+  hideCopies?: boolean;
 }
 
 const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
@@ -29,6 +30,7 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
   onCopiesChange,
   pricing,
   hasMultipleFiles = false,
+  hideCopies = false,
 }) => {
   const enabledPapers = pricing?.enabled_papers || { a4: true, a3: true, legal: true, photo: true };
   const customPapers = (pricing?.custom_papers || []).filter((p) => p.enabled);
@@ -280,7 +282,7 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
       ) : null}
 
       {/* 4. Number of Copies */}
-      {!hasMultipleFiles && (
+      {!hasMultipleFiles && !hideCopies && (
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 select-none">
             Number of Copies

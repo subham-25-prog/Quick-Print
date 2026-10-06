@@ -113,6 +113,7 @@ DocumentPreviewBox.displayName = 'DocumentPreviewBox';
 interface BatchFileRowProps {
   item: BatchFileItem;
   idx: number;
+  hideCopyControls?: boolean;
   onUpdateCopies: (id: string, delta: number) => void;
   onRemove: (id: string) => void;
 }
@@ -120,6 +121,7 @@ interface BatchFileRowProps {
 function areBatchFileRowPropsEqual(prev: BatchFileRowProps, next: BatchFileRowProps): boolean {
   return (
     prev.idx === next.idx &&
+    prev.hideCopyControls === next.hideCopyControls &&
     prev.item.id === next.item.id &&
     prev.item.copies === next.item.copies &&
     prev.item.pageCount === next.item.pageCount &&
@@ -131,7 +133,7 @@ function areBatchFileRowPropsEqual(prev: BatchFileRowProps, next: BatchFileRowPr
   );
 }
 
-const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies, onRemove }) => {
+const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, hideCopyControls = false, onUpdateCopies, onRemove }) => {
   return (
     <div
       className="animate-fade-in-scale p-3 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-2xs flex flex-wrap items-center justify-between gap-3 transition-all duration-150 contain-layout"
@@ -159,9 +161,9 @@ const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies,
         </div>
       </div>
 
-      {/* Right: Per-File Copies Stepper & Remove */}
+      {/* Right: Per-file copies are not applicable to one uploaded photo. */}
       <div className="flex items-center gap-2 shrink-0">
-        <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50/80 p-0.5 shadow-2xs">
+        {!hideCopyControls && <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50/80 p-0.5 shadow-2xs">
           <button
             type="button"
             onClick={() => onUpdateCopies(item.id, -1)}
@@ -182,7 +184,7 @@ const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies,
           >
             <Plus className="w-3 h-3" />
           </button>
-        </div>
+        </div>}
 
         <button
           type="button"
@@ -509,6 +511,10 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                   key={item.id}
                   item={item}
                   idx={idx}
+                  hideCopyControls={
+                    batchFiles.length === 1 &&
+                    (item.file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(item.name))
+                  }
                   onUpdateCopies={updateItemCopies}
                   onRemove={removeBatchItem}
                 />
