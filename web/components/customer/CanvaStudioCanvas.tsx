@@ -102,6 +102,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [justApplied, setJustApplied] = useState(false);
   const [history, setHistory] = useState<CanvaImageItem[][]>([]);
+  const [canvasZoom, setCanvasZoom] = useState(() => Math.max(50, Math.min(160, zoomLevel || 100)));
 
   // An upload can be represented by the same object URL more than once while
   // the preview is being prepared. Seed the editor from each source only once.
@@ -141,11 +142,104 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     centerY: number;
     pageSheet?: HTMLElement | null;
   } | null>(null);
+  const touchPointers = useRef(new Map<number, { x: number; y: number; itemId?: string }>());
+  const pinchRef = useRef<{
+    mode: 'canvas' | 'resize';
+    startDistance: number;
+    startZoom: number;
+    initialItem?: CanvaImageItem;
+    initialItems: CanvaImageItem[];
+    historySaved: boolean;
+  } | null>(null);
 
   // Push state to history for Undo
   const pushHistory = useCallback((newItems: CanvaImageItem[]) => {
     setHistory((prev) => [...prev.slice(-15), newItems]);
   }, []);
+
+  useEffect(() => {
+    setCanvasZoom(Math.max(50, Math.min(160, zoomLevel || 100)));
+  }, [zoomLevel]);
+
+  const beginTouchGesture = useCallback((e: React.PointerEvent, itemId?: string) => {
+    if (e.pointerType !== 'touch') return false;
+    touchPointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY, itemId });
+    if (touchPointers.current.size !== 2) return false;
+
+    const pointers = [...touchPointers.current.values()];
+    const startDistance = Math.hypot(pointers[0].x - pointers[1].x, pointers[0].y - pointers[1].y);
+    if (startDistance < 1) return false;
+
+    const selectedItem = selectedId ? items.find((item) => item.id === selectedId) : undefined;
+    const resizeImage = Boolean(
+      selectedItem && pointers.every((pointer) => pointer.itemId === selectedItem.id)
+    );
+    pinchRef.current = {
+      mode: resizeImage ? 'resize' : 'canvas',
+      startDistance,
+      startZoom: canvasZoom,
+      initialItem: resizeImage ? { ...selectedItem! } : undefined,
+      initialItems: items,
+      historySaved: false,
+    };
+    dragRef.current = null;
+    pendingItemUpdate.current = null;
+    return true;
+  }, [canvasZoom, items, selectedId]);
+
+  const updateTouchGesture = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType !== 'touch' || !touchPointers.current.has(e.pointerId)) return false;
+    const pointer = touchPointers.current.get(e.pointerId)!;
+    touchPointers.current.set(e.pointerId, { ...pointer, x: e.clientX, y: e.clientY });
+    const gesture = pinchRef.current;
+    if (!gesture || touchPointers.current.size < 2) return false;
+
+    const pointers = [...touchPointers.current.values()];
+    const distance = Math.hypot(pointers[0].x - pointers[1].x, pointers[0].y - pointers[1].y);
+    const scale = Math.max(0.25, Math.min(4, distance / gesture.startDistance));
+
+    if (gesture.mode === 'canvas') {
+      setCanvasZoom(Math.max(50, Math.min(160, gesture.startZoom * scale)));
+      return true;
+    }
+
+    const initialItem = gesture.initialItem;
+    if (!initialItem) return true;
+    const ratio = Math.max(0.01, initialItem.width / Math.max(0.01, initialItem.height));
+    const centerX = initialItem.x + initialItem.width / 2;
+    const centerY = initialItem.y + initialItem.height / 2;
+    const maxWidth = Math.min(
+      centerX * 2,
+      (100 - centerX) * 2,
+      centerY * 2 * ratio,
+      (100 - centerY) * 2 * ratio
+    );
+    const minWidth = Math.min(maxWidth, Math.max(6, 6 * ratio));
+    const width = Math.max(minWidth, Math.min(maxWidth, initialItem.width * scale));
+    const height = width / ratio;
+    const resized = {
+      ...initialItem,
+      x: centerX - width / 2,
+      y: centerY - height / 2,
+      width,
+      height,
+    };
+    setItems((previous) => previous.map((item) => (item.id === resized.id ? resized : item)));
+    return true;
+  }, []);
+
+  const endTouchGesture = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType !== 'touch') return false;
+    touchPointers.current.delete(e.pointerId);
+    const gesture = pinchRef.current;
+    if (!gesture || touchPointers.current.size >= 2) return false;
+    if (gesture.mode === 'resize' && !gesture.historySaved) {
+      pushHistory(gesture.initialItems);
+    }
+    pinchRef.current = null;
+    dragRef.current = null;
+    return true;
+  }, [pushHistory]);
 
   const handleUndo = useCallback(() => {
     if (history.length === 0) return;
@@ -437,6 +531,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     const pageSheet = target.closest('[data-canva-page]') as HTMLElement | null;
     if (!pageSheet) return;
 
+    if (beginTouchGesture(e, item.id)) return;
+
     // Automatically elevate tapped/selected item to top layer (highest zIndex)
     setItems((prev) => {
       const maxZ = prev.reduce((max, it) => Math.max(max, it.zIndex || 0), 0);
@@ -469,6 +565,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
+    if (updateTouchGesture(e)) return;
     if (!dragRef.current) return;
     e.preventDefault();
 
@@ -639,6 +736,13 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    if (endTouchGesture(e)) {
+      try {
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+      return;
+    }
+
     if (rafId.current !== null) {
       cancelAnimationFrame(rafId.current);
       rafId.current = null;
@@ -805,6 +909,11 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     }
   };
 
+  const handlePagePointerDown = (e: React.PointerEvent, pageIndex: number) => {
+    setActivePageIndex(pageIndex);
+    if (beginTouchGesture(e)) return;
+  };
+
   return (
     <div
       ref={containerRef}
@@ -850,11 +959,11 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       </div>
 
       {/* -------------------------------------------------------------
-          CENTER MULTI-PAGE WORKSPACE (LIKE CANVA)
-          Scrollable workspace with blank pages & "+ Add Page" button
+          CENTER CANVAS WORKSPACE
+          One active page at a time, with side-to-side page navigation
           ------------------------------------------------------------- */}
       <div
-        className="flex-1 w-full flex flex-col items-center p-3 sm:p-6 overflow-y-auto overflow-x-hidden relative cursor-default"
+        className="flex-1 w-full flex flex-col items-center p-3 sm:p-6 overflow-auto relative cursor-default"
         onClick={() => setSelectedId(null)}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -865,7 +974,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         }}
       >
         <div className="flex flex-col items-center gap-6 w-full pb-10">
-          {Array.from({ length: pageCount }, (_, pageIdx) => {
+          {[activePageIndex].map((pageIdx) => {
             const pageItems = items.filter((it) => (it.pageIndex ?? 0) === pageIdx);
             const isActivePage = activePageIndex === pageIdx;
 
@@ -879,9 +988,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                   className="flex items-center justify-between w-full px-1 text-xs font-bold text-slate-400"
                   style={{
                     width: isLandscape
-                      ? `${Math.round(860 * (zoomLevel / 100))}px`
-                      : `${Math.round(620 * (zoomLevel / 100))}px`,
-                    maxWidth: '96%',
+                      ? `${Math.round(860 * (canvasZoom / 100))}px`
+                      : `${Math.round(620 * (canvasZoom / 100))}px`,
+                    maxWidth: canvasZoom <= 100 ? '96%' : 'none',
                   }}
                 >
                   <div className="flex items-center gap-2">
@@ -930,9 +1039,11 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                 {/* Printable Paper Canvas Sheet (Blank Same-Sized Page) */}
                 <div
                   data-canva-page={pageIdx}
+                  onPointerDown={(e) => handlePagePointerDown(e, pageIdx)}
                   onClick={(e) => {
                     e.stopPropagation();
                     setActivePageIndex(pageIdx);
+                    if (e.target === e.currentTarget) setSelectedId(null);
                   }}
                   className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border touch-none transition-all ${
                     isActivePage ? 'border-indigo-500/70 ring-2 ring-indigo-500/30' : 'border-slate-400/40'
@@ -940,9 +1051,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                   style={{
                     aspectRatio: `${paperAspectRatio}`,
                     width: isLandscape
-                      ? `${Math.round(860 * (zoomLevel / 100))}px`
-                      : `${Math.round(620 * (zoomLevel / 100))}px`,
-                    maxWidth: '96%',
+                      ? `${Math.round(860 * (canvasZoom / 100))}px`
+                      : `${Math.round(620 * (canvasZoom / 100))}px`,
+                    maxWidth: canvasZoom <= 100 ? '96%' : 'none',
                     maxHeight: '85vh',
                   }}
                   onPointerMove={handlePointerMove}
@@ -1174,6 +1285,39 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             </span>
           </button>
         </div>
+
+        {pageCount > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedId(null);
+                setActivePageIndex((current) => Math.max(0, current - 1));
+              }}
+              disabled={activePageIndex === 0}
+              className="absolute left-2 sm:left-5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/90 hover:bg-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed text-white border border-slate-600 shadow-xl flex items-center justify-center text-2xl transition-colors z-40"
+              title="Previous page"
+              aria-label="Previous page"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedId(null);
+                setActivePageIndex((current) => Math.min(pageCount - 1, current + 1));
+              }}
+              disabled={activePageIndex === pageCount - 1}
+              className="absolute right-2 sm:right-5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/90 hover:bg-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed text-white border border-slate-600 shadow-xl flex items-center justify-center text-2xl transition-colors z-40"
+              title="Next page"
+              aria-label="Next page"
+            >
+              ›
+            </button>
+          </>
+        )}
       </div>
 
       {/* -------------------------------------------------------------
@@ -1184,7 +1328,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           <span>
             {pageCount} {pageCount === 1 ? 'page' : 'pages'} · {items.length} {items.length === 1 ? 'photo' : 'photos'}
           </span>
-          <span className="hidden sm:inline-block">· Drag or pinch to resize</span>
+          <span className="hidden sm:inline-block">· Pinch blank canvas to zoom · Pinch selected image to resize</span>
         </div>
 
         <div className="flex items-center gap-2">
