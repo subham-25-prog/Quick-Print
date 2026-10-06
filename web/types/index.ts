@@ -115,6 +115,9 @@ export interface PricingConfig {
   photo_color_double_per_page?: number;
   double_sided_multiplier: number;
 
+  // Canva Studio design service, charged once for each customised page.
+  canva_studio_per_page?: number;
+
   // Add-on rates
   addon_stapling: number;
   addon_spiral_binding: number;
@@ -164,6 +167,7 @@ export interface OrderItemOptions {
   copies: number;
   addOns: AddOnOptions;
   advancedConfig?: AdvancedPrintConfig;
+  canvaStudioPageCount?: number;
 }
 
 export interface PriceBreakdown {
@@ -172,6 +176,8 @@ export interface PriceBreakdown {
   baseRatePerPage: number;
   effectiveRatePerPage: number;
   printSubtotal: number;
+  canvaStudioPages: number;
+  canvaStudioSubtotal: number;
   addOnsBreakdown: {
     name: string;
     unitPrice: number;

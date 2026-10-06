@@ -58,6 +58,13 @@ export function calculateOrderPrice(
   const rateMinor = Math.round(perPageRate * 100);
   const printSubtotalMinor = pageCount * options.copies * rateMinor;
 
+  // Canvas design work is charged once for each page customised in Canvas
+  // Studio. Reprints do not repeat that work, so copies are intentionally not
+  // part of this multiplier.
+  const canvaStudioPages = options.canvaStudioPageCount || 0;
+  const canvaStudioRateMinor = Math.round(Number(pricing.canva_studio_per_page || 0) * 100);
+  const canvaStudioSubtotalMinor = canvaStudioPages * canvaStudioRateMinor;
+
   const addOnsBreakdown: PriceBreakdown['addOnsBreakdown'] = [];
 
   // Standard Add-ons mapping
@@ -109,14 +116,22 @@ export function calculateOrderPrice(
     }
   }
 
-  const addOnsSubtotalMinor = addOnsBreakdown.reduce(
+  if (canvaStudioPages > 0 && canvaStudioRateMinor > 0) {
+    addOnsBreakdown.push({
+      name: 'Canva Studio customization',
+      unitPrice: canvaStudioRateMinor / 100,
+      total: canvaStudioSubtotalMinor / 100,
+    });
+  }
+
+  const servicesSubtotalMinor = addOnsBreakdown.reduce(
     (sum, item) => sum + Math.round(item.total * 100),
     0
   );
 
   const minOrderAmount = pricing.form_fields?.minOrderAmount ?? 1;
   const minOrderMinor = Math.round(minOrderAmount * 100);
-  const totalAmountMinor = Math.max(printSubtotalMinor + addOnsSubtotalMinor, minOrderMinor);
+  const totalAmountMinor = Math.max(printSubtotalMinor + servicesSubtotalMinor, minOrderMinor);
 
   return {
     pageCount,
@@ -124,8 +139,10 @@ export function calculateOrderPrice(
     baseRatePerPage: rateMinor / 100,
     effectiveRatePerPage: rateMinor / 100,
     printSubtotal: printSubtotalMinor / 100,
+    canvaStudioPages,
+    canvaStudioSubtotal: canvaStudioSubtotalMinor / 100,
     addOnsBreakdown,
-    addOnsSubtotal: addOnsSubtotalMinor / 100,
+    addOnsSubtotal: servicesSubtotalMinor / 100,
     totalAmount: totalAmountMinor / 100,
     currency: 'INR',
   };

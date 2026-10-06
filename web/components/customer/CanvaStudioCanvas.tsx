@@ -1134,7 +1134,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       const pdfBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
       const finalPdfFile = new File(
         [pdfBlob],
-        'Custom_Design.pdf',
+        'Canva_Studio_Design.pdf',
         { type: 'application/pdf' }
       );
 

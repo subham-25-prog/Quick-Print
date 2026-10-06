@@ -47,6 +47,7 @@ export function printOptions(
     printSides = 'SINGLE',
     copies = 1,
     addOns = {},
+    canvaStudioPageCount = 0,
   } = body;
 
   const paperSizeStr = String(paperSize);
@@ -84,6 +85,10 @@ export function printOptions(
   // Validate copies count
   if (!Number.isSafeInteger(copies) || Number(copies) < 1 || Number(copies) > 100) {
     throw new HttpError(400, 'Copies must be a whole number from 1 to 100.');
+  }
+
+  if (!Number.isSafeInteger(canvaStudioPageCount) || Number(canvaStudioPageCount) < 0 || Number(canvaStudioPageCount) > 10000) {
+    throw new HttpError(400, 'Invalid Canva Studio page count.');
   }
 
   // Validate add-ons
@@ -175,6 +180,7 @@ export function printOptions(
     copies: Number(copies),
     addOns,
     advancedConfig: validAdvanced,
+    canvaStudioPageCount: Number(canvaStudioPageCount),
   } as OrderItemOptions;
 }
 

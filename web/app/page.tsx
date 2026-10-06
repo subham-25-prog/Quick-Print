@@ -52,6 +52,7 @@ export default function CustomerHomePage() {
   const [uploadedFile, setUploadedFile] = useState<UploadedFileState | null>(null);
   const [batchFiles, setBatchFiles] = useState<BatchFileItem[]>([]);
   const [canvaSavedItems, setCanvaSavedItems] = useState<CanvaImageItem[]>([]);
+  const [canvaStudioPageCount, setCanvaStudioPageCount] = useState(0);
   const [isProcessingBatch, setIsProcessingBatch] = useState(false);
   const lastCompiledBatchSig = useRef<string>('');
   const [checkoutPreparation] = useState(createCheckoutPreparation);
@@ -343,13 +344,14 @@ export default function CustomerHomePage() {
           copies: effectiveCopies,
           addOns,
           advancedConfig,
+          canvaStudioPageCount,
         },
         pricing
       );
     } catch {
       return null;
     }
-  }, [effectivePages, paperSize, colorMode, printSides, effectiveCopies, addOns, advancedConfig, pricing]);
+  }, [effectivePages, paperSize, colorMode, printSides, effectiveCopies, addOns, advancedConfig, canvaStudioPageCount, pricing]);
 
   const getBatchSignature = (files: BatchFileItem[]) =>
     files.map((f) => `${f.id}-${f.name}-${f.size}-${f.pageCount}-${f.copies}`).join('|');
@@ -429,6 +431,7 @@ export default function CustomerHomePage() {
             copies: isMultiFileBatch ? 1 : effectiveCopies,
             addOns,
             advancedConfig,
+            canvaStudioPageCount,
             customerName,
             customerPhone,
             customerNotes,
@@ -520,6 +523,7 @@ export default function CustomerHomePage() {
       effectiveCopies,
       addOns,
       advancedConfig,
+      canvaStudioPageCount,
       customerName,
       customerPhone,
       customerNotes,
@@ -532,6 +536,7 @@ export default function CustomerHomePage() {
     setBatchPreviewFile(null);
     setUploadedFile(null);
     setCanvaSavedItems([]);
+    setCanvaStudioPageCount(0);
     lastCompiledBatchSig.current = '';
     if (files.length === 1 && files[0].copies) {
       setCopies(files[0].copies);
@@ -625,7 +630,10 @@ export default function CustomerHomePage() {
 
           <FileUploader
             uploadedFile={uploadedFile}
-            onFileUploaded={setUploadedFile}
+            onFileUploaded={(file) => {
+              setUploadedFile(file);
+              setCanvaStudioPageCount(0);
+            }}
             allowMultiple={allowMultiple}
             batchFiles={batchFiles}
             onBatchFilesChange={handleBatchFilesChange}
@@ -705,6 +713,11 @@ export default function CustomerHomePage() {
             <div className="text-2xl font-extrabold text-emerald-600 leading-tight [overflow-wrap:anywhere] transition-all duration-200">
               {priceBreakdown ? formatCurrency(priceBreakdown.totalAmount) : 'Unavailable'}
             </div>
+            {priceBreakdown && priceBreakdown.canvaStudioSubtotal > 0 && (
+              <div className="mt-0.5 text-[10px] font-semibold text-violet-700">
+                Canva Studio: {formatCurrency(priceBreakdown.canvaStudioSubtotal)} for {priceBreakdown.canvaStudioPages} page{priceBreakdown.canvaStudioPages === 1 ? '' : 's'}
+              </div>
+            )}
           </div>
 
           <button
@@ -882,6 +895,7 @@ export default function CustomerHomePage() {
                 setUploadedFile(null);
                 setBatchFiles([customBatchItem]);
                 setBatchPreviewFile(newFile);
+                setCanvaStudioPageCount(Math.max(1, customPageCount));
                 void checkoutPreparation.prepareUpload([customBatchItem]).catch((error) => {
                   console.error('Failed to prepare customized layout upload:', error);
                 });

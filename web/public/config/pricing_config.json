@@ -21,6 +21,7 @@
   "photo_color_per_page": 25,
   "photo_color_double_per_page": 45,
   "double_sided_multiplier": 1,
+  "canva_studio_per_page": 0,
   "addon_stapling": 5,
   "addon_spiral_binding": 30,
   "addon_lamination": 20,

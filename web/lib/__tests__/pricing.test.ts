@@ -114,3 +114,22 @@ assert.notStrictEqual(recalculatedWithSnapshot.totalAmount, recalculatedWithNewP
 
 
 });
+
+test('Canva Studio fee is charged once per customised page, not per copy', () => {
+  const breakdown = calculateOrderPrice(3, {
+    paperSize: 'A4',
+    colorMode: 'BW',
+    printSides: 'SINGLE',
+    copies: 4,
+    addOns: {},
+    canvaStudioPageCount: 3,
+  }, {
+    ...initialPricing,
+    canva_studio_per_page: 7,
+  });
+
+  assert.strictEqual(breakdown.printSubtotal, 24);
+  assert.strictEqual(breakdown.canvaStudioSubtotal, 21);
+  assert.strictEqual(breakdown.addOnsSubtotal, 21);
+  assert.strictEqual(breakdown.totalAmount, 45);
+});

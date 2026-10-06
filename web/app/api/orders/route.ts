@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
       'uploadId', 'idempotencyKey', 'paymentMethod', 'uploadToken',
       'paperSize', 'colorMode', 'printSides', 'copies', 'addOns',
       'advancedConfig', 'customerName', 'customerPhone', 'customerNotes',
+      'canvaStudioPageCount',
     ]);
     const uploadId = uuid(body.uploadId);
     const idempotencyKey = uuid(body.idempotencyKey);
@@ -96,6 +97,14 @@ export async function POST(req: NextRequest) {
     }
 
     const options = printOptions(body, pricing);
+    // A Canva Studio export is named by the editor itself. Bill every canvas
+    // page from the verified uploaded PDF rather than trusting a client-side
+    // page count alone.
+    if (file.file_name === 'Canva_Studio_Design.pdf') {
+      options.canvaStudioPageCount = file.page_count;
+    } else {
+      options.canvaStudioPageCount = 0;
+    }
     const effectivePageCount = computeEffectivePageCount(file.page_count, options.advancedConfig);
     const price = calculateOrderPrice(effectivePageCount, options, pricing);
 

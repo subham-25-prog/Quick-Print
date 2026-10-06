@@ -916,11 +916,39 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Section 3: Print Options (Customer Step 2) */}
+        {/* Section 3: Canva Studio Pricing */}
+        <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900">3. Canva Studio Customization Pricing</h2>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Charged once for every page customised in Canva Studio. Reprints do not repeat this fee.
+              </p>
+            </div>
+            <span className="text-[10px] font-bold text-violet-700 bg-violet-50 px-2.5 py-0.5 rounded-full border border-violet-100">
+              Per custom page
+            </span>
+          </div>
+
+          <div className="max-w-xs">
+            <label className="block text-[11px] font-bold text-slate-700 mb-1">Canva Studio charge (₹/page)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.25"
+              value={form.canva_studio_per_page ?? 0}
+              onChange={(e) => handleChange('canva_studio_per_page', Math.max(0, parseFloat(e.target.value) || 0))}
+              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm font-bold text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-violet-600"
+            />
+            <p className="mt-1.5 text-[10px] text-slate-400">Set to ₹0 to keep Canva Studio free.</p>
+          </div>
+        </section>
+
+        {/* Section 4: Print Options (Customer Step 2) */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-3">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900">
-              3. Color & Duplex Options
+              4. Color & Duplex Options
             </h2>
             <span className="text-[10px] font-bold text-slate-400">
               Customer Step 2
@@ -970,11 +998,11 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Section 4: Finishing & Add-ons (Customer Step 3) */}
+        {/* Section 5: Finishing & Add-ons (Customer Step 3) */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900">
-              4. Finishing & Add-on Services
+              5. Finishing & Add-on Services
             </h2>
             <span className="text-[10px] font-bold text-slate-400">
               Customer Step 3
@@ -1162,12 +1190,12 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Section 5: Customer Identification (Customer Step 4) */}
+        {/* Section 6: Customer Identification (Customer Step 4) */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
               <h2 className="text-sm font-bold text-slate-900">
-                5. Customer Identification
+                6. Customer Identification
               </h2>
               <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                 Enable or disable customer input fields and set whether they are mandatory or optional
@@ -1438,11 +1466,11 @@ export default function AdminSettingsPage() {
           </div>
         </section>
 
-        {/* Section 6: Payment & Checkout Options (Customer Step 5) */}
+        {/* Section 7: Payment & Checkout Options (Customer Step 5) */}
         <section className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-2xs space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900">
-              6. Payment & Checkout Options
+              7. Payment & Checkout Options
             </h2>
             <span className="text-[10px] font-bold text-slate-400">
               Customer Step 5
