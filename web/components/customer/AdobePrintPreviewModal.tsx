@@ -418,8 +418,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     if (!isOpen || (propsSavedCanvaItems && propsSavedCanvaItems.length > 0)) return;
 
     let active = true;
-    const objectUrls: string[] = [];
-
     const prepareCanvaImages = async () => {
       const sourceFiles = batchFiles?.length
         ? batchFiles.map((item) => ({ file: item.file, name: item.name }))
@@ -432,7 +430,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         const isPdf = source.file.type === 'application/pdf' || source.name.toLowerCase().endsWith('.pdf');
         if (!isPdf) {
           const url = URL.createObjectURL(source.file);
-          objectUrls.push(url);
+          // This URL is stored on the editable Canva item after Apply. Do not
+          // revoke it while the page is open, or reopening the editor would
+          // leave the saved item present but visually blank.
           prepared.push({ url, name: source.name });
           continue;
         }
@@ -475,7 +475,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     void prepareCanvaImages();
     return () => {
       active = false;
-      objectUrls.forEach((url) => URL.revokeObjectURL(url));
     };
   }, [isOpen, batchFiles, uploadedFile?.file, activePreviewUrl, isImgFile, fileName, propsSavedCanvaItems]);
 
