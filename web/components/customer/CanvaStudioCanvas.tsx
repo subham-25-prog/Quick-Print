@@ -992,16 +992,40 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                 key={`page-container-${pageIdx}`}
                 className="flex flex-col items-center gap-2 w-full shrink-0"
               >
-                {pageCount > 1 && (
-                  <div
-                    className="flex justify-end w-full px-1"
-                    style={{
-                      width: isLandscape
-                        ? `${Math.round(860 * (canvasZoom / 100))}px`
-                        : `${Math.round(620 * (canvasZoom / 100))}px`,
-                      maxWidth: canvasZoom <= 100 ? '96%' : 'none',
-                    }}
-                  >
+                <div
+                  className="flex items-center justify-between w-full px-1"
+                  style={{
+                    width: isLandscape
+                      ? `${Math.round(860 * (canvasZoom / 100))}px`
+                      : `${Math.round(620 * (canvasZoom / 100))}px`,
+                    maxWidth: canvasZoom <= 100 ? '96%' : 'none',
+                  }}
+                >
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation"
+                      title="Upload image from device"
+                    >
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>Add Image</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(null);
+                        handleDuplicatePage(activePageIndex);
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 hover:text-white border border-slate-700 text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation"
+                      title="Copy current page"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy Page</span>
+                    </button>
+                  </div>
+
+                  {pageCount > 1 && (
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
@@ -1015,8 +1039,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 {/* Printable Paper Canvas Sheet (Blank Same-Sized Page) */}
                 <div
@@ -1331,27 +1355,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       <div className="w-full bg-[#1e2022] border-t border-[#3c4043] px-3.5 py-2 text-xs text-slate-400 flex flex-wrap items-center justify-between gap-2 z-20">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span>{items.length} {items.length === 1 ? 'image' : 'images'}</span>
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation"
-            title="Upload image from device"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>Add Image</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedId(null);
-              handleDuplicatePage(activePageIndex);
-            }}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 hover:text-white border border-slate-700 text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation"
-            title="Copy current page"
-          >
-            <Copy className="w-3.5 h-3.5" />
-            <span>Copy Page</span>
-          </button>
           <span className="hidden sm:inline-block">· Pinch blank canvas to zoom · Pinch selected image to resize</span>
         </div>
 
