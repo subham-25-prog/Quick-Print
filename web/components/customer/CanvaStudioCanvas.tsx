@@ -968,7 +968,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       />
 
       {/* -------------------------------------------------------------
-          TOP TOOLBAR & HORIZONTAL PAGE COLLECTION
+          TOP TOOLBAR
           ------------------------------------------------------------- */}
       <div className="w-full bg-[#1e2022] border-b border-[#3c4043] px-3 py-2 flex items-center gap-3 shrink-0 z-30 shadow-md">
         <div className="flex items-center gap-2 shrink-0">
@@ -996,75 +996,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           </button>
         </div>
 
-        <div
-          className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]"
-          role="tablist"
-          aria-label="Document pages"
-        >
-          {Array.from({ length: pageCount }, (_, pageIdx) => {
-            const pageItems = items.filter((item) => (item.pageIndex ?? 0) === pageIdx);
-            const isActivePage = activePageIndex === pageIdx;
-
-            return (
-              <button
-                key={`page-thumbnail-${pageIdx}`}
-                type="button"
-                role="tab"
-                aria-selected={isActivePage}
-                aria-label={`Open page ${pageIdx + 1}`}
-                onClick={() => {
-                  setSelectedId(null);
-                  setActivePageIndex(pageIdx);
-                }}
-                className={`group relative shrink-0 rounded-lg border-2 p-1 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 ${
-                  isActivePage
-                    ? 'border-indigo-400 bg-indigo-500/15 shadow-[0_0_0_1px_rgba(129,140,248,0.25)]'
-                    : 'border-slate-700 bg-[#2b2d30] hover:border-slate-500'
-                }`}
-                title={`Page ${pageIdx + 1}`}
-              >
-                <span
-                  className="relative block w-11 sm:w-12 overflow-hidden bg-white shadow-sm"
-                  style={{ aspectRatio: `${paperAspectRatio}` }}
-                >
-                  {pageItems.map((item) => (
-                    <img
-                      key={item.id}
-                      src={item.src}
-                      alt=""
-                      draggable={false}
-                      className="absolute max-w-none pointer-events-none"
-                      style={{
-                        left: `${item.x}%`,
-                        top: `${item.y}%`,
-                        width: `${item.width}%`,
-                        height: `${item.height}%`,
-                        transform: `rotate(${item.rotation}deg)`,
-                        filter: isBw ? 'grayscale(100%)' : 'none',
-                      }}
-                    />
-                  ))}
-                </span>
-                <span className={`mt-1 block text-center text-[10px] font-bold ${isActivePage ? 'text-indigo-200' : 'text-slate-400 group-hover:text-slate-200'}`}>
-                  Page {pageIdx + 1}
-                </span>
-              </button>
-            );
-          })}
-
-          <button
-            type="button"
-            onClick={() => {
-              setSelectedId(null);
-              handleAddPage();
-            }}
-            className="shrink-0 self-stretch min-h-[68px] px-2.5 rounded-lg border-2 border-dashed border-indigo-500/60 text-indigo-300 hover:border-indigo-400 hover:bg-indigo-500/10 hover:text-white transition-colors text-[11px] font-bold flex flex-col items-center justify-center gap-1"
-            title="Add page"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add page</span>
-          </button>
-        </div>
       </div>
 
       {/* -------------------------------------------------------------
@@ -1152,7 +1083,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                       ? `${Math.round(860 * (canvasZoom / 100))}px`
                       : `${Math.round(620 * (canvasZoom / 100))}px`,
                     maxWidth: canvasZoom <= 100 ? '96%' : 'none',
-                    maxHeight: 'calc(100dvh - 250px)',
+                    maxHeight: 'calc(100dvh - 320px)',
                   }}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
@@ -1365,6 +1296,79 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             );
           })}
 
+        </div>
+      </div>
+
+      {/* Bottom-left, horizontal page collection */}
+      <div className="w-full shrink-0 bg-[#202124] border-t border-[#3c4043] px-3 py-2">
+        <div
+          className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]"
+          role="tablist"
+          aria-label="Document pages"
+        >
+          {Array.from({ length: pageCount }, (_, pageIdx) => {
+            const pageItems = items.filter((item) => (item.pageIndex ?? 0) === pageIdx);
+            const isActivePage = activePageIndex === pageIdx;
+
+            return (
+              <button
+                key={`page-thumbnail-${pageIdx}`}
+                type="button"
+                role="tab"
+                aria-selected={isActivePage}
+                aria-label={`Open page ${pageIdx + 1}`}
+                onClick={() => {
+                  setSelectedId(null);
+                  setActivePageIndex(pageIdx);
+                }}
+                className={`group relative shrink-0 rounded-lg border-2 p-1 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 ${
+                  isActivePage
+                    ? 'border-indigo-400 bg-indigo-500/15 shadow-[0_0_0_1px_rgba(129,140,248,0.25)]'
+                    : 'border-slate-700 bg-[#2b2d30] hover:border-slate-500'
+                }`}
+                title={`Page ${pageIdx + 1}`}
+              >
+                <span
+                  className="relative block w-11 sm:w-12 overflow-hidden bg-white shadow-sm"
+                  style={{ aspectRatio: `${paperAspectRatio}` }}
+                >
+                  {pageItems.map((item) => (
+                    <img
+                      key={item.id}
+                      src={item.src}
+                      alt=""
+                      draggable={false}
+                      className="absolute max-w-none pointer-events-none"
+                      style={{
+                        left: `${item.x}%`,
+                        top: `${item.y}%`,
+                        width: `${item.width}%`,
+                        height: `${item.height}%`,
+                        transform: `rotate(${item.rotation}deg)`,
+                        filter: isBw ? 'grayscale(100%)' : 'none',
+                      }}
+                    />
+                  ))}
+                </span>
+                <span className={`mt-1 block text-center text-[10px] font-bold ${isActivePage ? 'text-indigo-200' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                  Page {pageIdx + 1}
+                </span>
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedId(null);
+              handleAddPage();
+            }}
+            className="shrink-0 self-stretch min-h-[68px] px-2.5 rounded-lg border-2 border-dashed border-indigo-500/60 text-indigo-300 hover:border-indigo-400 hover:bg-indigo-500/10 hover:text-white transition-colors text-[11px] font-bold flex flex-col items-center justify-center gap-1"
+            title="Add page"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add page</span>
+          </button>
         </div>
       </div>
 
