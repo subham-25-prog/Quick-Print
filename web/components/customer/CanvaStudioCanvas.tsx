@@ -51,7 +51,7 @@ export interface CanvaStudioCanvasProps {
   onCancel?: () => void;
 }
 
-type DragMode = 'move' | 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w' | 'rotate';
+type DragMode = 'move' | 'cropMove' | 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w' | 'rotate';
 
 const MAX_CROP_PER_AXIS = 90;
 const MIN_CANVAS_ZOOM = 10;
@@ -103,6 +103,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     }
     return null;
   });
+  // In crop mode, dragging the photo repositions it within its fixed frame,
+  // just as it does in Canva. The edge handles trim the frame/source.
+  const [cropItemId, setCropItemId] = useState<string | null>(null);
 
   const [isExporting, setIsExporting] = useState(false);
   const [justApplied, setJustApplied] = useState(false);
@@ -124,6 +127,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const replaceFileInputRef = useRef<HTMLInputElement>(null);
+  const replacementTargetIdRef = useRef<string | null>(null);
 
   // High-performance 120 FPS animation frame reference for mobile touch
   const rafId = useRef<number | null>(null);
@@ -724,6 +729,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     if (!selectedId) return;
     pushHistory(items);
     setItems((prev) => prev.filter((it) => it.id !== selectedId));
+    setCropItemId(null);
     setSelectedId(null);
   }, [items, selectedId, pushHistory]);
 
@@ -755,6 +761,44 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     );
   }, [items, selectedId, pushHistory]);
 
+  // Replace keeps the exact design frame (position, size and rotation) while
+  // loading a fresh, full-quality source image into it.
+  const handleReplaceImage = useCallback(async (itemId: string, file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    const currentItem = items.find((item) => item.id === itemId);
+    if (!currentItem) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const image = await loadImage(objectUrl);
+      const aspectRatio = image.naturalWidth / Math.max(1, image.naturalHeight);
+      pushHistory(items);
+      setItems((previous) =>
+        previous.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                src: objectUrl,
+                name: file.name,
+                aspectRatio,
+                originalImg: image,
+                // Reset the source crop so a replacement never appears blank
+                // or clipped by the previous photo's crop bounds.
+                cropTop: 0,
+                cropBottom: 0,
+                cropLeft: 0,
+                cropRight: 0,
+              }
+            : item
+        )
+      );
+      setSelectedId(itemId);
+    } catch (error) {
+      URL.revokeObjectURL(objectUrl);
+      console.error('Could not replace image:', error);
+    }
+  }, [items, loadImage, pushHistory]);
+
   // -------------------------------------------------------------
   // Mobile-Optimized Pointer Event Handlers (120 FPS Butter Smooth)
   // -------------------------------------------------------------
@@ -779,6 +823,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     });
 
     setSelectedId(item.id);
+    setCropItemId((current) => current === item.id ? current : null);
     setActivePageIndex(item.pageIndex ?? 0);
     const rect = pageSheet.getBoundingClientRect();
 
@@ -818,7 +863,29 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
     const updatedItem: CanvaImageItem = { ...initialItem };
 
-    if (mode === 'move') {
+    if (mode === 'cropMove') {
+      // Move the source inside the selected frame without moving the frame.
+      // Crop percentages describe the portion hidden from each side, so
+      // shifting the image merely transfers hidden area from one side to the
+      // other and always preserves the visible crop size.
+      let [cTop, cBottom] = normalizeCropPair(initialItem.cropTop, initialItem.cropBottom);
+      let [cLeft, cRight] = normalizeCropPair(initialItem.cropLeft, initialItem.cropRight);
+      const visibleWidth = Math.max(0.1, 100 - cLeft - cRight);
+      const visibleHeight = Math.max(0.1, 100 - cTop - cBottom);
+      const sourceShiftX = (deltaXPercent / Math.max(0.1, initialItem.width)) * visibleWidth;
+      const sourceShiftY = (deltaYPercent / Math.max(0.1, initialItem.height)) * visibleHeight;
+      const allowedShiftX = Math.max(-cRight, Math.min(cLeft, sourceShiftX));
+      const allowedShiftY = Math.max(-cBottom, Math.min(cTop, sourceShiftY));
+
+      cLeft -= allowedShiftX;
+      cRight += allowedShiftX;
+      cTop -= allowedShiftY;
+      cBottom += allowedShiftY;
+      updatedItem.cropTop = cTop;
+      updatedItem.cropBottom = cBottom;
+      updatedItem.cropLeft = cLeft;
+      updatedItem.cropRight = cRight;
+    } else if (mode === 'move') {
       let nextX = initialItem.x + deltaXPercent;
       let nextY = initialItem.y + deltaYPercent;
 
@@ -845,12 +912,13 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       const currentMouseY = e.clientY - rect.top;
 
       const angleRad = Math.atan2(currentMouseY - centerY, currentMouseX - centerX);
-      let angleDeg = Math.round((angleRad * 180) / Math.PI) + 90;
-      if (angleDeg < 0) angleDeg += 360;
+      let angleDeg = ((angleRad * 180) / Math.PI + 90 + 360) % 360;
 
-      // Snap to 45 degree increments
+      // Keep rotation fluid; only provide a light magnetic snap at familiar
+      // 45-degree marks instead of forcing every movement to whole degrees.
       const nearest45 = Math.round(angleDeg / 45) * 45;
-      if (Math.abs(angleDeg - nearest45) < 5) {
+      const snapDistance = Math.abs(((angleDeg - nearest45 + 540) % 360) - 180);
+      if (snapDistance < 3.5) {
         angleDeg = nearest45 % 360;
       }
 
@@ -1238,6 +1306,19 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           }
         }}
       />
+      <input
+        ref={replaceFileInputRef}
+        type="file"
+        accept="image/*,.png,.jpg,.jpeg,.webp"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          const targetId = replacementTargetIdRef.current;
+          replacementTargetIdRef.current = null;
+          e.target.value = '';
+          if (file && targetId) void handleReplaceImage(targetId, file);
+        }}
+      />
 
       {/* Fixed editor actions: these sit above the scrollable/zoomable sheet
           so they never move, shrink, or disappear while navigating a page. */}
@@ -1283,7 +1364,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       <div
         ref={workspaceRef}
         className={`flex-1 w-full flex flex-col ${canvasZoom > 100 ? 'items-start cursor-grab active:cursor-grabbing' : 'items-center cursor-default'} px-2 pb-2 pt-14 sm:px-3 sm:pb-3 sm:pt-14 overflow-auto relative`}
-        onClick={() => setSelectedId(null)}
+        onClick={() => {
+          setSelectedId(null);
+          setCropItemId(null);
+        }}
         onPointerDown={handleWorkspacePointerDown}
         onPointerMove={handleWorkspacePointerMove}
         onPointerUp={handleWorkspacePointerEnd}
@@ -1326,7 +1410,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                   onClick={(e) => {
                     e.stopPropagation();
                     setActivePageIndex(pageIdx);
-                    if (e.target === e.currentTarget) setSelectedId(null);
+                    if (e.target === e.currentTarget) {
+                      setSelectedId(null);
+                      setCropItemId(null);
+                    }
                   }}
                   className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border touch-none will-change-[width,height] ${
                     isActivePage ? 'border-indigo-500/70 ring-2 ring-indigo-500/30' : 'border-slate-400/40'
@@ -1349,6 +1436,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                   {/* Render All Canvas Image Items for this page */}
                   {pageItems.map((item) => {
                     const isSelected = item.id === selectedId;
+                    const isCropping = item.id === cropItemId;
 
                     // Dynamic Smart Positioning for Floating Action Toolbar so it never gets clipped at page corners
                     const isNearTop = item.y < 14;
@@ -1373,8 +1461,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                       <div
                         key={item.id}
                         data-canva-item
-                        onPointerDown={(e) => handlePointerDown(e, item, 'move')}
-                        className="absolute select-none cursor-move touch-none transition-shadow will-change-transform"
+                        onPointerDown={(e) => handlePointerDown(e, item, isCropping ? 'cropMove' : 'move')}
+                        className={`absolute select-none touch-none transition-shadow will-change-transform ${isCropping ? 'cursor-grab active:cursor-grabbing' : 'cursor-move'}`}
                         style={{
                           left: `${item.x}%`,
                           top: `${item.y}%`,
@@ -1414,13 +1502,40 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
                         {/* Canva Active Selection Frame & Floating Action Toolbar */}
                         {isSelected && (
-                          <div className="absolute -inset-[2px] border-2 border-indigo-600 pointer-events-auto touch-none z-50">
+                          <div className={`absolute -inset-[2px] border-2 pointer-events-auto touch-none z-50 ${isCropping ? 'border-amber-400' : 'border-indigo-600'}`}>
                             {/* FLOATING ACTION TOOLBAR ALWAYS INSIDE VISIBLE PAGE */}
                             <div
                               className={`absolute ${vPosClass} ${hPosClass} flex items-center gap-1 bg-[#1e2022]/95 text-white p-1 rounded-xl shadow-2xl border border-slate-600/90 z-50 pointer-events-auto backdrop-blur-md select-none animate-fade-in-scale whitespace-nowrap`}
                               onPointerDown={(e) => e.stopPropagation()}
                               onClick={(e) => e.stopPropagation()}
                             >
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  replacementTargetIdRef.current = item.id;
+                                  replaceFileInputRef.current?.click();
+                                }}
+                                className="p-1.5 rounded-lg bg-slate-800 hover:bg-indigo-600 active:scale-95 text-slate-200 hover:text-white transition-all cursor-pointer shadow-xs"
+                                title="Replace photo"
+                                aria-label="Replace photo"
+                              >
+                                <Upload className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCropItemId((current) => current === item.id ? null : item.id);
+                                }}
+                                className={`px-1.5 py-1 rounded-lg active:scale-95 text-[10px] font-bold transition-all cursor-pointer ${isCropping ? 'bg-amber-400 text-slate-950 hover:bg-amber-300' : 'bg-slate-800 text-slate-200 hover:bg-indigo-600 hover:text-white'}`}
+                                title={isCropping ? 'Finish cropping' : 'Crop photo: drag photo to position it, or use the edge handles to trim'}
+                                aria-label={isCropping ? 'Finish cropping' : 'Crop photo'}
+                              >
+                                {isCropping ? 'Done' : 'Crop'}
+                              </button>
+
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -1465,7 +1580,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                             {/* Dimension Badge */}
                             <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded bg-indigo-600 text-white font-mono text-[9px] font-bold tracking-wider shadow-sm pointer-events-none whitespace-nowrap">
                               {Math.round(item.width)}% × {Math.round(item.height)}%
-                              {item.rotation !== 0 && ` (${item.rotation}°)`}
+                              {item.rotation !== 0 && ` (${Math.round(item.rotation)}°)`}
                             </div>
 
                             {/* Rotation Knob */}
@@ -1511,7 +1626,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                               className="absolute -bottom-2.5 -left-2.5 w-5 h-5 sm:w-3.5 sm:h-3.5 bg-white border-2 border-indigo-600 rounded-full hover:scale-125 transition-transform cursor-nesw-resize shadow-md touch-none"
                             />
 
-                            {/* Mid-edge stretch handles */}
+                            {/* Mid-edge crop handles. Enter Crop mode to drag
+                                the photo itself within this fixed frame. */}
                             <div
                               onPointerDown={(e) => handlePointerDown(e, item, 'n')}
                               className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-4 h-2 bg-white border border-indigo-600 rounded-xs cursor-ns-resize touch-none"
