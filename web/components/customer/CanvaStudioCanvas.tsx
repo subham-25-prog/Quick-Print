@@ -1473,23 +1473,23 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                               <>
                                 <div
                                   onPointerDown={(e) => handlePointerDown(e, item, 'rotate')}
-                                  className="absolute -bottom-11 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125 z-50"
+                                  className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125 z-50"
                                   title="Drag to rotate"
                                 >
                                   <RotateCw className="w-3.5 h-3.5 text-indigo-600 pointer-events-none" />
                                 </div>
-                                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 w-[2px] h-5 bg-indigo-600 pointer-events-none" />
+                                <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-[2px] h-10 bg-indigo-600 pointer-events-none" />
                               </>
                             ) : (
                               <>
                                 <div
                                   onPointerDown={(e) => handlePointerDown(e, item, 'rotate')}
-                                  className="absolute -top-10 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125 z-50"
+                                  className="absolute -top-16 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125 z-50"
                                   title="Drag to rotate"
                                 >
                                   <RotateCw className="w-3.5 h-3.5 text-indigo-600 pointer-events-none" />
                                 </div>
-                                <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-[2px] h-5 bg-indigo-600 pointer-events-none" />
+                                <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-[2px] h-10 bg-indigo-600 pointer-events-none" />
                               </>
                             )}
 
