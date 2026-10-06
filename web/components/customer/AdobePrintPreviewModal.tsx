@@ -9,9 +9,6 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
-  ZoomIn,
-  ZoomOut,
-  RotateCw,
   HelpCircle,
   X,
   FileText,
@@ -1795,8 +1792,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           </div>
         </div>
 
-        {/* Bottom Floating Navigation & Zoom Bar (Optimized for Mobile) */}
-        <div className="bg-[#202124]/95 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#3c4043] flex items-center gap-2 sm:gap-3 text-xs text-white shadow-xl z-20 shrink-0 mb-1 touch-manipulation">
+        {/* Bottom page counter */}
+        <div className="bg-[#202124]/95 backdrop-blur-md px-3 py-1.5 rounded-full border border-[#3c4043] flex items-center text-xs text-white shadow-xl z-20 shrink-0 mb-1 touch-manipulation">
           {/* Page Navigator */}
           <div className="flex items-center gap-0.5 sm:gap-1">
             <button
@@ -1832,47 +1829,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             </button>
           </div>
 
-          <div className="w-[1px] h-3.5 bg-[#3c4043]" />
-
-          {/* Zoom Controls */}
-          <div className="flex items-center gap-0.5 sm:gap-1">
-            <button
-              type="button"
-              onClick={() => setZoomLevel((z) => Math.max(50, z - 20))}
-              className="p-1 rounded-full hover:bg-slate-700 cursor-pointer touch-manipulation"
-              title="Zoom out"
-            >
-              <ZoomOut className="w-3.5 h-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setZoomLevel(100)}
-              className="text-[10px] sm:text-[11px] font-mono text-slate-300 hover:text-white px-0.5 sm:px-1 touch-manipulation"
-              title="Reset Zoom"
-            >
-              {zoomLevel}%
-            </button>
-            <button
-              type="button"
-              onClick={() => setZoomLevel((z) => Math.min(200, z + 20))}
-              className="p-1 rounded-full hover:bg-slate-700 cursor-pointer touch-manipulation"
-              title="Zoom in"
-            >
-              <ZoomIn className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="w-[1px] h-3.5 bg-[#3c4043]" />
-
-          {/* Rotate View */}
-          <button
-            type="button"
-            onClick={() => setRotationAngle((r) => (r + 90) % 360)}
-            className="p-1 rounded-full hover:bg-slate-700 cursor-pointer touch-manipulation"
-            title="Rotate View 90°"
-          >
-            <RotateCw className="w-3.5 h-3.5" />
-          </button>
         </div>
           </>
         )}

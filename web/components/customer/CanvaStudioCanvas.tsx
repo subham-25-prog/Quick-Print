@@ -56,6 +56,9 @@ type DragMode = 'move' | 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w' | 'ro
 const MAX_CROP_PER_AXIS = 90;
 const MIN_CANVAS_ZOOM = 10;
 const MAX_CANVAS_ZOOM = 200;
+// Preserve the original 300 DPI output quality for Canva Studio designs.
+const PRINT_EXPORT_LONG_EDGE_PX = 3508;
+const PRINT_EXPORT_JPEG_QUALITY = 0.95;
 
 function normalizeCropPair(first?: number, second?: number): [number, number] {
   const safeFirst = Math.max(0, first || 0);
@@ -1029,8 +1032,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     setIsExporting(true);
 
     try {
-      // 300 DPI Print Resolution Dimensions matching paperAspectRatio
-      const baseDimension = 3508;
+      // Full 300 DPI print resolution matching paperAspectRatio.
+      const baseDimension = PRINT_EXPORT_LONG_EDGE_PX;
       let standardWidth: number;
       let standardHeight: number;
 
@@ -1104,7 +1107,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
         // Convert page canvas to JPEG blob
         const jpegBlob = await new Promise<Blob | null>((resolve) =>
-          pageCanvas.toBlob(resolve, 'image/jpeg', 0.95)
+          pageCanvas.toBlob(resolve, 'image/jpeg', PRINT_EXPORT_JPEG_QUALITY)
         );
 
         if (!jpegBlob) throw new Error(`Failed to render canvas for page ${p + 1}`);
