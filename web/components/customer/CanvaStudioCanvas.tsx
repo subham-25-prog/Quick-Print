@@ -147,6 +147,13 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     pageSheet?: HTMLElement | null;
   } | null>(null);
   const touchPointers = useRef(new Map<number, { x: number; y: number; itemId?: string }>());
+  const panRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+  } | null>(null);
   const pinchRef = useRef<{
     mode: 'canvas' | 'resize';
     startDistance: number;
@@ -944,7 +951,46 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
   const handlePagePointerDown = (e: React.PointerEvent, pageIndex: number) => {
     setActivePageIndex(pageIndex);
+    // At enlarged zoom levels, a one-finger drag is reserved for moving
+    // around the workspace. Image interactions still stop propagation and
+    // retain their own drag/resize gestures.
+    if (canvasZoom > 100 && e.pointerType === 'touch') return;
     if (beginTouchGesture(e)) return;
+  };
+
+  const handleWorkspacePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (canvasZoom <= 100 || e.pointerType !== 'touch') return;
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-canva-item], button')) return;
+
+    const workspace = e.currentTarget;
+    panRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      scrollLeft: workspace.scrollLeft,
+      scrollTop: workspace.scrollTop,
+    };
+    try {
+      workspace.setPointerCapture(e.pointerId);
+    } catch {}
+  };
+
+  const handleWorkspacePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const pan = panRef.current;
+    if (!pan || pan.pointerId !== e.pointerId) return;
+    e.preventDefault();
+    const workspace = e.currentTarget;
+    workspace.scrollLeft = pan.scrollLeft - (e.clientX - pan.startX);
+    workspace.scrollTop = pan.scrollTop - (e.clientY - pan.startY);
+  };
+
+  const handleWorkspacePointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (panRef.current?.pointerId !== e.pointerId) return;
+    panRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {}
   };
 
   return (
@@ -974,6 +1020,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       <div
         className={`flex-1 w-full flex flex-col ${canvasZoom > 100 ? 'items-start' : 'items-center'} p-2 sm:p-3 overflow-auto relative cursor-default`}
         onClick={() => setSelectedId(null)}
+        onPointerDown={handleWorkspacePointerDown}
+        onPointerMove={handleWorkspacePointerMove}
+        onPointerUp={handleWorkspacePointerEnd}
+        onPointerCancel={handleWorkspacePointerEnd}
         onWheel={(e) => {
           if (!e.ctrlKey && !e.metaKey) return;
           e.preventDefault();
@@ -1105,6 +1155,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                     return (
                       <div
                         key={item.id}
+                        data-canva-item
                         onPointerDown={(e) => handlePointerDown(e, item, 'move')}
                         className="absolute select-none cursor-move touch-none transition-shadow will-change-transform"
                         style={{
