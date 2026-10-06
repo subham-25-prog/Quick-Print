@@ -76,9 +76,6 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       const maxP = Math.max(...savedItems.map((it) => it.pageIndex ?? 0));
       return Math.max(1, maxP + 1);
     }
-    if (initialImages && initialImages.length > 0) {
-      return initialImages.length;
-    }
     return 1;
   });
 
@@ -159,6 +156,16 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     let isMounted = true;
     const initItems = async () => {
       const loadedItems: CanvaImageItem[] = [];
+      // New uploads begin as a single collage page. Pages are an explicit
+      // editor action; selecting four photos should not silently create four
+      // print pages.
+      const imageCount = initialImages.length;
+      const columns = Math.ceil(Math.sqrt(imageCount));
+      const rows = Math.ceil(imageCount / columns);
+      const pageMargin = 4;
+      const gridGap = 3;
+      const cellWidth = (100 - pageMargin * 2 - gridGap * (columns - 1)) / columns;
+      const cellHeight = (100 - pageMargin * 2 - gridGap * (rows - 1)) / rows;
 
       for (let i = 0; i < initialImages.length; i++) {
         const item = initialImages[i];
@@ -167,27 +174,33 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           if (!isMounted) return;
 
           const imgAspect = img.naturalWidth / (img.naturalHeight || 1);
-          let itemW = 80;
+          const column = i % columns;
+          const row = Math.floor(i / columns);
+          const maxItemWidth = cellWidth;
+          const maxItemHeight = cellHeight;
+          let itemW = Math.min(maxItemWidth, (maxItemHeight * imgAspect) / paperAspectRatio);
           let itemH = (itemW / imgAspect) * paperAspectRatio;
 
-          if (itemH > 80) {
-            itemH = 80;
+          if (itemH > maxItemHeight) {
+            itemH = maxItemHeight;
             itemW = (itemH * imgAspect) / paperAspectRatio;
           }
 
-          // Center item
-          const x = (100 - itemW) / 2;
-          const y = (100 - itemH) / 2;
+          // Center each image in its grid cell on the first page.
+          const cellX = pageMargin + column * (cellWidth + gridGap);
+          const cellY = pageMargin + row * (cellHeight + gridGap);
+          const x = cellX + (cellWidth - itemW) / 2;
+          const y = cellY + (cellHeight - itemH) / 2;
 
           loadedItems.push({
             id: `item-${Date.now()}-${i}`,
             src: item.url,
             name: item.name,
-            pageIndex: i,
-            x: Math.max(2, x),
-            y: Math.max(2, y),
-            width: Math.min(96, Math.max(15, itemW)),
-            height: Math.min(96, Math.max(15, itemH)),
+            pageIndex: 0,
+            x,
+            y,
+            width: itemW,
+            height: itemH,
             rotation: 0,
             zIndex: i + 1,
             aspectRatio: imgAspect,
@@ -200,7 +213,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
       if (isMounted && loadedItems.length > 0) {
         setItems(loadedItems);
-        setPageCount(Math.max(1, loadedItems.length));
+        setPageCount(1);
         setSelectedId(loadedItems[0].id);
         onItemsChange?.(loadedItems);
       }
