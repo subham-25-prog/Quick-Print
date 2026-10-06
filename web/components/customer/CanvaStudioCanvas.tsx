@@ -105,6 +105,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const [justApplied, setJustApplied] = useState(false);
   const [history, setHistory] = useState<CanvaImageItem[][]>([]);
   const [canvasZoom, setCanvasZoom] = useState(() => Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, zoomLevel || 100)));
+  const displayedPageWidth = Math.round((isLandscape ? 860 : 620) * (canvasZoom / 100));
 
   // An upload can be represented by the same object URL more than once while
   // the preview is being prepared. Seed the editor from each source only once.
@@ -1194,7 +1195,13 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           }
         }}
       >
-        <div className="flex flex-col items-center gap-3 w-full pb-2">
+        {/* At enlarged zoom levels this is a real, wider layout box rather
+            than only a visually overflowing page, so drag-panning reaches
+            both horizontal edges of the design. */}
+        <div
+          className="flex flex-col items-center gap-3 w-full pb-2"
+          style={{ minWidth: canvasZoom > 100 ? `${displayedPageWidth + 24}px` : undefined }}
+        >
           {[activePageIndex].map((pageIdx) => {
             const pageItems = items.filter((it) => (it.pageIndex ?? 0) === pageIdx);
             const isActivePage = activePageIndex === pageIdx;
@@ -1207,9 +1214,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                 <div
                   className="flex items-center justify-between w-full px-1"
                   style={{
-                    width: isLandscape
-                      ? `${Math.round(860 * (canvasZoom / 100))}px`
-                      : `${Math.round(620 * (canvasZoom / 100))}px`,
+                    width: `${displayedPageWidth}px`,
                     maxWidth: canvasZoom <= 100 ? '96%' : 'none',
                   }}
                 >
@@ -1268,9 +1273,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                   }`}
                   style={{
                     aspectRatio: `${paperAspectRatio}`,
-                    width: isLandscape
-                      ? `${Math.round(860 * (canvasZoom / 100))}px`
-                      : `${Math.round(620 * (canvasZoom / 100))}px`,
+                    width: `${displayedPageWidth}px`,
                     maxWidth: canvasZoom <= 100 ? '96%' : 'none',
                     maxHeight: canvasZoom <= 100 ? 'calc(100dvh - 250px)' : 'none',
                   }}
