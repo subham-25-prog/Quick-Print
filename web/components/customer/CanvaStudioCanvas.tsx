@@ -69,6 +69,24 @@ function normalizeCropPair(first?: number, second?: number): [number, number] {
   return [safeFirst * scale, safeSecond * scale];
 }
 
+// Zooming an image in Crop mode changes only the visible source window. The
+// frame stays exactly where it is, while this preserves the current focal
+// point as far as the source bounds allow.
+function zoomCropAxis(first?: number, second?: number, scale = 1): [number, number] {
+  const [start, end] = normalizeCropPair(first, second);
+  const visible = Math.max(100 - MAX_CROP_PER_AXIS, 100 - start - end);
+  const nextVisible = Math.max(100 - MAX_CROP_PER_AXIS, Math.min(100, visible / scale));
+  const focalPoint = start + visible / 2;
+  const nextStart = Math.max(0, Math.min(100 - nextVisible, focalPoint - nextVisible / 2));
+  return [nextStart, 100 - nextVisible - nextStart];
+}
+
+function zoomCropSource(item: CanvaImageItem, scale: number): CanvaImageItem {
+  const [cropLeft, cropRight] = zoomCropAxis(item.cropLeft, item.cropRight, scale);
+  const [cropTop, cropBottom] = zoomCropAxis(item.cropTop, item.cropBottom, scale);
+  return { ...item, cropLeft, cropRight, cropTop, cropBottom };
+}
+
 export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   initialImages,
   savedItems,
@@ -177,7 +195,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   } | null>(null);
   const pendingPanPoint = useRef<{ x: number; y: number } | null>(null);
   const pinchRef = useRef<{
-    mode: 'canvas' | 'resize';
+    mode: 'canvas' | 'resize' | 'crop';
     startDistance: number;
     startZoom: number;
     startCenterX: number;
@@ -363,8 +381,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     const resizeImage = Boolean(
       selectedItem && pointers.every((pointer) => pointer.itemId === selectedItem.id)
     );
+    const cropImage = resizeImage && selectedItem?.id === cropItemId;
     pinchRef.current = {
-      mode: resizeImage ? 'resize' : 'canvas',
+      mode: cropImage ? 'crop' : resizeImage ? 'resize' : 'canvas',
       startDistance,
       startZoom: canvasZoomRef.current,
       startCenterX: centerX - (workspaceRect?.left || 0),
@@ -382,7 +401,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     dragRef.current = null;
     pendingItemUpdate.current = null;
     return true;
-  }, [canvasZoom, items, selectedId]);
+  }, [canvasZoom, items, selectedId, cropItemId]);
 
   const updateTouchGesture = useCallback((e: React.PointerEvent) => {
     if (e.pointerType !== 'touch' || !touchPointers.current.has(e.pointerId)) return false;
@@ -414,6 +433,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
     const initialItem = gesture.initialItem;
     if (!initialItem) return true;
+    if (gesture.mode === 'crop') {
+      scheduleGestureUpdate({ item: zoomCropSource(initialItem, scale) });
+      return true;
+    }
     const ratio = Math.max(0.01, initialItem.width / Math.max(0.01, initialItem.height));
     const centerX = initialItem.x + initialItem.width / 2;
     const centerY = initialItem.y + initialItem.height / 2;
@@ -464,7 +487,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       }
       if (pending.item) setItems((previous) => previous.map((item) => (item.id === pending.item!.id ? pending.item! : item)));
     }
-    if (gesture.mode === 'resize' && !gesture.historySaved) {
+    if ((gesture.mode === 'resize' || gesture.mode === 'crop') && !gesture.historySaved) {
       pushHistory(gesture.initialItems);
     }
     pinchRef.current = null;
