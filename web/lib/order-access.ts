@@ -1,7 +1,10 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { NextRequest } from 'next/server';
 
-const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 14;
+// These links appear in payment/status URLs. Keep them long enough for a
+// delayed return from a payment provider, but not long enough to become a
+// durable document-access credential if a URL is shared or leaked.
+const TOKEN_TTL_SECONDS = 60 * 60 * 24;
 const DEVELOPMENT_SECRET = 'quickprint-development-order-access-secret-change-before-launch';
 
 function secret(): string | null {

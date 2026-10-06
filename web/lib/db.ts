@@ -23,6 +23,11 @@ interface CachedPricing {
 
 const pricingCache = new Map<string, CachedPricing>();
 
+// The agent heartbeats every 1.5 seconds. Seven seconds makes a stopped PC or
+// disconnected agent visibly offline within a few missed heartbeats, without
+// marking a healthy shop offline for a brief network hiccup.
+export const AGENT_ONLINE_WINDOW_MS = 7_000;
+
 function clearPricingCache(shopId?: string) {
   if (shopId) {
     pricingCache.delete(shopId);
@@ -299,6 +304,31 @@ export async function claimNextPrintJob(agentId: string) {
   const db = database();
   const shopId = getCurrentShopId();
 
+  // Do not let a job leave the safe queue while the local agent is stale or
+  // has not yet confirmed the shopkeeper's selected default printer. This
+  // prevents a just-changed default from being printed to the old queue.
+  const [{ data: settings, error: settingsError }, { data: agent, error: agentError }] = await Promise.all([
+    db.from('shop_settings').select('pricing').eq('shop_id', shopId).maybeSingle(),
+    db.from('print_agents').select('printer_name, status, last_heartbeat').eq('shop_id', shopId).eq('agent_id', agentId).maybeSingle(),
+  ]);
+  if (settingsError) throw settingsError;
+  if (agentError) throw agentError;
+
+  const reportedPrinter = agent?.printer_name?.trim() || '';
+  const selectedPrinter = settings?.pricing?.selected_printer;
+  const selectedName =
+    typeof selectedPrinter === 'string' && !isVirtualSystemPrinter(selectedPrinter)
+      ? selectedPrinter.trim()
+      : '';
+  const agentFresh = Boolean(
+    agent?.status === 'ONLINE' &&
+    agent.last_heartbeat &&
+    Date.now() - new Date(agent.last_heartbeat).getTime() < AGENT_ONLINE_WINDOW_MS
+  );
+  if (!agentFresh || (selectedName && selectedName.toLowerCase() !== reportedPrinter.toLowerCase())) {
+    return { success: true, job: null };
+  }
+
   const { data, error } = await db.rpc('claim_print_job', {
     p_shop_id: shopId,
     p_agent_id: agentId,
@@ -529,7 +559,7 @@ export async function getShopPrinters(): Promise<{
   const isAgentOnline = Boolean(
     agent?.status === 'ONLINE' &&
     agent?.last_heartbeat &&
-    Date.now() - new Date(agent.last_heartbeat).getTime() < 90000
+    Date.now() - new Date(agent.last_heartbeat).getTime() < AGENT_ONLINE_WINDOW_MS
   );
 
   const { data: rawPrinters, error } = await db
@@ -559,7 +589,7 @@ export async function getShopPrinters(): Promise<{
       isAgentOnline &&
       p.status === 'ONLINE' &&
       p.last_seen &&
-      Date.now() - new Date(p.last_seen).getTime() < 90000
+      Date.now() - new Date(p.last_seen).getTime() < AGENT_ONLINE_WINDOW_MS
     );
     return {
       id: p.id,
@@ -576,7 +606,10 @@ export async function getShopPrinters(): Promise<{
     agentOnline: isAgentOnline,
     agentMode: agent?.mode || null,
     appliedPrinter,
-    selectionPending: Boolean(activePrinter && (!isAgentOnline || activePrinter !== appliedPrinter)),
+    selectionPending: Boolean(
+      activePrinter &&
+      (!isAgentOnline || activePrinter.toLowerCase() !== (appliedPrinter || '').toLowerCase())
+    ),
   };
 }
 
@@ -652,7 +685,7 @@ export async function getPrintAgentInfo(
   if (error) throw error;
   if (!data) return null;
 
-  const isStale = Date.now() - Date.parse(data.last_heartbeat) > 90000;
+  const isStale = Date.now() - Date.parse(data.last_heartbeat) > AGENT_ONLINE_WINDOW_MS;
   return {
     ...data,
     status: isStale ? 'OFFLINE' : data.status,

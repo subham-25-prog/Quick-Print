@@ -27,8 +27,11 @@ export async function GET(req: NextRequest) {
     // Create the content for the .env file
     const envContent = `BACKEND_URL="${backendUrl}"
 PRINT_AGENT_SECRET="${printAgentSecret}"
-PRINT_AGENT_ID="${printAgentId}"
+AGENT_ID="${printAgentId}"
 AGENT_MODE="live"
+PRINTER_NAME=""
+POLL_INTERVAL_MS="1500"
+HEARTBEAT_INTERVAL_MS="1500"
 `;
 
     // Add or replace the .env file in the zip archive

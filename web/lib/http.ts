@@ -86,6 +86,19 @@ export async function readBytes(req: Request, maxBytes: number): Promise<Buffer>
 export function requireSameOrigin(req: Request, requireOrigin = false) {
   const origin = req.headers.get('origin');
   const secFetchSite = req.headers.get('sec-fetch-site');
+  const configuredOrigin = (() => {
+    const configured = process.env.APP_URL?.trim() || process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+    if (!configured) return null;
+    try {
+      const url = new URL(configured.includes('://') ? configured : `https://${configured}`);
+      return url.protocol === 'https:' || process.env.NODE_ENV !== 'production' ? url.origin : null;
+    } catch {
+      return null;
+    }
+  })();
+  // In production APP_URL is the canonical trusted source. The request URL is
+  // retained only as a development fallback, where local preview hosts vary.
+  const expectedOrigin = configuredOrigin || new URL(req.url).origin;
 
   // Cookie-authenticated endpoints must require an explicit browser origin.
   // SameSite cookies are useful defense in depth, but are not a CSRF token.
@@ -93,7 +106,7 @@ export function requireSameOrigin(req: Request, requireOrigin = false) {
     throw new HttpError(403, 'Origin header is required.');
   }
 
-  if (secFetchSite === 'cross-site' || (origin && origin !== new URL(req.url).origin)) {
+  if (secFetchSite === 'cross-site' || (origin && origin !== expectedOrigin)) {
     throw new HttpError(403, 'Cross-site request rejected.');
   }
 }

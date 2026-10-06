@@ -1,12 +1,13 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ from: vi.fn(), upsert: vi.fn(), remove: vi.fn(), update: vi.fn(), settings: null as any, agent: null as any, printersData: null as any }));
-vi.mock('@/lib/supabase/admin', () => ({ getAdminClient: () => ({ from: mocks.from }) }));
+const mocks = vi.hoisted(() => ({ from: vi.fn(), rpc: vi.fn(), upsert: vi.fn(), remove: vi.fn(), update: vi.fn(), settings: null as any, agent: null as any, printersData: null as any }));
+vi.mock('@/lib/supabase/admin', () => ({ getAdminClient: () => ({ from: mocks.from, rpc: mocks.rpc }) }));
 vi.mock('@/lib/shop', () => ({ getCurrentShopId: () => 'shop-one' }));
-import { getShopPrinters, recordAgentHeartbeat, setActivePrinter } from '@/lib/db';
+import { claimNextPrintJob, getShopPrinters, recordAgentHeartbeat, setActivePrinter } from '@/lib/db';
 
 beforeEach(() => {
   mocks.upsert.mockReset().mockResolvedValue({ error: null });
+  mocks.rpc.mockReset().mockResolvedValue({ data: [], error: null });
   mocks.remove.mockReset();
   mocks.update.mockReset();
   mocks.settings = null;
@@ -76,6 +77,18 @@ test('saving a selection never rewrites the agent reported printer', async () =>
   await expect(setActivePrinter('Second Printer')).resolves.toBe('Second Printer');
   expect(mocks.update).not.toHaveBeenCalled();
   await expect(setActivePrinter('Sandbox simulation')).rejects.toThrow('physical printer');
+});
+
+test('queue stays paused until the agent confirms a newly selected default printer', async () => {
+  mocks.settings = { pricing: { selected_printer: 'Photo Printer' } };
+  mocks.agent = {
+    printer_name: 'Office Printer',
+    status: 'ONLINE',
+    last_heartbeat: new Date().toISOString(),
+  };
+
+  await expect(claimNextPrintJob('agent')).resolves.toEqual({ success: true, job: null });
+  expect(mocks.rpc).not.toHaveBeenCalled();
 });
 
 test('heartbeat sends unique physical printers in one batch', async () => {

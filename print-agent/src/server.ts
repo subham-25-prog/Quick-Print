@@ -32,7 +32,8 @@ export class AgentHealthServer {
           return;
         }
 
-        const isOnline = Date.now() - this.lastHeartbeat < 90000;
+        // Match the cloud dashboard's quick offline detection window.
+        const isOnline = Date.now() - this.lastHeartbeat < 7000;
         const state = {
           status: isOnline ? 'ONLINE' : 'OFFLINE',
           lastHeartbeat: this.lastHeartbeat || null,

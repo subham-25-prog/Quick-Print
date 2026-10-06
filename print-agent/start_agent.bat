@@ -8,7 +8,7 @@ echo ===================================================
 echo.
 if not exist node_modules (
     echo [1/2] Installing required agent packages...
-    call npm install
+    call npm ci
 )
 echo [2/2] Compiling agent...
 call npm run build

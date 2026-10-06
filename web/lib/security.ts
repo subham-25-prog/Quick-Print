@@ -44,8 +44,11 @@ export async function rateLimit(
   limit: number,
   seconds = 60
 ): Promise<void> {
+  const forwarded = req.headers.get('x-vercel-forwarded-for') || '';
+  // Use one normalized address. A comma-separated forwarded header must not
+  // create a fresh rate-limit bucket for the same caller on every request.
   const ip = process.env.VERCEL
-    ? req.headers.get('x-vercel-forwarded-for') || 'unknown'
+    ? forwarded.split(',')[0]?.trim() || 'unknown'
     : 'local';
   const key = hash(`${getCurrentShopId()}:${scope}:${ip}`);
 

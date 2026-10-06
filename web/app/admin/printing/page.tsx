@@ -285,7 +285,7 @@ export default function AdminPrintingSettingsPage() {
   const selectedPrinterObj = printers.find((p) => p.name === selectedPrinterName);
   const isDefaultPrinterOffline = Boolean(
     selectedPrinterName &&
-    (!agentOnline || !selectedPrinterObj || selectedPrinterObj.status === 'OFFLINE')
+    (!agentOnline || !selectedPrinterObj || selectedPrinterObj.status !== 'ONLINE')
   );
 
   return (

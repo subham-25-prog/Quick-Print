@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { database, getShopPrinters } from '@/lib/db';
+import { AGENT_ONLINE_WINDOW_MS, database, getShopPrinters } from '@/lib/db';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
 import { getCurrentShopId } from '@/lib/shop';
 
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     const isAgentOnline =
       agent?.status === 'ONLINE' &&
       agent?.last_heartbeat &&
-      Date.now() - new Date(agent.last_heartbeat).getTime() < 90000;
+      Date.now() - new Date(agent.last_heartbeat).getTime() < AGENT_ONLINE_WINDOW_MS;
 
     const shopPrinters = await getShopPrinters().catch(() => null);
     const active = shopPrinters?.printers.find(
