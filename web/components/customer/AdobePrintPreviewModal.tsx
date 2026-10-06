@@ -132,6 +132,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   const [draftCanvaItems, setDraftCanvaItems] = useState<CanvaImageItem[]>(() => propsSavedCanvaItems ?? []);
   const [appliedCanvaItems, setAppliedCanvaItems] = useState<CanvaImageItem[]>(() => propsSavedCanvaItems ?? []);
   const [isCanvaApplied, setIsCanvaApplied] = useState<boolean>(() => Boolean(propsSavedCanvaItems && propsSavedCanvaItems.length > 0));
+  const [canvaInitialImages, setCanvaInitialImages] = useState<Array<{ url: string; name: string }>>([]);
 
   // Clean, customer-friendly display document title (no robotic Batch_Order or internal filenames)
   const displayFileName = useMemo(() => {
@@ -391,21 +392,73 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     );
   }, [fileType, uploadedFile?.fileType, uploadedFile?.file, fileName, uploadedFile?.fileName]);
 
-  const canvaInitialImages = useMemo(() => {
-    const list: Array<{ url: string; name: string }> = [];
-    if (batchFiles && batchFiles.length > 0) {
-      batchFiles.forEach((b) => {
-        if (b.file && (b.file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(b.name))) {
-          try {
-            list.push({ url: URL.createObjectURL(b.file), name: b.name });
-          } catch {}
+  // Canvas Studio edits images. Convert every PDF page in a mixed batch to a
+  // temporary image so PDFs appear beside uploaded photos instead of being
+  // silently omitted from the editor.
+  useEffect(() => {
+    if (!isOpen || (propsSavedCanvaItems && propsSavedCanvaItems.length > 0)) return;
+
+    let active = true;
+    const objectUrls: string[] = [];
+
+    const prepareCanvaImages = async () => {
+      const sourceFiles = batchFiles?.length
+        ? batchFiles.map((item) => ({ file: item.file, name: item.name }))
+        : uploadedFile?.file
+        ? [{ file: uploadedFile.file, name: uploadedFile.fileName || uploadedFile.file.name }]
+        : [];
+      const prepared: Array<{ url: string; name: string }> = [];
+
+      for (const source of sourceFiles) {
+        const isPdf = source.file.type === 'application/pdf' || source.name.toLowerCase().endsWith('.pdf');
+        if (!isPdf) {
+          const url = URL.createObjectURL(source.file);
+          objectUrls.push(url);
+          prepared.push({ url, name: source.name });
+          continue;
         }
-      });
-    } else if (activePreviewUrl && (isImgFile || !fileName?.toLowerCase().endsWith('.pdf'))) {
-      list.push({ url: activePreviewUrl, name: fileName || 'Photo' });
-    }
-    return list;
-  }, [activePreviewUrl, isImgFile, fileName, batchFiles]);
+
+        try {
+          const pdfjs = await getPdfJs();
+          const doc = await pdfjs.getDocument({ data: new Uint8Array(await source.file.arrayBuffer()) }).promise;
+
+          for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber++) {
+            if (!active) return;
+            const page = await doc.getPage(pageNumber);
+            const baseViewport = page.getViewport({ scale: 1 });
+            const scale = Math.min(1.5, 1200 / Math.max(baseViewport.width, baseViewport.height));
+            const viewport = page.getViewport({ scale });
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(viewport.width));
+            canvas.height = Math.max(1, Math.round(viewport.height));
+            const context = canvas.getContext('2d');
+            if (!context) continue;
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            await page.render({ canvasContext: context, viewport }).promise;
+            prepared.push({
+              url: canvas.toDataURL('image/jpeg', 0.92),
+              name: `${source.name} — Page ${pageNumber}`,
+            });
+          }
+          doc.cleanup?.();
+        } catch (error) {
+          console.error(`Unable to prepare ${source.name} for Canvas Studio:`, error);
+        }
+      }
+
+      if (sourceFiles.length === 0 && activePreviewUrl && isImgFile) {
+        prepared.push({ url: activePreviewUrl, name: fileName || 'Photo' });
+      }
+      if (active) setCanvaInitialImages(prepared);
+    };
+
+    void prepareCanvaImages();
+    return () => {
+      active = false;
+      objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [isOpen, batchFiles, uploadedFile?.file, activePreviewUrl, isImgFile, fileName, propsSavedCanvaItems]);
 
   const handleApplyCanvaLayout = async (
     renderedFile: File,

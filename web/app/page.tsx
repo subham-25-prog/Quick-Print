@@ -817,7 +817,7 @@ export default function CustomerHomePage() {
               };
             } else {
               const currentSig = lastCompiledBatchSig.current || getBatchSignature(batchFiles);
-              activeFileName = batchFiles[0]?.name || 'Print_Document.pdf';
+              activeFileName = batchPreviewFile?.name || 'Print_Document.pdf';
               activeFileType = 'application/pdf';
               activePageCount = isMultiFileBatch ? totalDocPages : batchFiles[0].pageCount;
               if (batchPreviewFile) {
