@@ -1452,19 +1452,25 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       {/* -------------------------------------------------------------
           BOTTOM FOOTER: Status
           ------------------------------------------------------------- */}
-      <div className="relative min-h-[52px] w-full bg-[#1e2022] border-t border-[#3c4043] px-3.5 py-2 pr-[210px] text-xs text-slate-400 flex flex-wrap items-center gap-2 z-20">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <span>{items.length} {items.length === 1 ? 'image' : 'images'}</span>
-          <span className="hidden sm:inline-block">· Pinch or Ctrl/Cmd + scroll to zoom · Pinch selected image to resize</span>
-        </div>
+      <div className="relative h-[52px] w-full bg-[#1e2022] border-t border-[#3c4043] px-3.5 text-xs text-slate-400 z-20">
+        {history.length > 0 && (
+          <button
+            type="button"
+            onClick={handleUndo}
+            className="absolute left-3.5 bottom-2 h-8 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation"
+            title="Undo last action"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Undo</span>
+          </button>
+        )}
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-800 p-1 text-slate-200">
+        <div className="absolute left-1/2 bottom-2 -translate-x-1/2 flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-800 p-1 text-slate-200">
             <button
               type="button"
               onClick={() => smoothlySetCanvasZoom(targetCanvasZoomRef.current - 5)}
               disabled={canvasZoom <= MIN_CANVAS_ZOOM}
-              className="w-7 h-7 rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-transparent text-base font-bold transition-colors"
+              className="w-6 h-6 rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-transparent text-sm font-bold transition-colors"
               title="Zoom out"
               aria-label="Zoom out"
             >
@@ -1473,7 +1479,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             <button
               type="button"
               onClick={() => smoothlySetCanvasZoom(100)}
-              className="min-w-11 px-1 h-7 rounded-lg hover:bg-slate-700 text-[10px] font-mono font-bold transition-colors"
+              className="min-w-9 px-1 h-6 rounded-lg hover:bg-slate-700 text-[9px] font-mono font-bold transition-colors"
               title="Fit canvas at 100%"
             >
               {Math.round(canvasZoom)}%
@@ -1482,30 +1488,19 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
               type="button"
               onClick={() => smoothlySetCanvasZoom(targetCanvasZoomRef.current + 5)}
               disabled={canvasZoom >= MAX_CANVAS_ZOOM}
-              className="w-7 h-7 rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-transparent text-base font-bold transition-colors"
+              className="w-6 h-6 rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-transparent text-sm font-bold transition-colors"
               title="Zoom in"
               aria-label="Zoom in"
             >
               +
             </button>
-          </div>
-          {history.length > 0 && (
-            <button
-              type="button"
-              onClick={handleUndo}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 hover:text-white border border-slate-700/80 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer touch-manipulation"
-              title="Undo last action"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Undo</span>
-            </button>
-          )}
+        </div>
 
-          <button
+        <button
             type="button"
             onClick={handleExportToPrint}
             disabled={isExporting || items.length === 0}
-            className={`absolute right-3.5 bottom-2 w-[190px] h-9 px-3 rounded-xl active:scale-95 disabled:opacity-50 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer touch-manipulation whitespace-nowrap ${
+            className={`absolute right-3.5 bottom-2 w-[118px] sm:w-[170px] h-8 px-2 rounded-xl active:scale-95 disabled:opacity-50 text-white text-[11px] font-extrabold flex items-center justify-center gap-1 shadow-md transition-all cursor-pointer touch-manipulation whitespace-nowrap ${
               justApplied
                 ? 'bg-emerald-500 ring-emerald-300'
                 : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950/60'
@@ -1522,12 +1517,12 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             ) : (
               <>
                 <Check className="w-4 h-4 stroke-[3]" />
-                <span>Apply &amp; Open Preview</span>
-                <span className="text-sm leading-none">→</span>
+                <span className="sm:hidden">Apply</span>
+                <span className="hidden sm:inline">Apply &amp; Open Preview</span>
+                <span className="hidden sm:inline text-sm leading-none">→</span>
               </>
             )}
           </button>
-        </div>
       </div>
 
       {/* Whole-Page Backdrop Blur & Loading Modal Overlay when Tapping Apply */}
