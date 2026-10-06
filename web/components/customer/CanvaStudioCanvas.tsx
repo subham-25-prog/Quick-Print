@@ -1020,8 +1020,85 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       </div>
 
       {/* -------------------------------------------------------------
+          PAGE COLLECTION
+          Keep the document pages in a horizontal, Canva-style filmstrip so
+          customers can scan and switch pages without a tall column of sheets.
+          ------------------------------------------------------------- */}
+      <div className="w-full shrink-0 bg-[#202124] border-b border-[#3c4043] px-3 py-2">
+        <div
+          className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]"
+          role="tablist"
+          aria-label="Document pages"
+        >
+          {Array.from({ length: pageCount }, (_, pageIdx) => {
+            const pageItems = items.filter((item) => (item.pageIndex ?? 0) === pageIdx);
+            const isActivePage = activePageIndex === pageIdx;
+
+            return (
+              <button
+                key={`page-thumbnail-${pageIdx}`}
+                type="button"
+                role="tab"
+                aria-selected={isActivePage}
+                aria-label={`Open page ${pageIdx + 1}`}
+                onClick={() => {
+                  setSelectedId(null);
+                  setActivePageIndex(pageIdx);
+                }}
+                className={`group relative shrink-0 rounded-lg border-2 p-1 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300 ${
+                  isActivePage
+                    ? 'border-indigo-400 bg-indigo-500/15 shadow-[0_0_0_1px_rgba(129,140,248,0.25)]'
+                    : 'border-slate-700 bg-[#2b2d30] hover:border-slate-500'
+                }`}
+                title={`Page ${pageIdx + 1}`}
+              >
+                <span
+                  className="relative block w-14 sm:w-16 overflow-hidden bg-white shadow-sm"
+                  style={{ aspectRatio: `${paperAspectRatio}` }}
+                >
+                  {pageItems.map((item) => (
+                    <img
+                      key={item.id}
+                      src={item.src}
+                      alt=""
+                      draggable={false}
+                      className="absolute max-w-none pointer-events-none"
+                      style={{
+                        left: `${item.x}%`,
+                        top: `${item.y}%`,
+                        width: `${item.width}%`,
+                        height: `${item.height}%`,
+                        transform: `rotate(${item.rotation}deg)`,
+                        filter: isBw ? 'grayscale(100%)' : 'none',
+                      }}
+                    />
+                  ))}
+                </span>
+                <span className={`mt-1 block text-center text-[10px] font-bold ${isActivePage ? 'text-indigo-200' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                  Page {pageIdx + 1}
+                </span>
+              </button>
+            );
+          })}
+
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedId(null);
+              handleAddPage();
+            }}
+            className="shrink-0 self-stretch min-h-[82px] px-3 rounded-lg border-2 border-dashed border-indigo-500/60 text-indigo-300 hover:border-indigo-400 hover:bg-indigo-500/10 hover:text-white transition-colors text-xs font-bold flex flex-col items-center justify-center gap-1"
+            title="Add page"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add page</span>
+          </button>
+        </div>
+      </div>
+
+      {/* -------------------------------------------------------------
           CENTER CANVAS WORKSPACE
-          One active page at a time, with side-to-side page navigation
+          The selected page is edited at full size.
           ------------------------------------------------------------- */}
       <div
         className="flex-1 w-full flex flex-col items-center p-3 sm:p-6 overflow-auto relative cursor-default"
@@ -1328,57 +1405,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             );
           })}
 
-          {/* Add Page Button below all pages */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleAddPage();
-            }}
-            className="py-3 px-6 rounded-2xl bg-[#1e2022] hover:bg-[#2b2d30] border-2 border-dashed border-indigo-500/70 hover:border-indigo-400 text-indigo-300 hover:text-white font-extrabold text-xs flex items-center gap-2.5 shadow-xl transition-all active:scale-95 cursor-pointer touch-manipulation my-2"
-          >
-            <div className="w-5 h-5 rounded-full bg-indigo-600/30 flex items-center justify-center text-indigo-400">
-              <Plus className="w-3.5 h-3.5 stroke-[3]" />
-            </div>
-            <span>+ Add Page</span>
-            <span className="text-[11px] text-slate-400 font-normal">
-              (Add blank {paperSize} {isLandscape ? 'Landscape' : 'Portrait'} page)
-            </span>
-          </button>
         </div>
-
-        {pageCount > 1 && (
-          <>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedId(null);
-                setActivePageIndex((current) => Math.max(0, current - 1));
-              }}
-              disabled={activePageIndex === 0}
-              className="absolute left-2 sm:left-5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/90 hover:bg-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed text-white border border-slate-600 shadow-xl flex items-center justify-center text-2xl transition-colors z-40"
-              title="Previous page"
-              aria-label="Previous page"
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedId(null);
-                setActivePageIndex((current) => Math.min(pageCount - 1, current + 1));
-              }}
-              disabled={activePageIndex === pageCount - 1}
-              className="absolute right-2 sm:right-5 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-slate-900/90 hover:bg-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed text-white border border-slate-600 shadow-xl flex items-center justify-center text-2xl transition-colors z-40"
-              title="Next page"
-              aria-label="Next page"
-            >
-              ›
-            </button>
-          </>
-        )}
       </div>
 
       {/* -------------------------------------------------------------
