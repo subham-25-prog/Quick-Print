@@ -1609,17 +1609,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
           <button
             type="button"
-            onClick={handleCloseModal}
-            className="flex-1 px-2 py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white text-sm font-bold border border-slate-500 flex items-center justify-center cursor-pointer shadow-sm active:scale-95 transition-transform"
-            title="Save settings & Return"
-          >
-            Save
-          </button>
-
-          <button
-            type="button"
             onClick={handlePrintApply}
-            className="flex-[1.5] px-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-extrabold shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
+            className="flex-1 px-2 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-sm font-extrabold shadow-md shadow-emerald-950/40 ring-1 ring-emerald-400/40 transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95"
           >
             <span>Pay</span>
             <span className="text-base leading-none">→</span>

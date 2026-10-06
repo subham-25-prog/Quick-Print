@@ -92,6 +92,17 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const [justApplied, setJustApplied] = useState(false);
   const [history, setHistory] = useState<CanvaImageItem[][]>([]);
 
+  // An upload can be represented by the same object URL more than once while
+  // the preview is being prepared. Seed the editor from each source only once.
+  const uniqueInitialImages = useMemo(() => {
+    const seenSources = new Set<string>();
+    return initialImages.filter((image) => {
+      if (seenSources.has(image.url)) return false;
+      seenSources.add(image.url);
+      return true;
+    });
+  }, [initialImages]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -150,7 +161,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       hasInitialized.current = true;
       return;
     }
-    if (initialImages.length === 0) return;
+    if (uniqueInitialImages.length === 0) return;
     hasInitialized.current = true;
 
     let isMounted = true;
@@ -159,7 +170,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       // New uploads begin as a single collage page. Pages are an explicit
       // editor action; selecting four photos should not silently create four
       // print pages.
-      const imageCount = initialImages.length;
+      const imageCount = uniqueInitialImages.length;
       const columns = Math.ceil(Math.sqrt(imageCount));
       const rows = Math.ceil(imageCount / columns);
       const pageMargin = 4;
@@ -167,8 +178,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       const cellWidth = (100 - pageMargin * 2 - gridGap * (columns - 1)) / columns;
       const cellHeight = (100 - pageMargin * 2 - gridGap * (rows - 1)) / rows;
 
-      for (let i = 0; i < initialImages.length; i++) {
-        const item = initialImages[i];
+      for (let i = 0; i < uniqueInitialImages.length; i++) {
+        const item = uniqueInitialImages[i];
         try {
           const img = await loadImage(item.url);
           if (!isMounted) return;
@@ -224,7 +235,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       isMounted = false;
       if (rafId.current) cancelAnimationFrame(rafId.current);
     };
-  }, [initialImages, loadImage, paperAspectRatio, items.length, onItemsChange]);
+  }, [uniqueInitialImages, loadImage, paperAspectRatio, items.length, onItemsChange]);
 
   // Add a same-sized blank page
   const handleAddPage = useCallback(() => {
@@ -459,7 +470,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     const deltaXPercent = (deltaXPixels / sheetWidth) * 100;
     const deltaYPercent = (deltaYPixels / sheetHeight) * 100;
 
-    let updatedItem: CanvaImageItem = { ...initialItem };
+    const updatedItem: CanvaImageItem = { ...initialItem };
 
     if (mode === 'move') {
       let nextX = initialItem.x + deltaXPercent;
@@ -1047,23 +1058,23 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                               <>
                                 <div
                                   onPointerDown={(e) => handlePointerDown(e, item, 'rotate')}
-                                  className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125 z-50"
+                                  className="absolute -bottom-11 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125 z-50"
                                   title="Drag to rotate"
                                 >
                                   <RotateCw className="w-3.5 h-3.5 text-indigo-600 pointer-events-none" />
                                 </div>
-                                <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[2px] h-2 bg-indigo-600 pointer-events-none" />
+                                <div className="absolute -bottom-5 left-1/2 -translate-x-1/2 w-[2px] h-5 bg-indigo-600 pointer-events-none" />
                               </>
                             ) : (
                               <>
                                 <div
                                   onPointerDown={(e) => handlePointerDown(e, item, 'rotate')}
-                                  className="absolute -top-7 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125 z-50"
+                                  className="absolute -top-10 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-white border-2 border-indigo-600 hover:bg-indigo-50 shadow-md cursor-grab active:cursor-grabbing flex items-center justify-center touch-none transition-transform hover:scale-110 active:scale-125 z-50"
                                   title="Drag to rotate"
                                 >
                                   <RotateCw className="w-3.5 h-3.5 text-indigo-600 pointer-events-none" />
                                 </div>
-                                <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-[2px] h-2 bg-indigo-600 pointer-events-none" />
+                                <div className="absolute -top-5 left-1/2 -translate-x-1/2 w-[2px] h-5 bg-indigo-600 pointer-events-none" />
                               </>
                             )}
 
