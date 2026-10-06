@@ -123,6 +123,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   // High-performance 120 FPS animation frame reference for mobile touch
   const rafId = useRef<number | null>(null);
   const gestureRafId = useRef<number | null>(null);
+  const zoomAnimationRafId = useRef<number | null>(null);
+  const canvasZoomRef = useRef(canvasZoom);
+  const targetCanvasZoomRef = useRef(canvasZoom);
   const pendingItemUpdate = useRef<CanvaImageItem | null>(null);
   const pendingGestureUpdate = useRef<{ zoom?: number; item?: CanvaImageItem }>({});
   const hasInitialized = useRef(Boolean(savedItems && savedItems.length > 0));
@@ -169,18 +172,51 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   }, []);
 
   useEffect(() => {
-    setCanvasZoom(Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, zoomLevel || 100)));
+    const nextZoom = Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, zoomLevel || 100));
+    canvasZoomRef.current = nextZoom;
+    targetCanvasZoomRef.current = nextZoom;
+    setCanvasZoom(nextZoom);
   }, [zoomLevel]);
 
   useEffect(() => () => {
     if (gestureRafId.current !== null) cancelAnimationFrame(gestureRafId.current);
+    if (zoomAnimationRafId.current !== null) cancelAnimationFrame(zoomAnimationRafId.current);
+  }, []);
+
+  const smoothlySetCanvasZoom = useCallback((requestedZoom: number) => {
+    targetCanvasZoomRef.current = Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, requestedZoom));
+    if (zoomAnimationRafId.current !== null) return;
+
+    const animate = () => {
+      const current = canvasZoomRef.current;
+      const target = targetCanvasZoomRef.current;
+      const difference = target - current;
+      const next = Math.abs(difference) < 0.15 ? target : current + difference * 0.3;
+
+      canvasZoomRef.current = next;
+      setCanvasZoom(next);
+
+      if (next === target) {
+        zoomAnimationRafId.current = null;
+        return;
+      }
+      zoomAnimationRafId.current = requestAnimationFrame(animate);
+    };
+
+    zoomAnimationRafId.current = requestAnimationFrame(animate);
   }, []);
 
   const flushGestureUpdate = useCallback(() => {
     const pending = pendingGestureUpdate.current;
     pendingGestureUpdate.current = {};
     gestureRafId.current = null;
-    if (typeof pending.zoom === 'number') setCanvasZoom(pending.zoom);
+    if (typeof pending.zoom === 'number') {
+      if (zoomAnimationRafId.current !== null) cancelAnimationFrame(zoomAnimationRafId.current);
+      zoomAnimationRafId.current = null;
+      canvasZoomRef.current = pending.zoom;
+      targetCanvasZoomRef.current = pending.zoom;
+      setCanvasZoom(pending.zoom);
+    }
     if (pending.item) {
       setItems((previous) => previous.map((item) => (item.id === pending.item!.id ? pending.item! : item)));
     }
@@ -270,7 +306,13 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       gestureRafId.current = null;
       const pending = pendingGestureUpdate.current;
       pendingGestureUpdate.current = {};
-      if (typeof pending.zoom === 'number') setCanvasZoom(pending.zoom);
+      if (typeof pending.zoom === 'number') {
+        if (zoomAnimationRafId.current !== null) cancelAnimationFrame(zoomAnimationRafId.current);
+        zoomAnimationRafId.current = null;
+        canvasZoomRef.current = pending.zoom;
+        targetCanvasZoomRef.current = pending.zoom;
+        setCanvasZoom(pending.zoom);
+      }
       if (pending.item) setItems((previous) => previous.map((item) => (item.id === pending.item!.id ? pending.item! : item)));
     }
     if (gesture.mode === 'resize' && !gesture.historySaved) {
@@ -1027,8 +1069,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         onWheel={(e) => {
           if (!e.ctrlKey && !e.metaKey) return;
           e.preventDefault();
-          const delta = e.deltaY < 0 ? 10 : -10;
-          setCanvasZoom((current) => Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, current + delta)));
+          // A proportional delta keeps trackpads and mouse wheels feeling
+          // continuous instead of jumping in large fixed increments.
+          smoothlySetCanvasZoom(targetCanvasZoomRef.current - e.deltaY * 0.04);
         }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
@@ -1107,7 +1150,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                     setActivePageIndex(pageIdx);
                     if (e.target === e.currentTarget) setSelectedId(null);
                   }}
-                  className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border touch-none transition-all ${
+                  className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border touch-none transition-[width,height] duration-150 ease-out will-change-[width,height] ${
                     isActivePage ? 'border-indigo-500/70 ring-2 ring-indigo-500/30' : 'border-slate-400/40'
                   }`}
                   style={{
@@ -1419,7 +1462,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           <div className="flex items-center gap-1 rounded-xl border border-slate-700 bg-slate-800 p-1 text-slate-200">
             <button
               type="button"
-              onClick={() => setCanvasZoom((current) => Math.max(MIN_CANVAS_ZOOM, current - 10))}
+              onClick={() => smoothlySetCanvasZoom(targetCanvasZoomRef.current - 5)}
               disabled={canvasZoom <= MIN_CANVAS_ZOOM}
               className="w-7 h-7 rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-transparent text-base font-bold transition-colors"
               title="Zoom out"
@@ -1429,7 +1472,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setCanvasZoom(100)}
+              onClick={() => smoothlySetCanvasZoom(100)}
               className="min-w-11 px-1 h-7 rounded-lg hover:bg-slate-700 text-[10px] font-mono font-bold transition-colors"
               title="Fit canvas at 100%"
             >
@@ -1437,7 +1480,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setCanvasZoom((current) => Math.min(MAX_CANVAS_ZOOM, current + 10))}
+              onClick={() => smoothlySetCanvasZoom(targetCanvasZoomRef.current + 5)}
               disabled={canvasZoom >= MAX_CANVAS_ZOOM}
               className="w-7 h-7 rounded-lg hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-transparent text-base font-bold transition-colors"
               title="Zoom in"
