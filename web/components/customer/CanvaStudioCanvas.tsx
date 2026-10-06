@@ -1462,7 +1462,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             type="button"
             onClick={handleExportToPrint}
             disabled={isExporting || items.length === 0}
-            className={`px-4 py-1.5 rounded-xl active:scale-95 disabled:opacity-50 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md transition-all cursor-pointer touch-manipulation ${
+            className={`w-[190px] h-9 px-3 rounded-xl active:scale-95 disabled:opacity-50 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer touch-manipulation whitespace-nowrap ${
               justApplied
                 ? 'bg-emerald-500 ring-emerald-300'
                 : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950/60'
