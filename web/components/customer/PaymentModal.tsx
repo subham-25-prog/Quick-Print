@@ -3,7 +3,7 @@
 import React from 'react';
 import { formatCurrency } from '@/lib/utils';
 import { PricingConfig } from '@/types';
-import { X, Banknote, Smartphone } from '@/components/ui/Icons';
+import { X, Banknote, Smartphone, Sparkles } from '@/components/ui/Icons';
 
 interface PaymentModalProps {
   isOpen: boolean;
@@ -41,78 +41,54 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
 
   if (!isOpen) return null;
 
+  // Match the Canvas Studio Apply experience while the cash order is being
+  // created: a focused full-screen progress overlay with no competing UI.
+  if (isCashLoading) {
+    return (
+      <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-md flex flex-col items-center justify-center animate-fade-in pointer-events-auto select-none p-4">
+        <div className="bg-[#1e2022]/95 border border-slate-700/80 p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 max-w-xs w-full text-center backdrop-blur-xl animate-scale-up">
+          <div className="relative flex items-center justify-center w-14 h-14">
+            <div className="absolute inset-0 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+            <Sparkles className="w-6 h-6 text-indigo-400 animate-pulse" />
+          </div>
+
+          <div className="space-y-1">
+            <h4 className="text-sm font-extrabold text-white tracking-wide">Confirming Cash Payment...</h4>
+            <p className="text-xs text-slate-400">Creating your counter slip and connecting to the shop</p>
+          </div>
+
+          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+            <div className="bg-indigo-500 h-full w-full animate-pulse rounded-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-3xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-150 space-y-4 my-auto max-h-[calc(100dvh-2rem)] overflow-y-auto contain-layout">
         <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
             <h3 className="text-base font-bold text-slate-900">
-              {isCashLoading ? 'Cash Payment' : 'Secure payment'}
+              Secure payment
             </h3>
             <p className="text-[11px] text-slate-400 font-medium">
-              {isCashLoading ? 'Connecting to shop counter…' : 'Your order is created after payment verification.'}
+              Your order is created after payment verification.
             </p>
           </div>
-          {!isCashLoading && (
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              aria-label="Close payment options"
-              className="shrink-0 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer touch-manipulation"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            aria-label="Close payment options"
+            className="shrink-0 p-1.5 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer touch-manipulation"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        {/* Dedicated Loading Animation ONLY for Cash confirmation step */}
-        {isCashLoading ? (
-          <div className="py-6 px-2 flex flex-col items-center text-center space-y-5 animate-in fade-in zoom-in-95 duration-200">
-            {/* Animated Cash Graphic Stage */}
-            <div className="relative flex items-center justify-center my-2">
-              {/* Outer pulsing emerald halo */}
-              <div className="absolute w-24 h-24 rounded-full bg-emerald-400/25 animate-ping opacity-60" />
-              <div className="absolute w-28 h-28 rounded-full bg-emerald-500/10 animate-pulse" />
-
-              {/* Spinning gradient border accent */}
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-400 to-emerald-300 p-0.5 animate-spin [animation-duration:2.5s]">
-                <div className="w-full h-full bg-white rounded-[14px]" />
-              </div>
-
-              {/* Center Cash Icon badge with floating pulse */}
-              <div className="absolute w-14 h-14 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-600/20">
-                <Banknote className="w-7 h-7 text-emerald-600 animate-pulse" />
-              </div>
-            </div>
-
-            {/* Title & Description */}
-            <div className="space-y-1 max-w-xs">
-              <h4 className="text-lg font-black text-slate-900 tracking-tight">
-                Confirming Cash Order…
-              </h4>
-              <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Generating counter slip & connecting to shop terminal
-              </p>
-            </div>
-
-            {/* Prominent Amount Pill */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-bold shadow-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Pay {formatCurrency(amount)} at Counter</span>
-            </div>
-
-            {/* Indeterminate Smooth Progress Bar */}
-            <div className="w-full max-w-xs bg-slate-100 rounded-full h-2 overflow-hidden relative border border-slate-200/60">
-              <div className="absolute inset-y-0 h-full w-1/2 bg-gradient-to-r from-emerald-400 via-teal-400 to-emerald-500 rounded-full animate-cash-progress" />
-            </div>
-
-            <p className="text-[11px] text-slate-400 font-medium">
-              Please keep cash ready for the operator.
-            </p>
-          </div>
-        ) : (
-          <>
+        <>
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-center">
               <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total amount</div>
               <div className="text-3xl font-black text-emerald-600 tracking-tight">{formatCurrency(amount)}</div>
@@ -183,8 +159,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = React.memo(({
                 Payment options are temporarily unavailable. Please contact the shopkeeper.
               </p>
             )}
-          </>
-        )}
+        </>
       </div>
     </div>
   );
