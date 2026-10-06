@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import {
   Image as ImageIcon,
   Trash2,
@@ -118,6 +118,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   }, [initialImages]);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // High-performance 120 FPS animation frame reference for mobile touch
@@ -128,7 +129,12 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const canvasZoomRef = useRef(canvasZoom);
   const targetCanvasZoomRef = useRef(canvasZoom);
   const pendingItemUpdate = useRef<CanvaImageItem | null>(null);
-  const pendingGestureUpdate = useRef<{ zoom?: number; item?: CanvaImageItem }>({});
+  const pendingGestureUpdate = useRef<{
+    zoom?: number;
+    item?: CanvaImageItem;
+    scroll?: { left: number; top: number };
+  }>({});
+  const pendingGestureScroll = useRef<{ left: number; top: number } | null>(null);
   const hasInitialized = useRef(Boolean(savedItems && savedItems.length > 0));
 
   // Keep parent in sync whenever canvas items change
@@ -163,6 +169,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     mode: 'canvas' | 'resize';
     startDistance: number;
     startZoom: number;
+    startCenterX: number;
+    startCenterY: number;
+    startScrollLeft: number;
+    startScrollTop: number;
     initialItem?: CanvaImageItem;
     initialItems: CanvaImageItem[];
     historySaved: boolean;
@@ -186,7 +196,20 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     if (panRafId.current !== null) cancelAnimationFrame(panRafId.current);
   }, []);
 
+  // React commits the resized page after the zoom state changes. Apply the
+  // requested scroll position in a layout effect so the point between the
+  // user's fingers stays put instead of jumping during a pinch.
+  useLayoutEffect(() => {
+    const scroll = pendingGestureScroll.current;
+    const workspace = workspaceRef.current;
+    if (!scroll || !workspace) return;
+    workspace.scrollLeft = scroll.left;
+    workspace.scrollTop = scroll.top;
+  }, [canvasZoom]);
+
   const smoothlySetCanvasZoom = useCallback((requestedZoom: number) => {
+    // A button/wheel zoom should not reuse an old pinch focal point.
+    pendingGestureScroll.current = null;
     targetCanvasZoomRef.current = Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, requestedZoom));
     if (zoomAnimationRafId.current !== null) return;
 
@@ -220,12 +243,26 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       targetCanvasZoomRef.current = pending.zoom;
       setCanvasZoom(pending.zoom);
     }
+    if (pending.scroll) {
+      pendingGestureScroll.current = pending.scroll;
+      const workspace = workspaceRef.current;
+      if (workspace) {
+        // This handles a two-finger translation even when the zoom level is
+        // unchanged; the layout effect above reapplies it after a resize.
+        workspace.scrollLeft = pending.scroll.left;
+        workspace.scrollTop = pending.scroll.top;
+      }
+    }
     if (pending.item) {
       setItems((previous) => previous.map((item) => (item.id === pending.item!.id ? pending.item! : item)));
     }
   }, []);
 
-  const scheduleGestureUpdate = useCallback((update: { zoom?: number; item?: CanvaImageItem }) => {
+  const scheduleGestureUpdate = useCallback((update: {
+    zoom?: number;
+    item?: CanvaImageItem;
+    scroll?: { left: number; top: number };
+  }) => {
     pendingGestureUpdate.current = update;
     if (gestureRafId.current === null) {
       gestureRafId.current = requestAnimationFrame(flushGestureUpdate);
@@ -240,6 +277,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     const pointers = [...touchPointers.current.values()];
     const startDistance = Math.hypot(pointers[0].x - pointers[1].x, pointers[0].y - pointers[1].y);
     if (startDistance < 1) return false;
+    const workspace = workspaceRef.current;
+    const workspaceRect = workspace?.getBoundingClientRect();
+    const centerX = (pointers[0].x + pointers[1].x) / 2;
+    const centerY = (pointers[0].y + pointers[1].y) / 2;
 
     const selectedItem = selectedId ? items.find((item) => item.id === selectedId) : undefined;
     const resizeImage = Boolean(
@@ -248,7 +289,11 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     pinchRef.current = {
       mode: resizeImage ? 'resize' : 'canvas',
       startDistance,
-      startZoom: canvasZoom,
+      startZoom: canvasZoomRef.current,
+      startCenterX: centerX - (workspaceRect?.left || 0),
+      startCenterY: centerY - (workspaceRect?.top || 0),
+      startScrollLeft: workspace?.scrollLeft || 0,
+      startScrollTop: workspace?.scrollTop || 0,
       initialItem: resizeImage ? { ...selectedItem! } : undefined,
       initialItems: items,
       historySaved: false,
@@ -274,7 +319,19 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     const scale = Math.max(0.25, Math.min(4, distance / gesture.startDistance));
 
     if (gesture.mode === 'canvas') {
-      scheduleGestureUpdate({ zoom: Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, gesture.startZoom * scale)) });
+      const zoom = Math.max(MIN_CANVAS_ZOOM, Math.min(MAX_CANVAS_ZOOM, gesture.startZoom * scale));
+      const workspace = workspaceRef.current;
+      const workspaceRect = workspace?.getBoundingClientRect();
+      const centerX = (pointers[0].x + pointers[1].x) / 2 - (workspaceRect?.left || 0);
+      const centerY = (pointers[0].y + pointers[1].y) / 2 - (workspaceRect?.top || 0);
+      const zoomRatio = zoom / gesture.startZoom;
+      scheduleGestureUpdate({
+        zoom,
+        scroll: {
+          left: (gesture.startScrollLeft + gesture.startCenterX) * zoomRatio - centerX,
+          top: (gesture.startScrollTop + gesture.startCenterY) * zoomRatio - centerY,
+        },
+      });
       return true;
     }
 
@@ -319,6 +376,14 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         canvasZoomRef.current = pending.zoom;
         targetCanvasZoomRef.current = pending.zoom;
         setCanvasZoom(pending.zoom);
+      }
+      if (pending.scroll) {
+        pendingGestureScroll.current = pending.scroll;
+        const workspace = workspaceRef.current;
+        if (workspace) {
+          workspace.scrollLeft = pending.scroll.left;
+          workspace.scrollTop = pending.scroll.top;
+        }
       }
       if (pending.item) setItems((previous) => previous.map((item) => (item.id === pending.item!.id ? pending.item! : item)));
     }
@@ -1022,12 +1087,14 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   };
 
   const handleWorkspacePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (canvasZoom <= 100 || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     const target = e.target as HTMLElement;
     if (target.closest('[data-canva-item], button')) return;
     if (pinchRef.current || touchPointers.current.size > 1) return;
 
     const workspace = e.currentTarget;
+    const canPan = workspace.scrollWidth > workspace.clientWidth + 1 || workspace.scrollHeight > workspace.clientHeight + 1;
+    if (!canPan) return;
     panRef.current = {
       pointerId: e.pointerId,
       startX: e.clientX,
@@ -1041,6 +1108,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   };
 
   const handleWorkspacePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (updateTouchGesture(e)) return;
     const pan = panRef.current;
     if (!pan || pan.pointerId !== e.pointerId) return;
     e.preventDefault();
@@ -1059,7 +1127,15 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   };
 
   const handleWorkspacePointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (panRef.current?.pointerId !== e.pointerId) return;
+    const endedGesture = endTouchGesture(e);
+    if (panRef.current?.pointerId !== e.pointerId) {
+      if (endedGesture) {
+        try {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {}
+      }
+      return;
+    }
     if (panRafId.current !== null) {
       cancelAnimationFrame(panRafId.current);
       panRafId.current = null;
@@ -1096,6 +1172,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           The selected page is edited at full size.
           ------------------------------------------------------------- */}
       <div
+        ref={workspaceRef}
         className={`flex-1 w-full flex flex-col ${canvasZoom > 100 ? 'items-start cursor-grab active:cursor-grabbing' : 'items-center cursor-default'} p-2 sm:p-3 overflow-auto relative`}
         onClick={() => setSelectedId(null)}
         onPointerDown={handleWorkspacePointerDown}
