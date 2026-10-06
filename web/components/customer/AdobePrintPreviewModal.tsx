@@ -162,7 +162,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   const [modalColorMode, setModalColorMode] = useState<ColorMode>(colorMode || 'BW');
 
   // More Settings accordion
-  const [showMoreSettings, setShowMoreSettings] = useState<boolean>(true);
+  const [showMoreSettings, setShowMoreSettings] = useState<boolean>(false);
   const [modalPaperSize, setModalPaperSize] = useState<PaperSize>(paperSize || 'A4');
   const [scaleMode, setScaleMode] = useState<'FIT' | 'ACTUAL' | 'CUSTOM'>(
     advancedConfig.pageScaling === 'ACTUAL'
@@ -273,6 +273,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     setCurrentPage(1);
     setZoomLevel(100);
     setRotationAngle(advancedConfig.rotationAngle || 0);
+    setShowMoreSettings(false);
   }, [isOpen, copies, colorMode, paperSize, printSides, advancedConfig]);
 
   // Reset Canva applied state when opening fresh documents without applied Canva layout
