@@ -639,6 +639,10 @@ export default function CustomerHomePage() {
             uploadedFile={uploadedFile}
             onFileUploaded={(file) => {
               setUploadedFile(file);
+              // A newly selected single file starts a new design. Without
+              // clearing an older Canva layout, the editor treats that old
+              // layout as its source and never imports the new image.
+              setCanvaSavedItems([]);
               setCanvaStudioPageCount(0);
               if (
                 file &&
