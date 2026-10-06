@@ -860,6 +860,16 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
     const deltaXPercent = (deltaXPixels / sheetWidth) * 100;
     const deltaYPercent = (deltaYPixels / sheetHeight) * 100;
+    // A selected image is transformed in screen pixels. Project pointer
+    // movement back onto its own local axes so controls still follow the
+    // photo after it has been rotated.
+    const rotationRadians = (initialItem.rotation * Math.PI) / 180;
+    const localDeltaXPixels =
+      deltaXPixels * Math.cos(rotationRadians) + deltaYPixels * Math.sin(rotationRadians);
+    const localDeltaYPixels =
+      -deltaXPixels * Math.sin(rotationRadians) + deltaYPixels * Math.cos(rotationRadians);
+    const localDeltaXPercent = (localDeltaXPixels / sheetWidth) * 100;
+    const localDeltaYPercent = (localDeltaYPixels / sheetHeight) * 100;
 
     const updatedItem: CanvaImageItem = { ...initialItem };
 
@@ -872,8 +882,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       let [cLeft, cRight] = normalizeCropPair(initialItem.cropLeft, initialItem.cropRight);
       const visibleWidth = Math.max(0.1, 100 - cLeft - cRight);
       const visibleHeight = Math.max(0.1, 100 - cTop - cBottom);
-      const sourceShiftX = (deltaXPercent / Math.max(0.1, initialItem.width)) * visibleWidth;
-      const sourceShiftY = (deltaYPercent / Math.max(0.1, initialItem.height)) * visibleHeight;
+      const sourceShiftX = (localDeltaXPercent / Math.max(0.1, initialItem.width)) * visibleWidth;
+      const sourceShiftY = (localDeltaYPercent / Math.max(0.1, initialItem.height)) * visibleHeight;
       const allowedShiftX = Math.max(-cRight, Math.min(cLeft, sourceShiftX));
       const allowedShiftY = Math.max(-cBottom, Math.min(cTop, sourceShiftY));
 
@@ -940,6 +950,14 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       // current crop aspect ratio after the user has trimmed an edge.
       const frameRatio = Math.max(0.01, initialItem.width / Math.max(0.01, initialItem.height));
       const minWidth = Math.max(MIN_SIZE_PERCENT, MIN_SIZE_PERCENT * frameRatio);
+      const placeFrameFromShiftedCenter = (newWidth: number, newHeight: number, localCenterShiftX = 0, localCenterShiftY = 0) => {
+        const localShiftXPixels = (localCenterShiftX / 100) * sheetWidth;
+        const localShiftYPixels = (localCenterShiftY / 100) * sheetHeight;
+        const pageShiftX = ((localShiftXPixels * Math.cos(rotationRadians) - localShiftYPixels * Math.sin(rotationRadians)) / sheetWidth) * 100;
+        const pageShiftY = ((localShiftXPixels * Math.sin(rotationRadians) + localShiftYPixels * Math.cos(rotationRadians)) / sheetHeight) * 100;
+        newX = initialItem.x + initialItem.width / 2 + pageShiftX - newWidth / 2;
+        newY = initialItem.y + initialItem.height / 2 + pageShiftY - newHeight / 2;
+      };
 
       if (mode === 'se') {
         const maxWidth = Math.min(100 - initialItem.x, (100 - initialItem.y) * frameRatio);
@@ -967,18 +985,18 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         newY = bottom - newH;
       } else if (mode === 'n') {
         const visibleHeight = Math.max(0.1, 100 - cTop - cBottom);
-        const pctChange = (deltaYPercent / Math.max(0.1, initialItem.height)) * visibleHeight;
+        const pctChange = (localDeltaYPercent / Math.max(0.1, initialItem.height)) * visibleHeight;
         const maxCropChange = ((initialItem.height - MIN_SIZE_PERCENT) / Math.max(0.1, initialItem.height)) * visibleHeight;
         const nextCropTop = Math.max(0, Math.min(MAX_CROP_PER_AXIS - cBottom, cTop + maxCropChange, cTop + pctChange));
         const actualPctDiff = nextCropTop - cTop;
         const yOffsetPercent = (actualPctDiff / visibleHeight) * initialItem.height;
 
         cTop = nextCropTop;
-        newY = initialItem.y + yOffsetPercent;
         newH = Math.max(MIN_SIZE_PERCENT, initialItem.height - yOffsetPercent);
+        placeFrameFromShiftedCenter(newW, newH, 0, yOffsetPercent / 2);
       } else if (mode === 's') {
         const visibleHeight = Math.max(0.1, 100 - cTop - cBottom);
-        const pctChange = (-deltaYPercent / Math.max(0.1, initialItem.height)) * visibleHeight;
+        const pctChange = (-localDeltaYPercent / Math.max(0.1, initialItem.height)) * visibleHeight;
         const maxCropChange = ((initialItem.height - MIN_SIZE_PERCENT) / Math.max(0.1, initialItem.height)) * visibleHeight;
         const nextCropBottom = Math.max(0, Math.min(MAX_CROP_PER_AXIS - cTop, cBottom + maxCropChange, cBottom + pctChange));
         const actualPctDiff = nextCropBottom - cBottom;
@@ -986,20 +1004,21 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
         cBottom = nextCropBottom;
         newH = Math.max(MIN_SIZE_PERCENT, initialItem.height - heightReductionPercent);
+        placeFrameFromShiftedCenter(newW, newH, 0, -heightReductionPercent / 2);
       } else if (mode === 'w') {
         const visibleWidth = Math.max(0.1, 100 - cLeft - cRight);
-        const pctChange = (deltaXPercent / Math.max(0.1, initialItem.width)) * visibleWidth;
+        const pctChange = (localDeltaXPercent / Math.max(0.1, initialItem.width)) * visibleWidth;
         const maxCropChange = ((initialItem.width - MIN_SIZE_PERCENT) / Math.max(0.1, initialItem.width)) * visibleWidth;
         const nextCropLeft = Math.max(0, Math.min(MAX_CROP_PER_AXIS - cRight, cLeft + maxCropChange, cLeft + pctChange));
         const actualPctDiff = nextCropLeft - cLeft;
         const xOffsetPercent = (actualPctDiff / visibleWidth) * initialItem.width;
 
         cLeft = nextCropLeft;
-        newX = initialItem.x + xOffsetPercent;
         newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - xOffsetPercent);
+        placeFrameFromShiftedCenter(newW, newH, xOffsetPercent / 2, 0);
       } else if (mode === 'e') {
         const visibleWidth = Math.max(0.1, 100 - cLeft - cRight);
-        const pctChange = (-deltaXPercent / Math.max(0.1, initialItem.width)) * visibleWidth;
+        const pctChange = (-localDeltaXPercent / Math.max(0.1, initialItem.width)) * visibleWidth;
         const maxCropChange = ((initialItem.width - MIN_SIZE_PERCENT) / Math.max(0.1, initialItem.width)) * visibleWidth;
         const nextCropRight = Math.max(0, Math.min(MAX_CROP_PER_AXIS - cLeft, cRight + maxCropChange, cRight + pctChange));
         const actualPctDiff = nextCropRight - cRight;
@@ -1007,6 +1026,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
         cRight = nextCropRight;
         newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - widthReductionPercent);
+        placeFrameFromShiftedCenter(newW, newH, -widthReductionPercent / 2, 0);
       }
 
       // Constrain resize strictly inside 0-100% sheet bounds
