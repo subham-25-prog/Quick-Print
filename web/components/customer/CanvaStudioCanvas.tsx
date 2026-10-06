@@ -1452,7 +1452,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       {/* -------------------------------------------------------------
           BOTTOM FOOTER: Status
           ------------------------------------------------------------- */}
-      <div className="w-full bg-[#1e2022] border-t border-[#3c4043] px-3.5 py-2 text-xs text-slate-400 flex flex-wrap items-center justify-between gap-2 z-20">
+      <div className="relative min-h-[52px] w-full bg-[#1e2022] border-t border-[#3c4043] px-3.5 py-2 pr-[210px] text-xs text-slate-400 flex flex-wrap items-center gap-2 z-20">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span>{items.length} {items.length === 1 ? 'image' : 'images'}</span>
           <span className="hidden sm:inline-block">· Pinch or Ctrl/Cmd + scroll to zoom · Pinch selected image to resize</span>
@@ -1505,7 +1505,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             type="button"
             onClick={handleExportToPrint}
             disabled={isExporting || items.length === 0}
-            className={`w-[190px] h-9 px-3 rounded-xl active:scale-95 disabled:opacity-50 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer touch-manipulation whitespace-nowrap ${
+            className={`absolute right-3.5 bottom-2 w-[190px] h-9 px-3 rounded-xl active:scale-95 disabled:opacity-50 text-white text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer touch-manipulation whitespace-nowrap ${
               justApplied
                 ? 'bg-emerald-500 ring-emerald-300'
                 : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-950/60'
