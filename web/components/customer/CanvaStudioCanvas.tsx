@@ -42,7 +42,12 @@ export interface CanvaStudioCanvasProps {
   paperAspectRatio: number;
   isBw: boolean;
   zoomLevel: number;
-  onApplyLayout: (file: File, previewDataUrl?: string, allPagePreviews?: string[]) => Promise<void> | void;
+  onApplyLayout: (
+    file: File,
+    previewDataUrl?: string,
+    allPagePreviews?: string[],
+    appliedItems?: CanvaImageItem[]
+  ) => Promise<void> | void;
   onCancel?: () => void;
 }
 
@@ -70,6 +75,9 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     if (savedItems && savedItems.length > 0) {
       const maxP = Math.max(...savedItems.map((it) => it.pageIndex ?? 0));
       return Math.max(1, maxP + 1);
+    }
+    if (initialImages && initialImages.length > 0) {
+      return initialImages.length;
     }
     return 1;
   });
@@ -175,7 +183,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
             id: `item-${Date.now()}-${i}`,
             src: item.url,
             name: item.name,
-            pageIndex: 0,
+            pageIndex: i,
             x: Math.max(2, x),
             y: Math.max(2, y),
             width: Math.min(96, Math.max(15, itemW)),
@@ -192,6 +200,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
       if (isMounted && loadedItems.length > 0) {
         setItems(loadedItems);
+        setPageCount(Math.max(1, loadedItems.length));
         setSelectedId(loadedItems[0].id);
         onItemsChange?.(loadedItems);
       }
@@ -735,7 +744,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
         { type: 'application/pdf' }
       );
 
-      await onApplyLayout(finalPdfFile, allPagePreviews[0], allPagePreviews);
+      await onApplyLayout(finalPdfFile, allPagePreviews[0], allPagePreviews, items);
       setJustApplied(true);
       setTimeout(() => setJustApplied(false), 2500);
     } catch (err) {

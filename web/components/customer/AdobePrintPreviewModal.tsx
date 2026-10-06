@@ -129,15 +129,9 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   const [viewMode, setViewMode] = useState<'preview' | 'canva'>('preview');
   const [canvaSnapshotUrl, setCanvaSnapshotUrl] = useState<string | null>(null);
   const [canvaSnapshotUrls, setCanvaSnapshotUrls] = useState<string[]>([]);
-  const [internalSavedCanvaItems, setInternalSavedCanvaItems] = useState<CanvaImageItem[]>([]);
-  const savedCanvaItems = propsSavedCanvaItems ?? internalSavedCanvaItems;
-  const setSavedCanvaItems = useCallback(
-    (items: CanvaImageItem[]) => {
-      setInternalSavedCanvaItems(items);
-      propsOnCanvaItemsChange?.(items);
-    },
-    [propsOnCanvaItemsChange]
-  );
+  const [draftCanvaItems, setDraftCanvaItems] = useState<CanvaImageItem[]>(() => propsSavedCanvaItems ?? []);
+  const [appliedCanvaItems, setAppliedCanvaItems] = useState<CanvaImageItem[]>(() => propsSavedCanvaItems ?? []);
+  const [isCanvaApplied, setIsCanvaApplied] = useState<boolean>(() => Boolean(propsSavedCanvaItems && propsSavedCanvaItems.length > 0));
 
   // Clean, customer-friendly display document title (no robotic Batch_Order or internal filenames)
   const displayFileName = useMemo(() => {
@@ -213,25 +207,27 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   const imageElementCache = useRef<Map<string, HTMLImageElement>>(new Map());
 
   const canvaMaxPage = useMemo(() => {
-    if (savedCanvaItems && savedCanvaItems.length > 0) {
-      return Math.max(1, ...savedCanvaItems.map((it) => (it.pageIndex ?? 0) + 1));
+    if (isCanvaApplied && appliedCanvaItems && appliedCanvaItems.length > 0) {
+      return Math.max(1, ...appliedCanvaItems.map((it) => (it.pageIndex ?? 0) + 1));
     }
     if (batchFiles && batchFiles.length > 0) {
       return batchFiles.length;
     }
     return 1;
-  }, [savedCanvaItems, batchFiles]);
+  }, [isCanvaApplied, appliedCanvaItems, batchFiles]);
 
-  const totalDocPages =
-    canvaSnapshotUrls.length > 0
-      ? canvaSnapshotUrls.length
-      : savedCanvaItems.length > 0
-      ? canvaMaxPage
-      : pdfPageCount > 0
-      ? pdfPageCount
-      : pageCount > 0
-      ? pageCount
-      : canvaMaxPage;
+  const totalDocPages = useMemo(() => {
+    if (isCanvaApplied) {
+      if (canvaSnapshotUrls.length > 0) return canvaSnapshotUrls.length;
+      if (pdfPageCount > 0) return pdfPageCount;
+      if (appliedCanvaItems.length > 0) return canvaMaxPage;
+    }
+    // Until Apply: show original / previous version page count
+    if (pdfPageCount > 0) return pdfPageCount;
+    if (batchFiles && batchFiles.length > 0) return batchFiles.length;
+    if (pageCount && pageCount > 0) return pageCount;
+    return 1;
+  }, [isCanvaApplied, canvaSnapshotUrls.length, pdfPageCount, appliedCanvaItems, canvaMaxPage, batchFiles, pageCount]);
 
   // Sync state with incoming props when modal opens
   useEffect(() => {
@@ -261,6 +257,18 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     setZoomLevel(100);
     setRotationAngle(advancedConfig.rotationAngle || 0);
   }, [isOpen, copies, colorMode, paperSize, printSides, advancedConfig]);
+
+  // Reset Canva applied state when opening fresh documents without applied Canva layout
+  useEffect(() => {
+    if (!isOpen) return;
+    if (!propsSavedCanvaItems || propsSavedCanvaItems.length === 0) {
+      setIsCanvaApplied(false);
+      setCanvaSnapshotUrl(null);
+      setCanvaSnapshotUrls([]);
+      setDraftCanvaItems([]);
+      setAppliedCanvaItems([]);
+    }
+  }, [isOpen, uploadedFile?.file, uploadedFile?.uploadId, fileName, propsSavedCanvaItems]);
 
   const buildUpdatedConfig = useCallback((): AdvancedPrintConfig => ({
     pageRangeMode,
@@ -385,9 +393,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
 
   const canvaInitialImages = useMemo(() => {
     const list: Array<{ url: string; name: string }> = [];
-    if (activePreviewUrl && (isImgFile || !fileName?.toLowerCase().endsWith('.pdf'))) {
-      list.push({ url: activePreviewUrl, name: fileName || 'Photo' });
-    }
     if (batchFiles && batchFiles.length > 0) {
       batchFiles.forEach((b) => {
         if (b.file && (b.file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(b.name))) {
@@ -396,6 +401,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
           } catch {}
         }
       });
+    } else if (activePreviewUrl && (isImgFile || !fileName?.toLowerCase().endsWith('.pdf'))) {
+      list.push({ url: activePreviewUrl, name: fileName || 'Photo' });
     }
     return list;
   }, [activePreviewUrl, isImgFile, fileName, batchFiles]);
@@ -403,8 +410,15 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   const handleApplyCanvaLayout = async (
     renderedFile: File,
     previewDataUrl?: string,
-    allPagePreviews?: string[]
+    allPagePreviews?: string[],
+    appliedItems?: CanvaImageItem[]
   ) => {
+    setIsCanvaApplied(true);
+    const itemsToSave = appliedItems || draftCanvaItems;
+    setAppliedCanvaItems(itemsToSave);
+    setDraftCanvaItems(itemsToSave);
+    propsOnCanvaItemsChange?.(itemsToSave);
+
     if (previewDataUrl) {
       setCanvaSnapshotUrl(previewDataUrl);
       const img = new Image();
@@ -441,6 +455,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     // Switch back to standard preview mode after applying layout
     setViewMode('preview');
     setActiveTab('preview');
+    setCurrentPage(1);
   };
 
   const isPdfFile = useMemo(() => {
@@ -459,12 +474,12 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   // Clear PDF rendering state and raster caches whenever document changes or modal opens
   useEffect(() => {
     if (!isOpen) return;
-    if (savedCanvaItems.length > 0 || canvaSnapshotUrls.length > 0) return;
+    if (isCanvaApplied) return;
     setPdfDoc(null);
     setIsPdfLoading(isPdfFile);
     clearCanvasCache(pdfPageCache.current);
     imageElementCache.current.clear();
-  }, [isOpen, uploadedFile?.file, uploadedFile?.uploadId, fileName, isPdfFile, savedCanvaItems.length, canvaSnapshotUrls.length]);
+  }, [isOpen, uploadedFile?.file, uploadedFile?.uploadId, fileName, isPdfFile, isCanvaApplied]);
 
   // --- Load actual uploaded PDF document ---
   useEffect(() => {
@@ -984,30 +999,34 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         const offsetY = targetY + (targetH - scaledH) / 2;
 
         // Render actual uploaded document or customized Canva layout
-        const pageCanvaItems = savedCanvaItems
-          .filter((it) => (it.pageIndex ?? 0) === (pageToDraw - 1))
-          .sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-
-        const pageSnapshot = canvaSnapshotUrls[pageToDraw - 1] || (pageToDraw === 1 ? canvaSnapshotUrl : null);
-
-        if (pageSnapshot) {
-          await renderImageSlot(ctx, pageSnapshot, offsetX, offsetY, scaledW, scaledH);
-        } else if (pageCanvaItems.length > 0) {
-          await renderCanvaPageItems(ctx, pageCanvaItems, offsetX, offsetY, scaledW, scaledH);
-        } else if (pdfDoc && pageToDraw <= pdfDoc.numPages) {
-          await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
-        } else if (batchFiles && batchFiles.length >= pageToDraw && batchFiles[pageToDraw - 1]?.file) {
-          const bFile = batchFiles[pageToDraw - 1];
-          if (bFile.file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(bFile.name)) {
-            const bUrl = URL.createObjectURL(bFile.file);
-            await renderImageSlot(ctx, bUrl, offsetX, offsetY, scaledW, scaledH);
+        if (isCanvaApplied && canvaSnapshotUrls.length > 0) {
+          const pageSnapshot = canvaSnapshotUrls[pageToDraw - 1] || (pageToDraw === 1 ? canvaSnapshotUrl : null);
+          if (pageSnapshot) {
+            await renderImageSlot(ctx, pageSnapshot, offsetX, offsetY, scaledW, scaledH);
+          } else if (pdfDoc && pageToDraw <= pdfDoc.numPages) {
+            await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
           } else {
             drawPreviewUnavailable(ctx, offsetX, offsetY, scaledW, scaledH);
           }
-        } else if (isImgFile && activePreviewUrl) {
-          await renderImageSlot(ctx, activePreviewUrl, offsetX, offsetY, scaledW, scaledH);
+        } else if (isCanvaApplied && pdfDoc && pageToDraw <= pdfDoc.numPages) {
+          await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
         } else {
-          drawPreviewUnavailable(ctx, offsetX, offsetY, scaledW, scaledH);
+          // UNTIL TAPPING APPLY: Render previous / original uploaded document!
+          if (pdfDoc && pageToDraw <= pdfDoc.numPages) {
+            await renderPdfSlot(ctx, pdfDoc, pageToDraw, offsetX, offsetY, scaledW, scaledH);
+          } else if (batchFiles && batchFiles.length >= pageToDraw && batchFiles[pageToDraw - 1]?.file) {
+            const bFile = batchFiles[pageToDraw - 1];
+            if (bFile.file.type.startsWith('image/') || /\.(jpg|jpeg|png|webp|gif|bmp)$/i.test(bFile.name)) {
+              const bUrl = URL.createObjectURL(bFile.file);
+              await renderImageSlot(ctx, bUrl, offsetX, offsetY, scaledW, scaledH);
+            } else {
+              drawPreviewUnavailable(ctx, offsetX, offsetY, scaledW, scaledH);
+            }
+          } else if (isImgFile && activePreviewUrl) {
+            await renderImageSlot(ctx, activePreviewUrl, offsetX, offsetY, scaledW, scaledH);
+          } else {
+            drawPreviewUnavailable(ctx, offsetX, offsetY, scaledW, scaledH);
+          }
         }
 
         // Slot boundary outline for multi-up layout
@@ -1067,7 +1086,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     pdfDoc,
     canvaSnapshotUrl,
     canvaSnapshotUrls,
-    savedCanvaItems,
+    isCanvaApplied,
+    appliedCanvaItems,
     batchFiles,
     viewMode,
     renderCanvaPageItems,
@@ -1621,8 +1641,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         {viewMode === 'canva' ? (
           <CanvaStudioCanvas
             initialImages={canvaInitialImages}
-            savedItems={savedCanvaItems}
-            onItemsChange={setSavedCanvaItems}
+            savedItems={draftCanvaItems.length > 0 ? draftCanvaItems : appliedCanvaItems}
+            onItemsChange={setDraftCanvaItems}
             paperSize={modalPaperSize}
             isLandscape={isLandscape}
             paperAspectRatio={paperAspectRatio}
