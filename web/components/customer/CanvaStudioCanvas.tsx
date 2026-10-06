@@ -124,6 +124,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const rafId = useRef<number | null>(null);
   const gestureRafId = useRef<number | null>(null);
   const zoomAnimationRafId = useRef<number | null>(null);
+  const panRafId = useRef<number | null>(null);
   const canvasZoomRef = useRef(canvasZoom);
   const targetCanvasZoomRef = useRef(canvasZoom);
   const pendingItemUpdate = useRef<CanvaImageItem | null>(null);
@@ -157,6 +158,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     scrollLeft: number;
     scrollTop: number;
   } | null>(null);
+  const pendingPanPoint = useRef<{ x: number; y: number } | null>(null);
   const pinchRef = useRef<{
     mode: 'canvas' | 'resize';
     startDistance: number;
@@ -181,6 +183,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   useEffect(() => () => {
     if (gestureRafId.current !== null) cancelAnimationFrame(gestureRafId.current);
     if (zoomAnimationRafId.current !== null) cancelAnimationFrame(zoomAnimationRafId.current);
+    if (panRafId.current !== null) cancelAnimationFrame(panRafId.current);
   }, []);
 
   const smoothlySetCanvasZoom = useCallback((requestedZoom: number) => {
@@ -250,6 +253,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
       initialItems: items,
       historySaved: false,
     };
+    // A second finger changes the interaction from panning to pinching.
+    // Stop the one-finger pan immediately so the two gestures never fight.
+    panRef.current = null;
+    pendingPanPoint.current = null;
     dragRef.current = null;
     pendingItemUpdate.current = null;
     return true;
@@ -995,17 +1002,18 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
   const handlePagePointerDown = (e: React.PointerEvent, pageIndex: number) => {
     setActivePageIndex(pageIndex);
+    if (beginTouchGesture(e)) return;
     // At enlarged zoom levels, a one-finger drag is reserved for moving
     // around the workspace. Image interactions still stop propagation and
     // retain their own drag/resize gestures.
     if (canvasZoom > 100 && e.pointerType === 'touch') return;
-    if (beginTouchGesture(e)) return;
   };
 
   const handleWorkspacePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (canvasZoom <= 100 || e.pointerType !== 'touch') return;
+    if (canvasZoom <= 100 || (e.pointerType === 'mouse' && e.button !== 0)) return;
     const target = e.target as HTMLElement;
     if (target.closest('[data-canva-item], button')) return;
+    if (pinchRef.current || touchPointers.current.size > 1) return;
 
     const workspace = e.currentTarget;
     panRef.current = {
@@ -1024,13 +1032,27 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     const pan = panRef.current;
     if (!pan || pan.pointerId !== e.pointerId) return;
     e.preventDefault();
+    pendingPanPoint.current = { x: e.clientX, y: e.clientY };
+    if (panRafId.current !== null) return;
+
     const workspace = e.currentTarget;
-    workspace.scrollLeft = pan.scrollLeft - (e.clientX - pan.startX);
-    workspace.scrollTop = pan.scrollTop - (e.clientY - pan.startY);
+    panRafId.current = requestAnimationFrame(() => {
+      panRafId.current = null;
+      const activePan = panRef.current;
+      const point = pendingPanPoint.current;
+      if (!activePan || !point) return;
+      workspace.scrollLeft = activePan.scrollLeft - (point.x - activePan.startX);
+      workspace.scrollTop = activePan.scrollTop - (point.y - activePan.startY);
+    });
   };
 
   const handleWorkspacePointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
     if (panRef.current?.pointerId !== e.pointerId) return;
+    if (panRafId.current !== null) {
+      cancelAnimationFrame(panRafId.current);
+      panRafId.current = null;
+    }
+    pendingPanPoint.current = null;
     panRef.current = null;
     try {
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -1062,7 +1084,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
           The selected page is edited at full size.
           ------------------------------------------------------------- */}
       <div
-        className={`flex-1 w-full flex flex-col ${canvasZoom > 100 ? 'items-start' : 'items-center'} p-2 sm:p-3 overflow-auto relative cursor-default`}
+        className={`flex-1 w-full flex flex-col ${canvasZoom > 100 ? 'items-start cursor-grab active:cursor-grabbing' : 'items-center cursor-default'} p-2 sm:p-3 overflow-auto relative`}
         onClick={() => setSelectedId(null)}
         onPointerDown={handleWorkspacePointerDown}
         onPointerMove={handleWorkspacePointerMove}
@@ -1152,7 +1174,7 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                     setActivePageIndex(pageIdx);
                     if (e.target === e.currentTarget) setSelectedId(null);
                   }}
-                  className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border touch-none transition-[width,height] duration-150 ease-out will-change-[width,height] ${
+                  className={`relative bg-white rounded-xs shadow-[0_12px_45px_rgba(0,0,0,0.7)] border touch-none will-change-[width,height] ${
                     isActivePage ? 'border-indigo-500/70 ring-2 ring-indigo-500/30' : 'border-slate-400/40'
                   }`}
                   style={{
