@@ -53,6 +53,17 @@ export interface CanvaStudioCanvasProps {
 
 type DragMode = 'move' | 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w' | 'rotate';
 
+const MAX_CROP_PER_AXIS = 90;
+
+function normalizeCropPair(first?: number, second?: number): [number, number] {
+  const safeFirst = Math.max(0, first || 0);
+  const safeSecond = Math.max(0, second || 0);
+  const total = safeFirst + safeSecond;
+  if (total <= MAX_CROP_PER_AXIS) return [safeFirst, safeSecond];
+  const scale = MAX_CROP_PER_AXIS / total;
+  return [safeFirst * scale, safeSecond * scale];
+}
+
 export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   initialImages,
   savedItems,
@@ -510,69 +521,86 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
       updatedItem.rotation = angleDeg;
     } else {
-      // Corner Resizing & Face Handle Cropping
+      // Corner resizing and Canva-style edge cropping.
       const MIN_SIZE_PERCENT = 6;
       let newW = initialItem.width;
       let newH = initialItem.height;
       let newX = initialItem.x;
       let newY = initialItem.y;
 
-      let cTop = initialItem.cropTop || 0;
-      let cBottom = initialItem.cropBottom || 0;
-      let cLeft = initialItem.cropLeft || 0;
-      let cRight = initialItem.cropRight || 0;
+      // A corrupt or previously over-cropped item must never be rendered from
+      // a 1% source sliver, which would make the photo appear to explode.
+      let [cTop, cBottom] = normalizeCropPair(initialItem.cropTop, initialItem.cropBottom);
+      let [cLeft, cRight] = normalizeCropPair(initialItem.cropLeft, initialItem.cropRight);
+
+      // Resize the visible frame, not the original image. This preserves the
+      // current crop aspect ratio after the user has trimmed an edge.
+      const frameRatio = Math.max(0.01, initialItem.width / Math.max(0.01, initialItem.height));
+      const minWidth = Math.max(MIN_SIZE_PERCENT, MIN_SIZE_PERCENT * frameRatio);
 
       if (mode === 'se') {
-        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width + deltaXPercent);
-        newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
+        const maxWidth = Math.min(100 - initialItem.x, (100 - initialItem.y) * frameRatio);
+        newW = Math.max(Math.min(minWidth, maxWidth), Math.min(maxWidth, initialItem.width + deltaXPercent));
+        newH = newW / frameRatio;
       } else if (mode === 'sw') {
-        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - deltaXPercent);
-        newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
-        newX = initialItem.x + (initialItem.width - newW);
+        const right = initialItem.x + initialItem.width;
+        const maxWidth = Math.min(right, (100 - initialItem.y) * frameRatio);
+        newW = Math.max(Math.min(minWidth, maxWidth), Math.min(maxWidth, initialItem.width - deltaXPercent));
+        newH = newW / frameRatio;
+        newX = right - newW;
       } else if (mode === 'ne') {
-        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width + deltaXPercent);
-        newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
-        newY = initialItem.y + (initialItem.height - newH);
+        const bottom = initialItem.y + initialItem.height;
+        const maxWidth = Math.min(100 - initialItem.x, bottom * frameRatio);
+        newW = Math.max(Math.min(minWidth, maxWidth), Math.min(maxWidth, initialItem.width + deltaXPercent));
+        newH = newW / frameRatio;
+        newY = bottom - newH;
       } else if (mode === 'nw') {
-        newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - deltaXPercent);
-        newH = (newW / initialItem.aspectRatio) * paperAspectRatio;
-        newX = initialItem.x + (initialItem.width - newW);
-        newY = initialItem.y + (initialItem.height - newH);
+        const right = initialItem.x + initialItem.width;
+        const bottom = initialItem.y + initialItem.height;
+        const maxWidth = Math.min(right, bottom * frameRatio);
+        newW = Math.max(Math.min(minWidth, maxWidth), Math.min(maxWidth, initialItem.width - deltaXPercent));
+        newH = newW / frameRatio;
+        newX = right - newW;
+        newY = bottom - newH;
       } else if (mode === 'n') {
-        // Face handle: Crop Top
-        const pctChange = (deltaYPercent / Math.max(0.1, initialItem.height)) * (100 - cTop - cBottom);
-        const nextCropTop = Math.max(0, Math.min(85, cTop + pctChange));
+        const visibleHeight = Math.max(0.1, 100 - cTop - cBottom);
+        const pctChange = (deltaYPercent / Math.max(0.1, initialItem.height)) * visibleHeight;
+        const maxCropChange = ((initialItem.height - MIN_SIZE_PERCENT) / Math.max(0.1, initialItem.height)) * visibleHeight;
+        const nextCropTop = Math.max(0, Math.min(MAX_CROP_PER_AXIS - cBottom, cTop + maxCropChange, cTop + pctChange));
         const actualPctDiff = nextCropTop - cTop;
-        const yOffsetPercent = (actualPctDiff / Math.max(0.1, 100 - cTop - cBottom)) * initialItem.height;
+        const yOffsetPercent = (actualPctDiff / visibleHeight) * initialItem.height;
 
         cTop = nextCropTop;
         newY = initialItem.y + yOffsetPercent;
         newH = Math.max(MIN_SIZE_PERCENT, initialItem.height - yOffsetPercent);
       } else if (mode === 's') {
-        // Face handle: Crop Bottom
-        const pctChange = (-deltaYPercent / Math.max(0.1, initialItem.height)) * (100 - cTop - cBottom);
-        const nextCropBottom = Math.max(0, Math.min(85, cBottom + pctChange));
+        const visibleHeight = Math.max(0.1, 100 - cTop - cBottom);
+        const pctChange = (-deltaYPercent / Math.max(0.1, initialItem.height)) * visibleHeight;
+        const maxCropChange = ((initialItem.height - MIN_SIZE_PERCENT) / Math.max(0.1, initialItem.height)) * visibleHeight;
+        const nextCropBottom = Math.max(0, Math.min(MAX_CROP_PER_AXIS - cTop, cBottom + maxCropChange, cBottom + pctChange));
         const actualPctDiff = nextCropBottom - cBottom;
-        const heightReductionPercent = (actualPctDiff / Math.max(0.1, 100 - cTop - cBottom)) * initialItem.height;
+        const heightReductionPercent = (actualPctDiff / visibleHeight) * initialItem.height;
 
         cBottom = nextCropBottom;
         newH = Math.max(MIN_SIZE_PERCENT, initialItem.height - heightReductionPercent);
       } else if (mode === 'w') {
-        // Face handle: Crop Left
-        const pctChange = (deltaXPercent / Math.max(0.1, initialItem.width)) * (100 - cLeft - cRight);
-        const nextCropLeft = Math.max(0, Math.min(85, cLeft + pctChange));
+        const visibleWidth = Math.max(0.1, 100 - cLeft - cRight);
+        const pctChange = (deltaXPercent / Math.max(0.1, initialItem.width)) * visibleWidth;
+        const maxCropChange = ((initialItem.width - MIN_SIZE_PERCENT) / Math.max(0.1, initialItem.width)) * visibleWidth;
+        const nextCropLeft = Math.max(0, Math.min(MAX_CROP_PER_AXIS - cRight, cLeft + maxCropChange, cLeft + pctChange));
         const actualPctDiff = nextCropLeft - cLeft;
-        const xOffsetPercent = (actualPctDiff / Math.max(0.1, 100 - cLeft - cRight)) * initialItem.width;
+        const xOffsetPercent = (actualPctDiff / visibleWidth) * initialItem.width;
 
         cLeft = nextCropLeft;
         newX = initialItem.x + xOffsetPercent;
         newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - xOffsetPercent);
       } else if (mode === 'e') {
-        // Face handle: Crop Right
-        const pctChange = (-deltaXPercent / Math.max(0.1, initialItem.width)) * (100 - cLeft - cRight);
-        const nextCropRight = Math.max(0, Math.min(85, cRight + pctChange));
+        const visibleWidth = Math.max(0.1, 100 - cLeft - cRight);
+        const pctChange = (-deltaXPercent / Math.max(0.1, initialItem.width)) * visibleWidth;
+        const maxCropChange = ((initialItem.width - MIN_SIZE_PERCENT) / Math.max(0.1, initialItem.width)) * visibleWidth;
+        const nextCropRight = Math.max(0, Math.min(MAX_CROP_PER_AXIS - cLeft, cRight + maxCropChange, cRight + pctChange));
         const actualPctDiff = nextCropRight - cRight;
-        const widthReductionPercent = (actualPctDiff / Math.max(0.1, 100 - cLeft - cRight)) * initialItem.width;
+        const widthReductionPercent = (actualPctDiff / visibleWidth) * initialItem.width;
 
         cRight = nextCropRight;
         newW = Math.max(MIN_SIZE_PERCENT, initialItem.width - widthReductionPercent);
@@ -716,10 +744,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
               ctx.rotate((item.rotation * Math.PI) / 180);
             }
 
-            const cropLeft = item.cropLeft || 0;
-            const cropRight = item.cropRight || 0;
-            const cropTop = item.cropTop || 0;
-            const cropBottom = item.cropBottom || 0;
+            const [cropLeft, cropRight] = normalizeCropPair(item.cropLeft, item.cropRight);
+            const [cropTop, cropBottom] = normalizeCropPair(item.cropTop, item.cropBottom);
 
             const sx = (cropLeft / 100) * img.naturalWidth;
             const sy = (cropTop / 100) * img.naturalHeight;
@@ -972,10 +998,8 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                         {/* Image Element with Crop Container */}
                         <div className="w-full h-full overflow-hidden relative pointer-events-none select-none">
                           {(() => {
-                            const cTop = item.cropTop || 0;
-                            const cBottom = item.cropBottom || 0;
-                            const cLeft = item.cropLeft || 0;
-                            const cRight = item.cropRight || 0;
+                            const [cTop, cBottom] = normalizeCropPair(item.cropTop, item.cropBottom);
+                            const [cLeft, cRight] = normalizeCropPair(item.cropLeft, item.cropRight);
                             const visW = Math.max(1, 100 - cLeft - cRight);
                             const visH = Math.max(1, 100 - cTop - cBottom);
 
