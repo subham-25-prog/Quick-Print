@@ -1519,11 +1519,13 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                           transform: `rotate(${item.rotation}deg)`,
                           transformOrigin: 'center center',
                           zIndex: isSelected ? Math.max(1000, (item.zIndex || 0) + 100) : item.zIndex,
-                          filter: isBw ? 'grayscale(100%)' : 'none',
                         }}
                       >
                         {/* Image Element with Crop Container */}
-                        <div className="w-full h-full overflow-hidden relative pointer-events-none select-none">
+                        <div
+                          className="w-full h-full overflow-hidden relative pointer-events-none select-none"
+                          style={{ filter: isBw ? 'grayscale(100%)' : 'none' }}
+                        >
                           {(() => {
                             const [cTop, cBottom] = normalizeCropPair(item.cropTop, item.cropBottom);
                             const [cLeft, cRight] = normalizeCropPair(item.cropLeft, item.cropRight);
