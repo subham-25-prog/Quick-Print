@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { FileUploader, UploadedFileState } from '@/components/customer/FileUploader';
-import { uploadDocumentFile } from '@/lib/uploader';
 import { PrintOptionsSelector } from '@/components/customer/PrintOptionsSelector';
 import { AddOnsSelector } from '@/components/customer/AddOnsSelector';
 import { calculateOrderPrice } from '@/lib/pricing';
@@ -866,23 +865,26 @@ export default function CustomerHomePage() {
               batchFiles={batchFiles}
               savedCanvaItems={canvaSavedItems}
               onCanvaItemsChange={setCanvaSavedItems}
-              onApplyCanvasLayout={async (newFile: File) => {
-                try {
-                  const uploadRes = await uploadDocumentFile(newFile);
-                  const customBatchItem: BatchFileItem = {
-                    id: uploadRes.uploadId || `custom-canva-${Date.now()}`,
-                    file: newFile,
-                    name: newFile.name || 'Customized_Print_Document.pdf',
-                    size: newFile.size,
-                    pageCount: uploadRes.pageCount || 1,
-                    copies: 1,
-                  };
-                  setUploadedFile({ ...uploadRes, file: newFile });
-                  setBatchFiles([customBatchItem]);
-                  setBatchPreviewFile(newFile);
-                } catch (e) {
-                  console.error('Failed to upload customized layout:', e);
-                }
+              onApplyCanvasLayout={(newFile: File, customPageCount: number) => {
+                const customBatchItem: BatchFileItem = {
+                  id: `custom-canva-${Date.now()}`,
+                  file: newFile,
+                  name: newFile.name || 'Customized_Print_Document.pdf',
+                  size: newFile.size,
+                  // The Canvas export creates one PDF page for each studio page.
+                  pageCount: Math.max(1, customPageCount),
+                  copies: 1,
+                };
+
+                // Update the visible document first. The cached preparation is
+                // shared with checkout, so this starts the upload immediately
+                // without making the Apply action wait on the network.
+                setUploadedFile(null);
+                setBatchFiles([customBatchItem]);
+                setBatchPreviewFile(newFile);
+                void checkoutPreparation.prepareUpload([customBatchItem]).catch((error) => {
+                  console.error('Failed to prepare customized layout upload:', error);
+                });
               }}
               onProceedToOrder={() => {
                 setIsAdobeModalOpen(false);

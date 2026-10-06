@@ -956,8 +956,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
 
         if (!jpegBlob) throw new Error(`Failed to render canvas for page ${p + 1}`);
 
-        const previewDataUrl = pageCanvas.toDataURL('image/jpeg', 0.95);
-        allPagePreviews.push(previewDataUrl);
+        // The preview can use the JPEG we have already encoded for the PDF.
+        // Calling toDataURL here encoded the same 300 DPI page a second time
+        // (and base64-expanded it in memory) before the preview could open.
+        allPagePreviews.push(URL.createObjectURL(jpegBlob));
 
         // Add page to PDF document
         const pdfPage = pdfDoc.addPage([pdfWidth, pdfHeight]);

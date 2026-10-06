@@ -40,7 +40,7 @@ interface AdobePrintPreviewModalProps {
   onPrintSidesChange?: (val: PrintSides) => void;
   onCopiesChange?: (val: number) => void;
   onProceedToOrder?: () => void;
-  onApplyCanvasLayout?: (file: File) => Promise<void> | void;
+  onApplyCanvasLayout?: (file: File, pageCount: number) => Promise<void> | void;
   batchFiles?: Array<{ name: string; file: File; id?: string; pageCount?: number; copies?: number }>;
   savedCanvaItems?: CanvaImageItem[];
   onCanvaItemsChange?: (items: CanvaImageItem[]) => void;
@@ -509,24 +509,34 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
       setLocalObjectUrl(newUrl);
     } catch {}
 
-    try {
-      const pdfjs = await getPdfJs();
-      const arrayBuffer = await renderedFile.arrayBuffer();
-      const doc = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-      setPdfDoc(doc);
-      setPdfPageCount(doc.numPages);
-      setIsPdfLoading(false);
-    } catch (err) {
-      console.error('Error loading Canva layout PDF in preview:', err);
-    }
-
-    if (onApplyCanvasLayout) {
-      await onApplyCanvasLayout(renderedFile);
-    }
-    // Switch back to standard preview mode after applying layout
+    // Snapshot JPEGs are ready now, so return to the preview immediately.
+    // PDF.js is only a fallback for that preview and can parse the generated
+    // PDF in the background without keeping the Apply overlay on screen.
     setViewMode('preview');
     setActiveTab('preview');
     setCurrentPage(1);
+    setIsPdfLoading(false);
+
+    void (async () => {
+      try {
+        const pdfjs = await getPdfJs();
+        const arrayBuffer = await renderedFile.arrayBuffer();
+        const doc = await pdfjs.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+        setPdfDoc(doc);
+        setPdfPageCount(doc.numPages);
+      } catch (err) {
+        console.error('Error loading Canva layout PDF in preview:', err);
+      }
+    })();
+
+    // The upload is prepared by the parent in the background. It is shared
+    // with checkout, so a customer can continue configuring their print while
+    // the network request completes.
+    if (onApplyCanvasLayout) {
+      void Promise.resolve(onApplyCanvasLayout(renderedFile, Math.max(1, allPagePreviews?.length || 1))).catch((err) => {
+        console.error('Error preparing Canva layout upload:', err);
+      });
+    }
   };
 
   const isPdfFile = useMemo(() => {
