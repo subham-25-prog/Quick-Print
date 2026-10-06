@@ -483,7 +483,12 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
   const loadImage = useCallback((src: string): Promise<HTMLImageElement> => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.crossOrigin = 'anonymous';
+      // Local image uploads arrive as blob/data URLs. Applying a CORS mode to
+      // those sources can make them fail to decode in mobile browsers, even
+      // though the same file displays normally in the upload preview.
+      if (!src.startsWith('blob:') && !src.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
       img.onload = () => resolve(img);
       img.onerror = () => reject(new Error('Failed to load image'));
       img.src = src;

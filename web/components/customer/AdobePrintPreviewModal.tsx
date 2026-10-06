@@ -1756,12 +1756,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
         }`}
       >
 
-        {/* Keep the editor mounted while previewing. This preserves its live
-            image sources and avoids remount races when switching back. */}
-        <div
-          className={`absolute inset-0 ${viewMode === 'canva' ? 'z-30 visible' : 'z-0 invisible pointer-events-none'}`}
-          aria-hidden={viewMode !== 'canva'}
-        >
+        {viewMode === 'canva' ? (
           <CanvaStudioCanvas
             initialImages={canvaInitialImages}
             savedItems={
@@ -1779,9 +1774,8 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             zoomLevel={zoomLevel}
             onApplyLayout={handleApplyCanvaLayout}
           />
-        </div>
+        ) : (
 
-        {viewMode !== 'canva' && (
           <>
             {/* Centered Document Canvas Container */}
         <div 
