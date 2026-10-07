@@ -917,6 +917,14 @@ export default function CustomerHomePage() {
                 setBatchFiles([customBatchItem]);
                 setBatchPreviewFile(newFile);
                 setCanvaStudioPageCount(Math.max(1, customPageCount));
+                // Canvas Studio exports are already laid out to the chosen
+                // paper dimensions. Keep that layout at its authored size
+                // when returning to Print Preview instead of fitting it.
+                setAdvancedConfig((current) => ({
+                  ...current,
+                  pageScaling: 'ACTUAL',
+                  customScalePercent: 100,
+                }));
                 void checkoutPreparation.prepareUpload([customBatchItem]).catch((error) => {
                   console.error('Failed to prepare customized layout upload:', error);
                 });

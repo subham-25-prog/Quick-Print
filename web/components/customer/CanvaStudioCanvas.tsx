@@ -1599,7 +1599,10 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
                       ? 'top-full mt-3'
                       : isNearTop
                       ? 'top-2'
-                      : '-top-12';
+                      // Leave a little more clearance above the selected
+                      // photo so the action bar does not sit on its resize
+                      // handles or image edge.
+                      : '-top-14';
 
                     const isNearLeft = item.x < 18;
                     const isNearRight = item.x + item.width > 82;
