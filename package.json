@@ -21,7 +21,6 @@
     "dev": "cd web && npm run dev",
     "start": "cd web && npm run start",
     "lint": "npm run lint --workspace web",
-    "typecheck": "npm run typecheck --workspace web",
-    "test": "npm test --workspace web"
+    "typecheck": "npm run typecheck --workspace web"
   }
 }

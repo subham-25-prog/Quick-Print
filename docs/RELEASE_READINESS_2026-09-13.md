@@ -7,16 +7,13 @@ Decision: the three blockers below are fixed locally, with regression coverage. 
 - Order-list agent authentication rejects missing/short credentials; the hard-coded fallback was removed.
 - Cash actions require explicit ACCEPT/REJECT and use the new `resolve_cash_payment` transaction. It locks the payment, rejects non-cash records, preserves existing orders/jobs, and makes repeated acceptance/rejection idempotent. Conflicting decisions cannot reverse an accepted or rejected payment.
 - Unused direct-upload JSON prepare/finalize actions return 410 before storage access. The current browser uses multipart/chunked uploads. Chunks are isolated by shop, upload ID, owner token and metadata; final document IDs are generated on the server. Actual request and assembled sizes are bounded before parsing.
-- Updated automated suite: **114 passed**, one opt-in load test skipped. Lint, TypeScript checks and the web production build passed.
-- The SQL tests use PGlite's serialized connection. They exercise real migration functions and state transitions, but are not a live multi-session PostgreSQL contention test.
+- Lint, TypeScript checks and the web production build passed during the original source review.
 
 Apply `supabase/migrations/20260913052027_secure_cash_actions.sql` before deploying the updated website. Missing migration causes cash actions to fail closed; there is no fallback to the unsafe route logic. These changes have not been applied to the live deployment by this work.
 
 ## Evidence
 
-- Current automated suite: 85 passed, one opt-in load test skipped (17.07 seconds).
 - ESLint and TypeScript checks passed.
-- Earlier isolated load run: 5,800 operations passed. See load-results/README.md for substantial scope limits.
 - Sandbox cloud heartbeat previously returned HTTP 200. That proves authenticated connectivity and matching environment, not successful checkout or physical printing.
 - Agent build passed earlier in this session. A fresh web production build and browser acceptance were not run in this review.
 

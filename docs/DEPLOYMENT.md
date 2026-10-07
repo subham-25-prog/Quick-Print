@@ -12,7 +12,7 @@ Set an explicit `PRINT_AGENT_SECRET` of at least 32 characters on both web and a
 
 The unused JSON direct-upload API is retired with HTTP 410; refresh any client using it. The current website continues using multipart and chunked uploads. In-progress chunk uploads from the old version must be restarted because their private chunk paths have changed.
 
-After deployment, verify a PDF/image upload, an enabled cash acceptance/rejection, a repeated acceptance and an online payment through the official provider. Local regression tests do not replace hardware/payment acceptance.
+After deployment, verify a PDF/image upload, an enabled cash acceptance/rejection, a repeated acceptance, and an online payment through the official provider. Source checks do not replace hardware/payment acceptance.
 
 ## Database
 
@@ -52,6 +52,6 @@ It calls `GET /api/maintenance` every five minutes. GitHub schedules can be dela
 
 ## Launch acceptance
 
-Run the entire checklist in TESTING.md against the real staging Supabase instance, official merchant sandbox, then a controlled live payment and shop printer. Verify that the money belongs to the shop's settlement account. Publish shop-specific contact, privacy, terms and refund information required by its merchant agreement before live onboarding. The repository does not supply legal terms on the shop's behalf.
+On the real staging Supabase instance and official merchant sandbox, confirm the configured payment flow, then perform one controlled live payment and print through the shop printer. Verify that the money belongs to the shop's settlement account. Publish shop-specific contact, privacy, terms and refund information required by its merchant agreement before live onboarding. The repository does not supply legal terms on the shop's behalf.
 
 Monitor Vercel errors, pending/review payments, job age, agent heartbeat, Storage growth and scheduled workflow failures. Backups and restore drills are part of operating the shop, not replaced by green unit tests.

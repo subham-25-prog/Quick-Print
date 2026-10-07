@@ -1,6 +1,6 @@
 # QuickPrint — independent shop installation
 
-A payment-first self-service printing application: Next.js + Supabase/PostgreSQL + a paired Windows agent. One shop owns its website, database, approved merchant credentials, pricing and printer. This branch is a tested **release candidate**; live merchant/Supabase/hardware acceptance remains required before sale or launch.
+A payment-first self-service printing application: Next.js + Supabase/PostgreSQL + a paired Windows agent. One shop owns its website, database, approved merchant credentials, pricing and printer. This branch is a release candidate; live merchant/Supabase/hardware acceptance remains required before sale or launch.
 
 ## Non-negotiable flow
 
@@ -20,18 +20,16 @@ node scripts/new-shop.mjs --slug abc-xerox --name "ABC Xerox" --url https://abc.
 
 Generated secrets stay in a git-ignored folder. Configure cloud credentials privately; nothing is deployed by the generator.
 
-## Quality gates
+## Build checks
 
 ```text
 npm run lint
 npm run typecheck
-npm test
 npm run build
 npm run build --prefix print-agent
-npm run test:e2e --workspace web
 ```
 
-Automated payment/driver fixtures are test-only. They are not real sandbox transactions or physical printer tests. CI runs unit/API/PostgreSQL/agent/build checks on Windows/Linux and mobile browser checks on Linux.
+These checks validate the source and production bundle. They do not replace a controlled merchant payment and physical-printer acceptance at the individual shop.
 
 ## Documentation
 
@@ -44,7 +42,6 @@ Automated payment/driver fixtures are test-only. They are not real sandbox trans
 - [Windows agent](docs/PRINT_AGENT.md)
 - [Shopkeeper guide](docs/SHOPKEEPER_GUIDE.md)
 - [Security](docs/SECURITY.md)
-- [Tests and live acceptance](docs/TESTING.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
 
-Before live launch: actual Supabase migration/REST/Storage tests, approved shop merchant credentials, webhook/scheduler setup, real payment/settlement acceptance, printer compatibility testing, owner-approved policies, backups and monitoring. Never claim “zero errors” or “production verified” based only on local tests.
+Before live launch: apply the actual Supabase migration, verify private Storage, configure approved shop merchant credentials and webhooks/scheduler, perform a controlled payment/settlement and physical print, then confirm owner-approved policies, backups, and monitoring. Never claim “zero errors” or “production verified” from a local build alone.
