@@ -21,6 +21,8 @@ interface FileUploaderProps {
   batchFiles?: BatchFileItem[];
   onBatchFilesChange?: (files: BatchFileItem[]) => void;
   isProcessingBatch?: boolean;
+  copies?: number;
+  onCopiesChange?: (copies: number) => void;
 }
 
 const DocumentPreviewBox = React.memo<{
@@ -113,7 +115,6 @@ DocumentPreviewBox.displayName = 'DocumentPreviewBox';
 interface BatchFileRowProps {
   item: BatchFileItem;
   idx: number;
-  hideCopyControls?: boolean;
   onUpdateCopies: (id: string, delta: number) => void;
   onRemove: (id: string) => void;
 }
@@ -121,7 +122,6 @@ interface BatchFileRowProps {
 function areBatchFileRowPropsEqual(prev: BatchFileRowProps, next: BatchFileRowProps): boolean {
   return (
     prev.idx === next.idx &&
-    prev.hideCopyControls === next.hideCopyControls &&
     prev.item.id === next.item.id &&
     prev.item.copies === next.item.copies &&
     prev.item.pageCount === next.item.pageCount &&
@@ -133,7 +133,7 @@ function areBatchFileRowPropsEqual(prev: BatchFileRowProps, next: BatchFileRowPr
   );
 }
 
-const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, hideCopyControls = false, onUpdateCopies, onRemove }) => {
+const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, onUpdateCopies, onRemove }) => {
   return (
     <div
       className="animate-fade-in-scale p-3 rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-2xs flex flex-wrap items-center justify-between gap-3 transition-all duration-150 contain-layout"
@@ -161,9 +161,9 @@ const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, hideCopyControl
         </div>
       </div>
 
-      {/* Right: Per-file copies are not applicable to one uploaded photo. */}
+      {/* Right: Per-file copies */}
       <div className="flex items-center gap-2 shrink-0">
-        {!hideCopyControls && <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50/80 p-0.5 shadow-2xs">
+        <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50/80 p-0.5 shadow-2xs">
           <button
             type="button"
             onClick={() => onUpdateCopies(item.id, -1)}
@@ -184,7 +184,7 @@ const BatchFileRow = React.memo<BatchFileRowProps>(({ item, idx, hideCopyControl
           >
             <Plus className="w-3 h-3" />
           </button>
-        </div>}
+        </div>
 
         <button
           type="button"
@@ -217,6 +217,8 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
   allowMultiple = false,
   batchFiles = [],
   onBatchFilesChange,
+  copies = 1,
+  onCopiesChange,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -539,10 +541,6 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
                   key={item.id}
                   item={item}
                   idx={idx}
-                  hideCopyControls={
-                    batchFiles.length === 1 &&
-                    (item.file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(item.name))
-                  }
                   onUpdateCopies={updateItemCopies}
                   onRemove={removeBatchItem}
                 />
@@ -603,13 +601,40 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
               </div>
             </div>
 
-            <button
-              onClick={handleRemoveSingle}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all shrink-0 cursor-pointer"
-              title="Remove document"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2 shrink-0">
+              {onCopiesChange && (
+                <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50/80 p-0.5 shadow-2xs">
+                  <button
+                    type="button"
+                    onClick={() => onCopiesChange(Math.max(1, copies - 1))}
+                    disabled={copies <= 1}
+                    className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-manipulation"
+                    title="Decrease copies"
+                  >
+                    <Minus className="w-3 h-3" />
+                  </button>
+                  <span className="px-2.5 text-xs font-bold text-slate-800 min-w-[54px] text-center select-none">
+                    {copies} {copies === 1 ? 'copy' : 'copies'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onCopiesChange(Math.min(99, copies + 1))}
+                    className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-manipulation"
+                    title="Increase copies"
+                  >
+                    <Plus className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={handleRemoveSingle}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all shrink-0 cursor-pointer"
+                title="Remove document"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
@@ -750,13 +775,40 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
             </div>
           </div>
 
-          <button
-            onClick={handleRemoveSingle}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all shrink-0 cursor-pointer"
-            title="Remove document"
-          >
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onCopiesChange && (
+              <div className="flex items-center border border-slate-200 rounded-xl bg-white/90 p-0.5 shadow-2xs">
+                <button
+                  type="button"
+                  onClick={() => onCopiesChange(Math.max(1, copies - 1))}
+                  disabled={copies <= 1}
+                  className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 disabled:opacity-40 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-manipulation"
+                  title="Decrease copies"
+                >
+                  <Minus className="w-3 h-3" />
+                </button>
+                <span className="px-2.5 text-xs font-bold text-slate-800 min-w-[54px] text-center select-none">
+                  {copies} {copies === 1 ? 'copy' : 'copies'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onCopiesChange(Math.min(99, copies + 1))}
+                  className="stepper-btn w-7 h-7 rounded-lg bg-white border border-slate-200/60 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center transition-all cursor-pointer active:scale-95 touch-manipulation"
+                  title="Increase copies"
+                >
+                  <Plus className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
+            <button
+              onClick={handleRemoveSingle}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:scale-90 transition-all shrink-0 cursor-pointer"
+              title="Remove document"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
     </div>

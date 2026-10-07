@@ -637,13 +637,7 @@ export default function CustomerHomePage() {
               // layout as its source and never imports the new image.
               setCanvaSavedItems([]);
               setCanvaStudioPageCount(0);
-              if (
-                file &&
-                (file.fileType.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(file.fileName))
-              ) {
-                // A single photo is always one print; there is no copies
-                // control for this flow, so never retain a prior document's
-                // quantity in its total.
+              if (file) {
                 setCopies(1);
               }
             }}
@@ -651,6 +645,8 @@ export default function CustomerHomePage() {
             batchFiles={batchFiles}
             onBatchFilesChange={handleBatchFilesChange}
             isProcessingBatch={isProcessingBatch}
+            copies={copies}
+            onCopiesChange={handleCopiesChange}
           />
         </section>
 
