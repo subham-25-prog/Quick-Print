@@ -20,6 +20,7 @@ const BUCKET_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MB
 const MAX_CONTENT_LENGTH_BYTES = 105 * 1024 * 1024; // 105 MB multipart overhead
+const CHUNK_SIZE_BYTES = 3 * 1024 * 1024;
 const CHUNK_ASSEMBLY_CONCURRENCY = 3;
 
 // The final chunk reassembles the document, validates its PDF structure, uploads
@@ -256,6 +257,7 @@ export async function POST(req: NextRequest) {
       const clientUploadToken = String(form.get('uploadToken') || '');
       const clientFileName = String(form.get('fileName') || '');
       const file = form.get('file');
+      const expectedChunkCount = Math.ceil(declaredSize / CHUNK_SIZE_BYTES);
 
       const isValidExt = ['pdf', 'jpg', 'jpeg', 'png'].includes(
         clientFileName.split('.').pop()?.toLowerCase() || ''
@@ -266,9 +268,10 @@ export async function POST(req: NextRequest) {
         !Number.isSafeInteger(totalChunks) ||
         totalChunks < 2 ||
         !Number.isSafeInteger(declaredSize) || declaredSize < 1 || declaredSize > MAX_FILE_SIZE_BYTES ||
+        declaredSize <= CHUNK_SIZE_BYTES ||
         chunkIndex < 0 ||
         chunkIndex >= totalChunks ||
-        totalChunks > 100 ||
+        totalChunks !== expectedChunkCount ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clientUploadId) ||
         !/^[0-9a-f]{64}$/i.test(clientUploadToken) ||
         !clientFileName ||
@@ -276,7 +279,7 @@ export async function POST(req: NextRequest) {
         !isValidExt ||
         !(file instanceof File) ||
         file.size < 1 ||
-        file.size > 10 * 1024 * 1024
+        file.size > CHUNK_SIZE_BYTES
       ) {
         console.error('Invalid chunk upload parameters:', {
           chunkIndex,
@@ -334,8 +337,8 @@ export async function POST(req: NextRequest) {
           if (error || !blob) {
             throw new HttpError(500, `Missing chunk ${index}: ${error?.message || 'Download failed'}. Please retry upload.`);
           }
-          if (blob.size > 10 * 1024 * 1024) {
-            throw new HttpError(413, 'Upload exceeds its declared size.');
+          if (blob.size > CHUNK_SIZE_BYTES) {
+            throw new HttpError(413, 'Upload chunk exceeds the allowed size.');
           }
           return Buffer.from(await blob.arrayBuffer());
         }));

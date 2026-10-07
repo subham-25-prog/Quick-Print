@@ -10,6 +10,7 @@ vi.mock('@/lib/db', () => ({ database: () => ({
 vi.mock('@/lib/security', async original => ({...await original<object>(),rateLimit:mocks.rate}));
 import { POST } from '@/app/api/upload/route';
 const id = '00000000-0000-4000-8000-000000000009';
+const chunkSize = 3 * 1024 * 1024;
 beforeEach(() => {
   vi.stubEnv('QUICKPRINT_SHOP_ID','00000000-0000-4000-8000-000000000001');
   vi.stubEnv('ORDER_ACCESS_SECRET','test-upload-signing-secret-32-characters');
@@ -25,10 +26,13 @@ beforeEach(() => {
 });
 afterEach(()=>vi.unstubAllEnvs());
 async function pdf() {const doc=await PDFDocument.create();doc.addPage();return doc.save();}
+function toChunkedFile(bytes: Uint8Array) {
+  return Buffer.concat([Buffer.from(bytes), Buffer.alloc(chunkSize + 2 - bytes.length)]);
+}
 function request(form:FormData) {return new NextRequest('https://shop.test/api/upload',{method:'POST',body:form});}
-function chunk(bytes:Uint8Array, index:number, size:number, token='a'.repeat(64), indexText=String(index)) {
+function chunk(bytes:Uint8Array, index:number, size:number, token='a'.repeat(64), indexText=String(index), totalChunks='2') {
   const form=new FormData(); form.set('file',new File([new Uint8Array(bytes)],'test.pdf',{type:'application/pdf'}));
-  for(const [key,value] of Object.entries({chunkIndex:indexText,totalChunks:'2',uploadId:id,uploadToken:token,fileName:'test.pdf',fileSizeBytes:String(size)})) form.set(key,value);
+  for(const [key,value] of Object.entries({chunkIndex:indexText,totalChunks,uploadId:id,uploadToken:token,fileName:'test.pdf',fileSizeBytes:String(size)})) form.set(key,value);
   return request(form);
 }
 test('normal multipart PDF still stores a private document and returns access',async()=>{
@@ -47,7 +51,7 @@ test('oversized JPEG dimensions are rejected before storage or image decoding', 
   expect(mocks.insert).not.toHaveBeenCalled();
 });
 test('two chunks finalize with a server-generated ID and cannot overwrite a known victim path',async()=>{
-  const bytes=await pdf(),split=Math.floor(bytes.length/2),victim=`orders/${id}.pdf`;
+  const bytes=toChunkedFile(await pdf()),split=Math.floor(bytes.length/2),victim=`orders/${id}.pdf`;
   mocks.store.set(victim,new Blob(['victim']));
   expect((await POST(chunk(bytes.slice(0,split),0,bytes.length))).status).toBe(200);
   const response=await POST(chunk(bytes.slice(split),1,bytes.length));expect(response.status).toBe(200);
@@ -58,7 +62,7 @@ test('two chunks finalize with a server-generated ID and cannot overwrite a know
 test('a 110-page PDF can be reassembled from chunks and retains its actual page count', async () => {
   const document = await PDFDocument.create();
   for (let page = 0; page < 110; page++) document.addPage();
-  const bytes = await document.save();
+  const bytes = toChunkedFile(await document.save());
   const split = Math.floor(bytes.length / 2);
 
   expect((await POST(chunk(bytes.slice(0, split), 0, bytes.length))).status).toBe(200);
@@ -67,7 +71,7 @@ test('a 110-page PDF can be reassembled from chunks and retains its actual page 
   expect((await response.json()).fileInfo.pageCount).toBe(110);
 });
 test('knowing upload ID with wrong owner token cannot read or delete its chunks',async()=>{
-  const bytes=await pdf(),split=Math.floor(bytes.length/2);
+  const bytes=toChunkedFile(await pdf()),split=Math.floor(bytes.length/2);
   await POST(chunk(bytes.slice(0,split),0,bytes.length));
   const ownerPath=[...mocks.store.keys()][0];
   expect((await POST(chunk(bytes.slice(split),1,bytes.length,'b'.repeat(64)))).status).toBe(500);
@@ -76,7 +80,7 @@ test('knowing upload ID with wrong owner token cannot read or delete its chunks'
   expect((await POST(chunk(bytes.slice(split),1,bytes.length))).status).toBe(200);
 });
 test('insert failure cleans up only the newly created document',async()=>{
-  const bytes=await pdf(),split=Math.floor(bytes.length/2),victim=`orders/${id}.pdf`;
+  const bytes=toChunkedFile(await pdf()),split=Math.floor(bytes.length/2),victim=`orders/${id}.pdf`;
   mocks.store.set(victim,new Blob(['victim']));
   await POST(chunk(bytes.slice(0,split),0,bytes.length));
   mocks.insert.mockResolvedValue({error:{message:'Database unavailable'}});
@@ -93,8 +97,21 @@ test('oversized declared total is rejected before storage',async()=>{
   expect(mocks.upload).not.toHaveBeenCalled();
 });
 test('assembled bytes exceeding declared size cannot be parsed or finalized',async()=>{
-  const bytes=await pdf(),split=Math.floor(bytes.length/2);
+  const bytes=toChunkedFile(await pdf()),split=Math.floor(bytes.length/2);
   await POST(chunk(bytes.slice(0,split),0,bytes.length-1));
   expect((await POST(chunk(bytes.slice(split),1,bytes.length-1))).status).toBe(413);
   expect(mocks.insert).not.toHaveBeenCalled();
+});
+test('forged chunk count cannot increase the declared upload capacity', async () => {
+  const response = await POST(chunk(new Uint8Array([1]), 0, chunkSize * 2, 'a'.repeat(64), '0', '3'));
+  expect(response.status).toBe(400);
+  expect(mocks.upload).not.toHaveBeenCalled();
+  expect(mocks.download).not.toHaveBeenCalled();
+});
+test('oversized chunk cannot increase the declared upload capacity', async () => {
+  const oversizeChunk = new Uint8Array(chunkSize + 1);
+  const response = await POST(chunk(oversizeChunk, 0, chunkSize * 2));
+  expect(response.status).toBe(400);
+  expect(mocks.upload).not.toHaveBeenCalled();
+  expect(mocks.download).not.toHaveBeenCalled();
 });

@@ -4,6 +4,7 @@ import { getCurrentShopId } from '@/lib/shop';
 import { hasOrderAccess } from '@/lib/order-access';
 import { uuid } from '@/lib/validation';
 import { apiError, HttpError } from '@/lib/http';
+import { rateLimit } from '@/lib/security';
 
 export async function GET(
   req: NextRequest,
@@ -12,6 +13,11 @@ export async function GET(
   try {
     const { id: rawId } = await params;
     const id = uuid(rawId);
+
+    // Preview URLs are bearer credentials and downloading a document is
+    // storage-expensive. Apply a shared per-client limit before any storage
+    // or database work so a leaked link cannot be used as an amplification path.
+    await rateLimit(req, 'document-preview', 20);
 
     if (!hasOrderAccess(req, id)) {
       throw new HttpError(404, 'Document link is invalid or expired.');

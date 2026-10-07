@@ -5,6 +5,7 @@ import { hasOrderAccess, createOrderAccessToken } from '@/lib/order-access';
 import { getCurrentShopId } from '@/lib/shop';
 import { apiError, HttpError } from '@/lib/http';
 import { uuid } from '@/lib/validation';
+import { rateLimit } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -16,6 +17,9 @@ export async function GET(
   try {
     const { id: rawId } = await params;
     const id = uuid(rawId);
+    // Customer status pages poll frequently, so keep this comfortably above
+    // the normal cadence while bounding database work for leaked access links.
+    await rateLimit(req, 'customer-order-status', 120);
     const isAdmin = isAdminRequest(req);
 
     let authorized = isAdmin || hasOrderAccess(req, id);
