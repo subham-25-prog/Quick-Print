@@ -333,10 +333,10 @@ export default function AdminPrintingSettingsPage() {
                 href="/api/admin/agent-download"
                 download="quickprint-agent.zip"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold transition-all shadow-2xs active:scale-95"
-                title="Download Windows Print Agent package for this shop PC"
+                title="Download the one-time Windows Print Agent setup package for this shop PC"
               >
                 <Download className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Download Agent</span>
+                <span>Set up new PC</span>
               </a>
               <button
                 type="button"
@@ -367,7 +367,7 @@ export default function AdminPrintingSettingsPage() {
           </div>
 
           <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-            Printers are detected by this shop’s local print agent and refreshed automatically. Only printers detected by the agent or previously connected by this shop are shown.
+            On a new Windows PC, download the setup package, extract it, and run <strong>Install QuickPrint Agent.cmd</strong> once. It configures this PC, starts the agent, and automatically detects its Windows printers. Only detected or previously connected printers are shown.
           </p>
 
           {selectionPending && <p role="status" className="text-xs text-amber-700">Selection saved. Waiting for the print agent to confirm it.</p>}
@@ -434,7 +434,7 @@ export default function AdminPrintingSettingsPage() {
                     title="Download QuickPrint Agent setup files for this PC"
                   >
                     <Download className="w-3.5 h-3.5 text-white" />
-                    <span>Download Print Agent</span>
+                    <span>Set up this PC</span>
                   </a>
                   <button
                     type="button"

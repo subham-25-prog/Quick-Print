@@ -6,12 +6,11 @@ echo ===================================================
 echo     QuickPrint Automatic Cloud Print Agent
 echo ===================================================
 echo.
-if not exist node_modules (
-    echo [1/2] Installing required agent packages...
-    call npm ci
+if not exist dist\index.js (
+    echo Initial setup is required. Launching the installer...
+    call "%~dp0install_agent.cmd"
+    if errorlevel 1 exit /b 1
 )
-echo [2/2] Compiling agent...
-call npm run build
 echo.
 echo [OK] Connecting to QuickPrint Cloud and Listening for Orders...
 echo Keep this window open while the shop is open.

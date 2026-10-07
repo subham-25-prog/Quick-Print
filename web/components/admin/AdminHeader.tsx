@@ -144,7 +144,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                     className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 hover:border-indigo-300 transition-all cursor-pointer shadow-2xs active:scale-95"
                   >
                     <Download className="w-2.5 h-2.5 text-indigo-600" />
-                    <span>Download Agent</span>
+                    <span>Set up new PC</span>
                   </a>
                   <button
                     type="button"

@@ -1,4 +1,7 @@
 @echo off
+setlocal
+set "QUIET=0"
+if /I "%~1"=="/quiet" set "QUIET=1"
 title QuickPrint Browser Protocol Setup
 cd /d "%~dp0"
 cls
@@ -25,6 +28,8 @@ if %errorlevel% equ 0 (
     echo your browser will automatically launch the agent!
 ) else (
     echo [ERROR] Failed to register protocol.
+  if "%QUIET%"=="1" exit /b 1
 )
 echo.
+if "%QUIET%"=="1" exit /b 0
 pause

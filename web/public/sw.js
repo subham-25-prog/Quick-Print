@@ -1,5 +1,5 @@
 // QuickPrint Service Worker - High Performance Offline-First Shell
-const CACHE_NAME = 'quickprint-cache-v3';
+const CACHE_NAME = 'quickprint-shell-v4';
 
 const PRECACHE_ASSETS = [
   '/',
@@ -36,81 +36,75 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests and dev HMR
+  // Never involve the worker in mutations or cross-origin requests. In
+  // particular, print/payment APIs must retain their server-side idempotency
+  // and authorization guarantees even when the device is offline.
   if (request.method !== 'GET') return;
+  if (url.origin !== self.location.origin) return;
   if (url.pathname.includes('/_next/webpack-hmr')) return;
+
+  const hasCapability = url.searchParams.has('access_token');
+  const isSensitivePage =
+    url.pathname.startsWith('/admin') ||
+    url.pathname.startsWith('/payment/') ||
+    url.pathname.startsWith('/status/') ||
+    url.pathname.startsWith('/order/');
+
+  const cacheResponse = async (cache, key, response) => {
+    const cacheControl = response.headers.get('Cache-Control') || '';
+    if (response.ok && !/\bno-store\b/i.test(cacheControl) && response.type === 'basic') {
+      await cache.put(key, response.clone());
+    }
+    return response;
+  };
 
   // Static immutable chunks: Cache-First
   if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
-      caches.match(request).then((cached) => {
+      caches.open(CACHE_NAME).then((cache) => cache.match(request).then((cached) => {
         if (cached) return cached;
-        return fetch(request).then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
-        });
-      })
+        return fetch(request).then((response) => cacheResponse(cache, request, response));
+      }))
     );
     return;
   }
 
-  // API endpoints: Network first, cache successful GET responses for pricing/settings
+  // API responses can contain order, pricing, or admin data. They are always
+  // network-only; callers receive a clear, non-cacheable offline response.
   if (url.pathname.startsWith('/api/')) {
-    if (request.method === 'GET' && url.pathname.includes('/api/pricing')) {
-      event.respondWith(
-        fetch(request)
-          .then((response) => {
-            if (response.ok) {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-            }
-            return response;
-          })
-          .catch(() => {
-            return caches.match(request).then((cached) => {
-              if (cached) return cached;
-              return new Response(JSON.stringify({ error: 'Offline mode active', offline: true }), {
-                status: 503,
-                headers: { 'Content-Type': 'application/json' },
-              });
-            });
-          })
-      );
-      return;
-    }
-
     event.respondWith(
       fetch(request).catch(() => {
-        return caches.match(request).then((cached) => {
-          if (cached) return cached;
-          return new Response(JSON.stringify({ error: 'Offline mode active', offline: true }), {
-            status: 503,
-            headers: { 'Content-Type': 'application/json' },
-          });
+        return new Response(JSON.stringify({ error: 'Offline mode active', offline: true }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
         });
       })
     );
     return;
   }
 
-  // HTML Navigation: Network-First with Stale-While-Revalidate and offline cache fallback
+  // Capability URLs and admin/customer-status pages can reveal customer data.
+  // Do not retain them on a kiosk, even as an offline fallback.
+  if (hasCapability || isSensitivePage) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  // The public checkout shell is network-first. Keeping only the root route
+  // gives an offline customer an immediately usable shell without turning the
+  // Cache API into an unbounded page archive.
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-          }
-          return response;
+          if (url.pathname !== '/' || url.search) return response;
+          return caches.open(CACHE_NAME).then((cache) => cacheResponse(cache, request, response));
         })
         .catch(async () => {
-          const cached = await caches.match(request);
+          const cache = await caches.open(CACHE_NAME);
+          const cached = await cache.match(request);
           if (cached) return cached;
-          const rootCached = await caches.match('/');
+          const rootCached = await cache.match('/');
           if (rootCached) return rootCached;
           return new Response(`<!DOCTYPE html>
 <html lang="en">
@@ -147,18 +141,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // All other GET requests: Stale-While-Revalidate
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      const fetchPromise = fetch(request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const clone = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return networkResponse;
-      }).catch(() => cached);
-
-      return cached || fetchPromise;
-    })
-  );
+  // Images, icons, and the manifest are public shell assets. Other GETs stay
+  // network-only so signed downloads and future customer routes cannot leak
+  // into a persistent, unbounded cache.
+  const isPublicAsset =
+    request.destination === 'image' ||
+    url.pathname === '/manifest.json' ||
+    url.pathname === '/icon.svg';
+  if (isPublicAsset) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => cache.match(request).then((cached) => {
+        if (cached) return cached;
+        return fetch(request).then((response) => cacheResponse(cache, request, response));
+      }))
+    );
+  }
 });

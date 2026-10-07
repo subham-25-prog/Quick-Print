@@ -8,11 +8,11 @@
 6. Fill Supabase server credentials and the shop's approved live payment credentials privately in Vercel. Set PAYMENT_ENVIRONMENT=live, configure the stable website URL, and deploy.
 7. Open /admin/settings for branding, pricing, and counter preferences. If PhonePe credentials are not available yet, leave payment configuration inactive; customer checkout stays safely disabled. Once PhonePe credentials are added in Vercel, online checkout activates automatically.
 8. Set up provider webhooks and scheduled recovery. Test notifications, invalid signatures, closed-browser recovery and delayed confirmation.
-9. On the Windows PC install the shop printer's current official driver. Print its Windows test page yourself. Install agent dependencies with `npm ci --prefix print-agent` and build with `npm run build --prefix print-agent`.
-10. Copy the generated agent file to `print-agent/.env`, set the exact Windows PRINTER_NAME, and start the live agent. Confirm the paired agent is online in the admin dashboard.
+9. On the Windows PC install the shop printer's current official driver. Print its Windows test page yourself. In the deployed QuickPrint Printing settings, select **Set up new PC**, extract the download, and run `Install QuickPrint Agent.cmd`. It installs the matching dependencies, uses the included shop credentials, registers browser launching and configures current-user startup.
+10. Confirm the paired agent is online in the admin dashboard. It detects the physical Windows printers and initially selects the Windows default printer; explicitly choose the intended printer when more than one printer is present.
 11. Verify the deployed web environment uses the shop's approved live API credentials and PAYMENT_ENVIRONMENT=live. Restart the agent after any configuration change.
 12. Perform a controlled real payment and physical print; check copies, colors, paper tray, duplex, amount, merchant settlement and duplicate callbacks. Confirm retry/review behavior during failure. Do not launch until these pass.
-13. Run `print-agent/install_service.ps1` after the manual agent test. It installs one hidden current-user logon shortcut and refuses conflicting old startup entries. Keep the same state folder on upgrades.
+13. The one-click installer already configures one hidden current-user logon shortcut. Keep the same state folder on upgrades.
 14. In `/admin/poster`, confirm the stable domain and print the website QR. NFC stores that same website URL, not a payment QR or private customer link.
 15. Hand over the administrator credential, resource ownership, recovery contacts, fee agreement, backup schedule and SHOPKEEPER_GUIDE.md. Do not retain credentials beyond the owner's support agreement.
 

@@ -13,8 +13,18 @@ export function startPolling({ poll, intervalMs, timeoutMs = 15000, onError }: P
   let timer: ReturnType<typeof setTimeout> | undefined;
   let failures = 0;
 
+  // Status pages are often left open on a shared kiosk while the customer
+  // pays or collects a print. Do not keep a network timer (and its React
+  // updates) alive in a background tab. Visibility is restored immediately
+  // when the customer returns, so this does not delay a visible status.
+  const isHidden = () => typeof document !== 'undefined' && document.hidden;
+
   async function run() {
     if (stopped) return;
+    if (isHidden()) {
+      pending = true;
+      return;
+    }
     if (controller) {
       pending = true;
       return;
@@ -40,19 +50,49 @@ export function startPolling({ poll, intervalMs, timeoutMs = 15000, onError }: P
       clearTimeout(timeout);
       controller = undefined;
       if (!stopped) {
-        timer = setTimeout(run, pending && failures === 0 ? 0 : delay);
-        pending = false;
+        if (isHidden()) {
+          pending = true;
+        } else {
+          timer = setTimeout(run, pending && failures === 0 ? 0 : delay);
+          pending = false;
+        }
       }
     }
   }
 
+  const handleVisibilityChange = () => {
+    if (stopped || isHidden()) return;
+    // A refresh requested while hidden is deliberately coalesced into this
+    // one request. Abort nothing: an in-flight visible request still owns its
+    // timeout and will schedule the next poll safely.
+    clearTimeout(timer);
+    if (controller) {
+      pending = true;
+      return;
+    }
+    pending = false;
+    void run();
+  };
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
   void run();
   return {
-    refresh: () => { void run(); },
+    refresh: () => {
+      if (isHidden()) {
+        pending = true;
+        return;
+      }
+      void run();
+    },
     stop: () => {
       stopped = true;
       clearTimeout(timer);
       controller?.abort();
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
     },
   };
 }

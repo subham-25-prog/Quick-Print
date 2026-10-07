@@ -3,6 +3,7 @@ import path from 'path';
 import fs from 'fs';
 import AdmZip from 'adm-zip';
 import { isAdminRequest, adminUnauthorizedResponse } from '@/lib/admin-auth';
+import { appOrigin } from '@/lib/security';
 
 export async function GET(req: NextRequest) {
   if (!isAdminRequest(req)) {
@@ -18,8 +19,8 @@ export async function GET(req: NextRequest) {
 
     const zip = new AdmZip(zipPath);
 
-    // Get the base URL from the incoming request so it maps to their live site correctly
-    const backendUrl = req.nextUrl.origin;
+    // Never trust an incoming Host header for a credential-bearing agent package.
+    const backendUrl = appOrigin();
     const printAgentSecret = process.env.PRINT_AGENT_SECRET || '';
 
     const printAgentId = process.env.PRINT_AGENT_ID || 'agent-main-pc';
@@ -36,6 +37,18 @@ HEARTBEAT_INTERVAL_MS="1500"
 
     // Add or replace the .env file in the zip archive
     zip.addFile('.env', Buffer.from(envContent, 'utf8'));
+
+    // Browsers cannot execute downloaded files. Include a single installer so
+    // the shop user only needs to extract the zip and run it once; it installs
+    // dependencies, registers quickprint://, enables logon startup and launches
+    // the already-configured agent.
+    for (const fileName of ['install_agent.cmd', 'install_agent.ps1']) {
+      const installerPath = path.join(process.cwd(), 'public', 'downloads', fileName);
+      if (!fs.existsSync(installerPath)) {
+        throw new Error(`Agent installer file is missing: ${fileName}`);
+      }
+      zip.addFile(fileName, fs.readFileSync(installerPath));
+    }
 
     // Get the zip buffer
     const zipBuffer = zip.toBuffer();

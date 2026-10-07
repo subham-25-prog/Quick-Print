@@ -227,13 +227,42 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
   const [error, setError] = useState<string | null>(null);
   const [isInspectingBatch, setIsInspectingBatch] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const activeXhr = useRef<XMLHttpRequest | null>(null);
+  const activeXhrs = useRef(new Set<XMLHttpRequest>());
+  const queuedProgress = useRef({ percent: 0, stage: 'uploading' as 'uploading' | 'processing' });
+  const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Browsers can emit dozens of upload progress events every second. Updating
+  // React for all of them competes with touch input, particularly while three
+  // chunks are uploading. The CSS transform interpolates between these small,
+  // bounded commits, so the bar remains smooth without flooding the renderer.
+  const flushProgress = useCallback(() => {
+    progressTimer.current = null;
+    const next = queuedProgress.current;
+    setUploadProgress((current) => current === next.percent ? current : next.percent);
+    setUploadStage((current) => current === next.stage ? current : next.stage);
+  }, []);
+
+  const reportProgress = useCallback((percent: number, stage: 'uploading' | 'processing') => {
+    const stageChanged = queuedProgress.current.stage !== stage;
+    queuedProgress.current = { percent, stage };
+    if (stageChanged || percent >= 100) {
+      if (progressTimer.current) {
+        clearTimeout(progressTimer.current);
+        progressTimer.current = null;
+      }
+      flushProgress();
+      return;
+    }
+    if (!progressTimer.current) {
+      progressTimer.current = setTimeout(flushProgress, 100);
+    }
+  }, [flushProgress]);
 
   useEffect(() => {
     return () => {
-      if (activeXhr.current) {
-        activeXhr.current.abort();
-      }
+      if (progressTimer.current) clearTimeout(progressTimer.current);
+      activeXhrs.current.forEach((xhr) => xhr.abort());
+      activeXhrs.current.clear();
     };
   }, []);
 
@@ -321,7 +350,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
 
   // Handle single file upload (standard legacy mode)
   const processSingleFile = async (file: File) => {
-    if (uploading || activeXhr.current) return;
+    if (uploading || activeXhrs.current.size > 0) return;
     setError(null);
 
     if (!isValidFileType(file)) {
@@ -342,17 +371,15 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
     setUploading(true);
     setUploadProgress(5);
     setUploadStage('uploading');
+    queuedProgress.current = { percent: 5, stage: 'uploading' };
     setCurrentFileName(file.name);
     setCurrentFileSize(file.size);
 
     try {
       const uploadedData = await uploadDocumentFile(file, {
-        onProgress: (percent, stage) => {
-          setUploadProgress(percent);
-          setUploadStage(stage);
-        },
+        onProgress: reportProgress,
         onXhrCreated: (xhr) => {
-          activeXhr.current = xhr;
+          activeXhrs.current.add(xhr);
         },
       });
 
@@ -364,7 +391,11 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
       }
       onFileUploaded(null);
     } finally {
-      activeXhr.current = null;
+      if (progressTimer.current) {
+        clearTimeout(progressTimer.current);
+        progressTimer.current = null;
+      }
+      activeXhrs.current.clear();
       if (fileInputRef.current) fileInputRef.current.value = '';
       setUploading(false);
       setUploadProgress(0);
@@ -383,10 +414,7 @@ export const FileUploader: React.FC<FileUploaderProps> = React.memo(({
 
   const cancelUpload = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (activeXhr.current) {
-      activeXhr.current.abort();
-      activeXhr.current = null;
-    }
+    activeXhrs.current.forEach((xhr) => xhr.abort());
   };
 
   const handleDragOver = (e: React.DragEvent) => {
