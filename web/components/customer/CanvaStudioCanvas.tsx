@@ -60,8 +60,10 @@ type DragMode = 'move' | 'cropMove' | 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e
 const MAX_CROP_PER_AXIS = 90;
 const MIN_CANVAS_ZOOM = 10;
 const MAX_CANVAS_ZOOM = 200;
-// Preserve the original 300 DPI output quality for Canva Studio designs.
-const PRINT_EXPORT_LONG_EDGE_PX = 3508;
+// Render every supported paper size at an actual 300 DPI. A fixed pixel edge
+// would quietly reduce A3, legal and tabloid exports below print resolution.
+const PRINT_EXPORT_DPI = 300;
+const MAX_PRINT_EXPORT_PIXELS = 20_000_000;
 const PRINT_EXPORT_JPEG_QUALITY = 0.95;
 
 function normalizeCropPair(first?: number, second?: number): [number, number] {
@@ -1254,20 +1256,15 @@ export const CanvaStudioCanvas: React.FC<CanvaStudioCanvasProps> = ({
     setIsExporting(true);
 
     try {
-      // Full 300 DPI print resolution matching paperAspectRatio.
-      const baseDimension = PRINT_EXPORT_LONG_EDGE_PX;
-      let standardWidth: number;
-      let standardHeight: number;
-
-      if (isLandscape) {
-        standardWidth = baseDimension;
-        standardHeight = Math.round(baseDimension / paperAspectRatio);
-      } else {
-        standardHeight = baseDimension;
-        standardWidth = Math.round(baseDimension * paperAspectRatio);
+      const { width: pdfWidth, height: pdfHeight } = getPaperPoints(paperSize, isLandscape);
+      // PDF points are 1/72 inch, so derive each raster dimension from the
+      // selected physical sheet rather than from an A4-only pixel constant.
+      const standardWidth = Math.max(1, Math.round((pdfWidth / 72) * PRINT_EXPORT_DPI));
+      const standardHeight = Math.max(1, Math.round((pdfHeight / 72) * PRINT_EXPORT_DPI));
+      if (standardWidth * standardHeight > MAX_PRINT_EXPORT_PIXELS) {
+        throw new Error('The selected paper size exceeds the safe print-rendering limit.');
       }
 
-      const { width: pdfWidth, height: pdfHeight } = getPaperPoints(paperSize, isLandscape);
       const pdfDoc = await PDFDocument.create();
       const allPagePreviews: string[] = [];
 

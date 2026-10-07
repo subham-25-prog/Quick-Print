@@ -37,6 +37,15 @@ test('normal multipart PDF still stores a private document and returns access',a
   const {fileInfo}=await response.json();expect(fileInfo.pageCount).toBe(1);expect(fileInfo.uploadToken).toHaveLength(64);
   expect(mocks.store.has(fileInfo.storagePath)).toBe(true);expect(mocks.records).toHaveLength(1);
 });
+test('oversized JPEG dimensions are rejected before storage or image decoding', async () => {
+  const jpeg = new Uint8Array([0xff,0xd8,0xff,0xc0,0,8,8,0xff,0xff,0xff,0xff,0]);
+  const form = new FormData();
+  form.set('file', new File([jpeg], 'oversized.jpg', {type:'image/jpeg'}));
+  const response = await POST(request(form));
+  expect(response.status).toBe(422);
+  expect(mocks.upload).not.toHaveBeenCalled();
+  expect(mocks.insert).not.toHaveBeenCalled();
+});
 test('two chunks finalize with a server-generated ID and cannot overwrite a known victim path',async()=>{
   const bytes=await pdf(),split=Math.floor(bytes.length/2),victim=`orders/${id}.pdf`;
   mocks.store.set(victim,new Blob(['victim']));

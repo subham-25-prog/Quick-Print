@@ -12,11 +12,7 @@ interface PrintOptionsSelectorProps {
   onColorModeChange: (val: ColorMode) => void;
   printSides: PrintSides;
   onPrintSidesChange: (val: PrintSides) => void;
-  copies: number;
-  onCopiesChange: (val: number) => void;
   pricing: PricingConfig;
-  hasMultipleFiles?: boolean;
-  hideCopies?: boolean;
 }
 
 const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
@@ -26,11 +22,7 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
   onColorModeChange,
   printSides,
   onPrintSidesChange,
-  copies,
-  onCopiesChange,
   pricing,
-  hasMultipleFiles = false,
-  hideCopies = false,
 }) => {
   const enabledPapers = pricing?.enabled_papers || { a4: true, a3: true, legal: true, photo: true };
   const customPapers = (pricing?.custom_papers || []).filter((p) => p.enabled);
@@ -280,35 +272,6 @@ const PrintOptionsSelectorComponent: React.FC<PrintOptionsSelectorProps> = ({
           </div>
         </div>
       ) : null}
-
-      {/* 4. Number of Copies */}
-      {!hasMultipleFiles && !hideCopies && (
-        <div>
-          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 select-none">
-            Number of Copies
-          </label>
-          <div className="flex items-center justify-between border border-slate-200 rounded-2xl bg-white p-1 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => onCopiesChange(Math.max(1, copies - 1))}
-              disabled={copies <= 1}
-              className="w-10 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 text-slate-700 font-bold text-sm flex items-center justify-center stepper-btn cursor-pointer"
-            >
-              -
-            </button>
-            <span className="font-bold text-sm text-slate-800 select-none">
-              {copies} {copies === 1 ? 'Copy' : 'Copies'}
-            </span>
-            <button
-              type="button"
-              onClick={() => onCopiesChange(Math.min(100, copies + 1))}
-              className="w-10 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center stepper-btn cursor-pointer"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -3,7 +3,13 @@ import { randomUUID, randomBytes, createHash } from 'node:crypto';
 import { PDFDocument } from 'pdf-lib';
 import { database } from '@/lib/db';
 import { getCurrentShopId } from '@/lib/shop';
-import { getPdfPageCount, isValidFileType } from '@/lib/pdf';
+import {
+  getJpegDimensions,
+  getPdfPageCount,
+  getPngDimensions,
+  isValidFileType,
+  MAX_PRINT_IMAGE_PIXELS,
+} from '@/lib/pdf';
 import { apiError, HttpError, requireSameOrigin, readBytes } from '@/lib/http';
 import { createOrderAccessToken } from '@/lib/order-access';
 import { rateLimit, hash } from '@/lib/security';
@@ -80,12 +86,18 @@ async function finalizeDocument({
     throw new HttpError(400, 'Invalid file format. Please upload a valid PDF, JPG, or PNG document.');
   }
 
-  if (
-    isPng &&
-    (rawBuffer.length < 24 ||
-      rawBuffer.readUInt32BE(16) * rawBuffer.readUInt32BE(20) > 40000000)
-  ) {
-    throw new HttpError(422, 'Image dimensions are too large.');
+  if (!isPdf) {
+    try {
+      // Validate the image structure and declared pixel count before pdf-lib
+      // decodes it. This avoids allocating attacker-controlled image buffers.
+      if (isPng) getPngDimensions(rawBuffer);
+      else getJpegDimensions(rawBuffer);
+    } catch (error) {
+      const message = error instanceof Error && error.message === 'Image dimensions are too large.'
+        ? error.message
+        : 'This image is invalid or corrupted.';
+      throw new HttpError(422, message);
+    }
   }
 
   let workingBuffer = rawBuffer;
@@ -100,7 +112,7 @@ async function finalizeDocument({
         ? await doc.embedPng(rawBuffer)
         : await doc.embedJpg(rawBuffer);
 
-      if (img.width * img.height > 40000000) {
+      if (img.width * img.height > MAX_PRINT_IMAGE_PIXELS) {
         throw new Error('Image too large');
       }
 
@@ -269,9 +281,8 @@ export async function POST(req: NextRequest) {
         console.error('Invalid chunk upload parameters:', {
           chunkIndex,
           totalChunks,
-          clientUploadId,
           clientUploadTokenLength: clientUploadToken?.length,
-          clientFileName,
+          fileNameLength: clientFileName.length,
           isValidExt,
           isFile: file instanceof File,
           fileSize: file instanceof File ? file.size : null,

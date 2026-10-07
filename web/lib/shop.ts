@@ -8,7 +8,14 @@ const LEGACY_DEFAULT_SHOP_ID = '00000000-0000-4000-8000-000000000001';
  * supplied shop identifier.
  */
 export function getCurrentShopId() {
-  const shopId = process.env.QUICKPRINT_SHOP_ID?.trim() || LEGACY_DEFAULT_SHOP_ID;
+  const configuredShopId = process.env.QUICKPRINT_SHOP_ID?.trim();
+  // A production deployment must be explicitly bound to its shop. Falling
+  // back to a shared development UUID would otherwise risk cross-shop access
+  // after a missed environment-variable configuration.
+  if (!configuredShopId && process.env.NODE_ENV === 'production') {
+    throw new HttpError(503, 'Shop setup is incomplete. QUICKPRINT_SHOP_ID is required.');
+  }
+  const shopId = configuredShopId || LEGACY_DEFAULT_SHOP_ID;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(shopId)) {
     throw new HttpError(503, 'Shop setup is invalid. QUICKPRINT_SHOP_ID must be a UUID.');
   }

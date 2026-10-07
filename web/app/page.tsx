@@ -319,13 +319,6 @@ export default function CustomerHomePage() {
   const allowMultiple = pricing.form_fields?.allowMultipleFiles !== false;
   const hasBatch = allowMultiple && batchFiles.length > 0;
   const isMultiFileBatch = hasBatch && batchFiles.length > 1;
-  const isSingleImageUpload =
-    (hasBatch &&
-      batchFiles.length === 1 &&
-      (batchFiles[0].file.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(batchFiles[0].name))) ||
-    (!hasBatch &&
-      Boolean(uploadedFile) &&
-      (uploadedFile!.fileType.startsWith('image/') || /\.(jpe?g|png|webp|gif|bmp|svg)$/i.test(uploadedFile!.fileName)));
 
   // Calculate live order pricing
   const totalDocPages = isMultiFileBatch
@@ -674,11 +667,7 @@ export default function CustomerHomePage() {
             onColorModeChange={setColorMode}
             printSides={printSides}
             onPrintSidesChange={setPrintSides}
-            copies={copies}
-            onCopiesChange={handleCopiesChange}
             pricing={pricing}
-            hasMultipleFiles={hasBatch && batchFiles.length > 1}
-            hideCopies={isSingleImageUpload}
           />
         </section>
 

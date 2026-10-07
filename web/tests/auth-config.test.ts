@@ -1,6 +1,7 @@
 import { beforeEach, afterEach, expect, test, vi } from 'vitest';
 import { createAdminSession, isAdminSecurityConfigured, verifyAdminPin } from '@/lib/admin-auth';
 import { agentIdentity } from '@/lib/security';
+import { getCurrentShopId } from '@/lib/shop';
 
 beforeEach(() => vi.stubEnv('QUICKPRINT_SHOP_ID', '00000000-0000-4000-8000-000000000001'));
 afterEach(() => vi.unstubAllEnvs());
@@ -38,4 +39,10 @@ test('agent authentication requires an explicitly configured secret', () => {
   expect(() => agentIdentity(new Request('https://shop.test', {
     headers: { 'x-agent-id': 'agent-main-pc', authorization: 'Bearer unconfigured' },
   }))).toThrow('Invalid agent credentials');
+});
+
+test('production requires an explicitly configured shop binding', () => {
+  vi.stubEnv('NODE_ENV', 'production');
+  vi.stubEnv('QUICKPRINT_SHOP_ID', '');
+  expect(getCurrentShopId).toThrow('QUICKPRINT_SHOP_ID is required');
 });
