@@ -31,6 +31,7 @@ interface LivePrintVisualizerProps {
   totalAmount?: number;
   paymentMethod?: string;
   printSides?: string;
+  isCanvasStudio?: boolean;
 }
 
 export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.memo(({
@@ -48,6 +49,7 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
   totalAmount,
   paymentMethod,
   printSides,
+  isCanvasStudio,
 }) => {
   const activeShopName = useShopName(shopName);
   const [copied, setCopied] = useState(false);
@@ -384,9 +386,17 @@ export const LivePrintVisualizer: React.FC<LivePrintVisualizerProps> = React.mem
               )}
             </div>
             {fileName && (
-              <span className="text-[11px] text-slate-400 block truncate mt-0.5">
-                {fileName}
-              </span>
+              <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                <span className="text-[11px] text-slate-400 block truncate max-w-[200px] sm:max-w-[280px]">
+                  {fileName}
+                </span>
+                {isCanvasStudio && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-2xs shrink-0">
+                    <Sparkles className="w-2.5 h-2.5 text-amber-300 animate-pulse" />
+                    <span>Canvas Studio</span>
+                  </span>
+                )}
+              </div>
             )}
           </div>
 

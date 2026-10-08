@@ -35,6 +35,8 @@ export interface AdvancedPrintConfig {
   rotationAngle?: number;
   printQuality?: 'FAST_DRAFT' | 'STANDARD' | 'HIGH_QUALITY';
   watermark?: 'NONE' | 'CONFIDENTIAL' | 'DRAFT' | 'SAMPLE';
+  isCanvaStudio?: boolean;
+  source?: string;
 }
 
 export interface AddOnOptions {

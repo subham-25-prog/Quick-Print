@@ -100,8 +100,9 @@ export async function POST(req: NextRequest) {
     // A Canva Studio export is named by the editor itself. Bill every canvas
     // page from the verified uploaded PDF rather than trusting a client-side
     // page count alone.
-    if (file.file_name === 'Canva_Studio_Design.pdf') {
+    if (file.file_name === 'Canva_Studio_Design.pdf' || options.advancedConfig?.isCanvaStudio) {
       options.canvaStudioPageCount = file.page_count;
+      options.advancedConfig = { ...options.advancedConfig, isCanvaStudio: true };
     } else {
       options.canvaStudioPageCount = 0;
     }

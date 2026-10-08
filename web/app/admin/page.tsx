@@ -6,7 +6,7 @@ import { AdminHeader } from '@/components/admin/AdminHeader';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Order, OrderStatus, PricingConfig } from '@/types';
 import { useInitialPricing } from '@/lib/initial-pricing';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, isCanvasStudioOrder } from '@/lib/utils';
 import {
   Printer,
   CheckCircle2,
@@ -21,7 +21,12 @@ import {
   RotateCcw,
   X,
   Trash2,
-  Play
+  Play,
+  Sparkles,
+  Copy,
+  Check,
+  Clock,
+  ExternalLink,
 } from '@/components/ui/Icons';
 import { OrderRow } from '@/components/admin/OrderRow';
 
@@ -30,12 +35,12 @@ export default function AdminLiveOrdersPage() {
   const [pricing, setPricing] = useState<PricingConfig>(useInitialPricing());
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [filter, setFilter] = useState<'ALL' | 'CURRENT' | 'PENDING' | 'PRINTING' | 'COMPLETED'>('ALL');
+  const [filter, setFilter] = useState<'ALL' | 'CURRENT' | 'PENDING' | 'PRINTING' | 'COMPLETED' | 'CANVAS'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const [, startFilterTransition] = useTransition();
 
-  const handleFilterChange = useCallback((newFilter: 'ALL' | 'CURRENT' | 'PENDING' | 'PRINTING' | 'COMPLETED') => {
+  const handleFilterChange = useCallback((newFilter: 'ALL' | 'CURRENT' | 'PENDING' | 'PRINTING' | 'COMPLETED' | 'CANVAS') => {
     startFilterTransition(() => {
       setFilter(newFilter);
     });
@@ -298,6 +303,10 @@ export default function AdminLiveOrdersPage() {
     () => orders.filter((o) => ['PRINTED', 'SUBMITTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(o.order_status)).length,
     [orders]
   );
+  const canvasOrdersCount = useMemo(
+    () => orders.filter((o) => isCanvasStudioOrder(o)).length,
+    [orders]
+  );
 
   // Filtered and searched orders (Newest orders sorted at the top)
   const filteredOrders = useMemo(() => {
@@ -313,6 +322,8 @@ export default function AdminLiveOrdersPage() {
           matchesFilter = order.order_status === 'APPROVED' || order.order_status === 'PRINTING';
         } else if (filter === 'COMPLETED') {
           matchesFilter = ['PRINTED', 'SUBMITTED', 'REJECTED', 'CANCELLED', 'FAILED'].includes(order.order_status);
+        } else if (filter === 'CANVAS') {
+          matchesFilter = isCanvasStudioOrder(order);
         }
 
         if (!matchesFilter) return false;
@@ -325,7 +336,9 @@ export default function AdminLiveOrdersPage() {
           const phoneMatch = (order.customer_phone || '').toLowerCase().includes(query);
           const fileMatch = (order.file_name || '').toLowerCase().includes(query);
           const noteMatch = (order.customer_notes || '').toLowerCase().includes(query);
-          return nameMatch || orderNumMatch || phoneMatch || fileMatch || noteMatch;
+          const isCanvas = isCanvasStudioOrder(order);
+          const canvasMatch = isCanvas && (query.includes('canva') || query.includes('canvas') || query.includes('studio'));
+          return nameMatch || orderNumMatch || phoneMatch || fileMatch || noteMatch || canvasMatch;
         }
 
         return true;
@@ -420,6 +433,19 @@ export default function AdminLiveOrdersPage() {
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 <span>{completedOrdersCount} Order History</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleFilterChange('CANVAS')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border transition-all cursor-pointer ${
+                  filter === 'CANVAS'
+                    ? 'bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white border-purple-600 shadow-sm'
+                    : 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                <span>{canvasOrdersCount} Canvas Studio</span>
               </button>
 
               <button
@@ -536,6 +562,19 @@ export default function AdminLiveOrdersPage() {
                 >
                   <span>Printing ({printingOrdersCount})</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleFilterChange('CANVAS')}
+                  className={`px-2.5 py-1.5 rounded-xl transition-all duration-100 active:scale-95 cursor-pointer flex items-center gap-1 text-[11px] ${
+                    filter === 'CANVAS'
+                      ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white font-bold shadow-xs'
+                      : 'text-purple-700 hover:text-purple-900 hover:bg-purple-50'
+                  }`}
+                >
+                  <Sparkles className="w-3 h-3 text-amber-300" />
+                  <span>Canvas Studio ({canvasOrdersCount})</span>
+                </button>
               </div>
 
               {/* Sync Button */}
@@ -631,11 +670,11 @@ export default function AdminLiveOrdersPage() {
           ) : (
             <div className="space-y-2 overflow-x-auto pb-2">
               {/* Table Column Header for Desktop */}
-              <div className="hidden md:flex items-center justify-between px-4 py-2 bg-slate-100/80 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-400 border border-slate-200/70 min-w-[760px]">
-                <div className="w-[220px]">Customer & Token</div>
-                <div className="flex-1 px-2">Document & Specs</div>
+              <div className="hidden lg:flex items-center justify-between px-4 py-2 bg-slate-100/80 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-400 border border-slate-200/70">
+                <div className="w-[240px]">Customer & Order Token</div>
+                <div className="flex-1 px-3">Document, Canvas Origin & Specifications</div>
                 <div className="w-[130px] text-right">Amount & Status</div>
-                <div className="w-[150px] text-right">Action</div>
+                <div className="w-[150px] text-right">Actions</div>
               </div>
 
               {filteredOrders.map((rawOrder) => (
@@ -734,202 +773,427 @@ export default function AdminLiveOrdersPage() {
       )}
 
       {/* Order History & Details Modal */}
-      {selectedOrderForHistory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shrink-0">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-extrabold text-slate-900">
-                      Order Details & History
-                    </h3>
-                    <span className="font-mono text-xs font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-200">
-                      {selectedOrderForHistory.order_number}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 font-medium mt-0.5">
-                    Placed on {formatDate(selectedOrderForHistory.created_at)}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedOrderForHistory(null)}
-                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {selectedOrderForHistory && (() => {
+        const isCanvasStudio = isCanvasStudioOrder(selectedOrderForHistory);
+        const totalPages = (selectedOrderForHistory.page_count || 1) * (selectedOrderForHistory.copies || 1);
+        const isPending = selectedOrderForHistory.order_status === 'PAYMENT_VERIFICATION_PENDING' || selectedOrderForHistory.order_status === 'PENDING_PAYMENT';
+        const isPrinted = selectedOrderForHistory.order_status === 'PRINTED' || selectedOrderForHistory.order_status === 'SUBMITTED';
 
-            {/* Customer Details */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
-              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                Customer Information
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-bold text-slate-800">
-                  {selectedOrderForHistory.customer_name?.trim() || 'Walk-in Customer'}
-                </span>
-                {selectedOrderForHistory.customer_phone ? (
-                  <a
-                    href={`tel:${selectedOrderForHistory.customer_phone}`}
-                    className="text-indigo-600 font-extrabold hover:underline flex items-center gap-1"
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
+            <div className="bg-white rounded-3xl max-w-2xl sm:max-w-3xl w-full p-5 sm:p-7 shadow-2xl border border-slate-200 space-y-5 animate-in zoom-in-95 duration-150 max-h-[92vh] overflow-y-auto font-sans">
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-11 h-11 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-xs ${
+                      isCanvasStudio
+                        ? 'bg-gradient-to-tr from-violet-600 via-purple-600 to-fuchsia-600'
+                        : 'bg-indigo-600'
+                    }`}
                   >
-                    <Phone className="w-3 h-3" />
-                    <span>{selectedOrderForHistory.customer_phone}</span>
+                    {isCanvasStudio ? <Sparkles className="w-5 h-5 text-amber-200" /> : <Clock className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="text-base sm:text-lg font-black text-slate-900">
+                        Order Details & History
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={(e) => copyOrderNumber(selectedOrderForHistory.order_number, e)}
+                        className="font-mono text-xs font-black text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-lg border border-indigo-200 flex items-center gap-1 cursor-pointer transition-colors active:scale-95"
+                        title="Click to copy order number"
+                      >
+                        <span>{selectedOrderForHistory.order_number}</span>
+                        {copiedOrderId === selectedOrderForHistory.order_number ? (
+                          <Check className="w-3 h-3 text-emerald-600" />
+                        ) : (
+                          <Copy className="w-3 h-3 opacity-50" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-400 font-medium mt-0.5">
+                      Placed on {formatDate(selectedOrderForHistory.created_at)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border ${
+                      isPending
+                        ? 'bg-amber-100 text-amber-800 border-amber-200'
+                        : isPrinted
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : selectedOrderForHistory.order_status === 'REJECTED'
+                        ? 'bg-rose-100 text-rose-800 border-rose-200'
+                        : 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                    }`}
+                  >
+                    {selectedOrderForHistory.order_status.replace(/_/g, ' ')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderForHistory(null)}
+                    className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Canvas Studio Highlight Banner */}
+              {isCanvasStudio && (
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-fuchsia-500/10 border border-purple-200/90 shadow-2xs space-y-2.5 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 via-purple-600 to-fuchsia-600 text-white flex items-center justify-center shadow-xs shrink-0">
+                        <Sparkles className="w-5 h-5 text-amber-200 animate-pulse" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-black text-purple-950">
+                            Generated by Canvas Studio
+                          </h4>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-2xs">
+                            Studio Layout
+                          </span>
+                        </div>
+                        <p className="text-xs text-purple-800/80 font-medium mt-0.5">
+                          This document was custom-composed and rendered using QuickPrint Canvas Studio.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                    <div className="p-2.5 rounded-xl bg-white/90 border border-purple-100 shadow-2xs">
+                      <span className="text-[10px] font-bold text-purple-600 block uppercase">Design Type</span>
+                      <span className="font-extrabold text-slate-800">Multi-Image Canvas</span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/90 border border-purple-100 shadow-2xs">
+                      <span className="text-[10px] font-bold text-purple-600 block uppercase">Canvas Pages</span>
+                      <span className="font-extrabold text-slate-800">
+                        {selectedOrderForHistory.page_count} Custom Page{selectedOrderForHistory.page_count === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white/90 border border-purple-100 shadow-2xs col-span-2 sm:col-span-1">
+                      <span className="text-[10px] font-bold text-purple-600 block uppercase">Authored Sheet</span>
+                      <span className="font-extrabold text-slate-800">
+                        {selectedOrderForHistory.paper_size} Printable Layout
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Customer Information Card */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+                <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  Customer Information
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                    <span className="font-extrabold text-slate-900 text-sm">
+                      {selectedOrderForHistory.customer_name?.trim() || 'Walk-in Customer'}
+                    </span>
+                  </div>
+                  {selectedOrderForHistory.customer_phone ? (
+                    <a
+                      href={`tel:${selectedOrderForHistory.customer_phone}`}
+                      className="text-indigo-600 font-extrabold hover:underline flex items-center gap-1.5 bg-indigo-50 px-2.5 py-1 rounded-xl border border-indigo-200/80"
+                    >
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>{selectedOrderForHistory.customer_phone}</span>
+                    </a>
+                  ) : (
+                    <span className="text-slate-400 text-xs">No phone number provided</span>
+                  )}
+                </div>
+
+                {/* Customer Notes (Full, Non-Overlapping Callout) */}
+                {selectedOrderForHistory.customer_notes && (
+                  <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1.5 mt-2">
+                    <div className="flex items-center gap-1.5 font-extrabold text-xs text-amber-900 uppercase tracking-wider">
+                      <MessageSquare className="w-4 h-4 text-amber-600 shrink-0" />
+                      <span>Customer Special Instructions & Notes</span>
+                    </div>
+                    <p className="font-semibold text-xs text-amber-950 whitespace-pre-wrap leading-relaxed pl-5">
+                      {selectedOrderForHistory.customer_notes}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Print & Document Specifications Card */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                    Print & Document Specifications
+                  </div>
+
+                  {/* Direct Document View/Download Link */}
+                  <a
+                    href={`/api/orders/${selectedOrderForHistory.id}/file`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-colors cursor-pointer"
+                    title="Open original document in new tab"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>View Document</span>
                   </a>
-                ) : (
-                  <span className="text-slate-400 text-[11px]">No phone number</span>
+                </div>
+
+                {/* Document Name */}
+                <div className="p-3 rounded-xl bg-white border border-slate-200/80 flex items-center gap-2.5">
+                  <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-[10px] text-slate-400 font-bold block uppercase">Document File</span>
+                    <span className="font-extrabold text-slate-900 text-xs sm:text-sm break-all">
+                      {selectedOrderForHistory.file_name}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4-Box Specs Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                  <div className="p-3 rounded-xl bg-white border border-slate-200/80">
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Paper Size</span>
+                    <span className="font-extrabold text-slate-900 text-xs mt-0.5 block">
+                      📄 {selectedOrderForHistory.paper_size}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white border border-slate-200/80">
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Color Mode</span>
+                    <span className="font-extrabold text-slate-900 text-xs mt-0.5 block">
+                      {selectedOrderForHistory.color_mode === 'COLOR' ? '🎨 Full Color' : '⚪ B&W Mono'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white border border-slate-200/80">
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Print Sides</span>
+                    <span className="font-extrabold text-slate-900 text-xs mt-0.5 block">
+                      {selectedOrderForHistory.print_sides === 'DOUBLE' ? '🔄 2-Sided (Duplex)' : '📄 1-Sided (Simplex)'}
+                    </span>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-white border border-slate-200/80">
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Volume Calc</span>
+                    <span className="font-extrabold text-indigo-700 text-xs mt-0.5 block">
+                      {selectedOrderForHistory.page_count} pgs × {selectedOrderForHistory.copies} cps = {totalPages} total
+                    </span>
+                  </div>
+                </div>
+
+                {/* Add-ons & Bindings */}
+                {(selectedOrderForHistory.add_ons?.spiralBinding ||
+                  selectedOrderForHistory.add_ons?.hardBinding ||
+                  selectedOrderForHistory.add_ons?.lamination ||
+                  selectedOrderForHistory.add_ons?.stapling) && (
+                  <div className="pt-2 border-t border-slate-200/60 flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase">Add-ons:</span>
+                    {selectedOrderForHistory.add_ons?.spiralBinding && (
+                      <span className="px-2.5 py-1 rounded-lg bg-indigo-100 text-indigo-800 font-extrabold text-xs border border-indigo-200">
+                        📚 Spiral Binding
+                      </span>
+                    )}
+                    {selectedOrderForHistory.add_ons?.hardBinding && (
+                      <span className="px-2.5 py-1 rounded-lg bg-purple-100 text-purple-800 font-extrabold text-xs border border-purple-200">
+                        📕 Hard Bound
+                      </span>
+                    )}
+                    {selectedOrderForHistory.add_ons?.lamination && (
+                      <span className="px-2.5 py-1 rounded-lg bg-cyan-100 text-cyan-800 font-extrabold text-xs border border-cyan-200">
+                        🛡️ Lamination
+                      </span>
+                    )}
+                    {selectedOrderForHistory.add_ons?.stapling && (
+                      <span className="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 font-extrabold text-xs border border-amber-200">
+                        📎 Stapled
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
-              {selectedOrderForHistory.customer_notes && (
-                <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200 text-xs text-amber-950 space-y-1 mt-1">
-                  <div className="flex items-center gap-1.5 font-extrabold text-[11px] text-amber-800 uppercase tracking-wider">
-                    <MessageSquare className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span>Special Customer Instructions / Notes</span>
-                  </div>
-                  <p className="font-semibold text-xs text-amber-950 whitespace-pre-wrap pl-5">
-                    {selectedOrderForHistory.customer_notes}
-                  </p>
-                </div>
-              )}
-            </div>
 
-            {/* Print & Document Specs */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
-              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                Print & Document Specifications
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-bold">Document Name</span>
-                  <span className="font-bold text-slate-800 truncate block" title={selectedOrderForHistory.file_name}>
-                    {selectedOrderForHistory.file_name}
+              {/* Financial & Payment History Card */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+                <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center justify-between">
+                  <span>Payment & Financial Summary</span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-md font-extrabold text-[10px] border ${
+                      selectedOrderForHistory.payment_status === 'PAID'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : 'bg-amber-100 text-amber-800 border-amber-200'
+                    }`}
+                  >
+                    {selectedOrderForHistory.payment_status}
                   </span>
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-bold">Pages & Copies</span>
-                  <span className="font-bold text-indigo-700">
-                    {selectedOrderForHistory.page_count} pages × {selectedOrderForHistory.copies} copies ={' '}
-                    {(selectedOrderForHistory.page_count || 1) * (selectedOrderForHistory.copies || 1)} total
-                  </span>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+                  <div>
+                    <div className="text-xs text-slate-500 font-medium">Payment Method</div>
+                    <div className="font-extrabold text-xs sm:text-sm text-slate-900 mt-0.5">
+                      {selectedOrderForHistory.payment_method === 'CASH' ? '💵 Cash at Counter' : '⚡ UPI Online'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs text-slate-500 font-medium">Per Page Rate</div>
+                    <div className="font-extrabold text-xs sm:text-sm text-slate-900 mt-0.5">
+                      {formatCurrency(selectedOrderForHistory.per_page_rate || 0)} / page
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1 text-left sm:text-right">
+                    <div className="text-xs text-slate-500 font-medium">Grand Total</div>
+                    <div className="text-lg sm:text-xl font-black text-slate-900">
+                      {formatCurrency(selectedOrderForHistory.total_amount)}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-bold">Paper & Color</span>
-                  <span className="font-bold text-slate-800">
-                    {selectedOrderForHistory.paper_size} • {selectedOrderForHistory.color_mode === 'COLOR' ? 'Color' : 'Black & White'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-bold">Sides (Duplex)</span>
-                  <span className="font-bold text-slate-800">
-                    {selectedOrderForHistory.print_sides === 'DOUBLE' ? '2-Sided (Duplex)' : '1-Sided (Simplex)'}
-                  </span>
-                </div>
-              </div>
-              {(selectedOrderForHistory.add_ons?.spiralBinding || selectedOrderForHistory.add_ons?.hardBinding) && (
-                <div className="pt-2 border-t border-slate-200/60 flex items-center gap-2">
-                  <span className="text-[10px] text-slate-400 font-bold">Add-ons:</span>
-                  {selectedOrderForHistory.add_ons?.spiralBinding && (
-                    <span className="px-2 py-0.5 rounded-md bg-indigo-100 text-indigo-800 font-bold text-[10px]">
-                      Spiral Binding
+
+                {selectedOrderForHistory.transaction_ref && (
+                  <div className="pt-2 border-t border-slate-200/60 text-xs flex items-center justify-between">
+                    <span className="text-slate-400 font-medium">Transaction Reference:</span>
+                    <span className="font-mono text-slate-700 font-bold bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                      {selectedOrderForHistory.transaction_ref}
                     </span>
-                  )}
-                  {selectedOrderForHistory.add_ons?.hardBinding && (
-                    <span className="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 font-bold text-[10px]">
-                      Hard Binding
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Financial & Payment History */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
-              <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider flex items-center justify-between">
-                <span>Payment & Verification</span>
-                <span className={`px-2 py-0.2 rounded-md font-extrabold text-[9px] ${
-                  selectedOrderForHistory.payment_status === 'PAID'
-                    ? 'bg-emerald-100 text-emerald-800'
-                    : 'bg-amber-100 text-amber-800'
-                }`}>
-                  {selectedOrderForHistory.payment_status}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-slate-500 font-medium">Method</div>
-                  <div className="font-extrabold text-xs text-slate-800">
-                    {selectedOrderForHistory.payment_method === 'CASH' ? '💵 Cash at Counter' : '⚡ UPI Online'}
                   </div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-slate-500 font-medium">Total Amount</div>
-                  <div className="text-base font-black text-slate-900">
-                    {formatCurrency(selectedOrderForHistory.total_amount)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Bar inside Modal */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  const id = selectedOrderForHistory.id;
-                  setSelectedOrderForHistory(null);
-                  handleDeleteOrder(id);
-                }}
-                className="px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Delete</span>
-              </button>
-
-              <div className="flex items-center gap-2">
-                {['PAYMENT_VERIFICATION_PENDING', 'PENDING_PAYMENT'].includes(selectedOrderForHistory.order_status) && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleRejectCash(selectedOrderForHistory.id);
-                      }}
-                      disabled={actionLoadingKey === `${selectedOrderForHistory.id}_REJECT`}
-                      className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      Reject
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        handleAcceptCash(selectedOrderForHistory.id);
-                      }}
-                      disabled={actionLoadingKey === `${selectedOrderForHistory.id}_ACCEPT`}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>{actionLoadingKey === `${selectedOrderForHistory.id}_ACCEPT` ? 'Verifying...' : 'Verify Cash & Print'}</span>
-                    </button>
-                  </>
                 )}
+              </div>
+
+              {/* Order Lifecycle Progress / Audit Timeline */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2.5">
+                <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                  Order Lifecycle & History Milestones
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 text-xs">
+                    <div className="flex items-center gap-1.5 text-emerald-600 font-bold">
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Order Placed</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block mt-1">
+                      {formatDate(selectedOrderForHistory.created_at)}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 text-xs">
+                    <div className="flex items-center gap-1.5 text-indigo-600 font-bold">
+                      {isCanvasStudio ? (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                          <span className="text-purple-700">Canvas Studio</span>
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="w-3.5 h-3.5 shrink-0" />
+                          <span>File Upload</span>
+                        </>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-400 block mt-1">
+                      {isCanvasStudio ? 'Authored in Studio' : 'Direct Upload'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 text-xs">
+                    <div className={`flex items-center gap-1.5 font-bold ${
+                      selectedOrderForHistory.payment_status === 'PAID' ? 'text-emerald-600' : 'text-amber-600'
+                    }`}>
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                      <span>Payment</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block mt-1">
+                      {selectedOrderForHistory.payment_status} ({selectedOrderForHistory.payment_method})
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 text-xs">
+                    <div className={`flex items-center gap-1.5 font-bold ${
+                      isPrinted ? 'text-emerald-600' : isPending ? 'text-amber-600' : 'text-indigo-600'
+                    }`}>
+                      <Printer className="w-3.5 h-3.5 shrink-0" />
+                      <span>Print Status</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 block mt-1">
+                      {selectedOrderForHistory.order_status.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Bar inside Modal */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setSelectedOrderForHistory(null)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-all cursor-pointer"
+                  onClick={() => {
+                    const id = selectedOrderForHistory.id;
+                    setSelectedOrderForHistory(null);
+                    handleDeleteOrder(id);
+                  }}
+                  className="px-3.5 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 border border-rose-200/60"
                 >
-                  Close
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete From History</span>
                 </button>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <a
+                    href={`/api/orders/${selectedOrderForHistory.id}/file`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Download File</span>
+                  </a>
+
+                  {isPending && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleRejectCash(selectedOrderForHistory.id);
+                        }}
+                        disabled={actionLoadingKey === `${selectedOrderForHistory.id}_REJECT`}
+                        className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        Reject
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleAcceptCash(selectedOrderForHistory.id);
+                        }}
+                        disabled={actionLoadingKey === `${selectedOrderForHistory.id}_ACCEPT`}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>{actionLoadingKey === `${selectedOrderForHistory.id}_ACCEPT` ? 'Verifying...' : 'Verify Cash & Print'}</span>
+                      </button>
+                    </>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderForHistory(null)}
+                    className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-all cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

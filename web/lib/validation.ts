@@ -170,6 +170,7 @@ export function printOptions(
       rotationAngle: [0, 90, 180, 270].includes(Number(adv.rotationAngle)) ? Number(adv.rotationAngle) : 0,
       printQuality: printQuality as AdvancedPrintConfig['printQuality'],
       watermark: watermark as AdvancedPrintConfig['watermark'],
+      isCanvaStudio: Boolean(adv.isCanvaStudio),
     };
   }
 

@@ -719,14 +719,14 @@ export default function CustomerHomePage() {
       </main>
 
       {/* Sticky Bottom Order Summary & Proceed Button Bar */}
-      <div className="sticky bottom-0 mt-auto bg-white/90 backdrop-blur-xl border-t border-slate-200/80 p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.06)] z-40 gpu-layer">
+      <div className="sticky bottom-0 mt-auto bg-white/90 backdrop-blur-xl border-t border-slate-200/80 p-4 shadow-[0_-8px_30px_rgba(0,0,0,0.06)] z-40 gpu-layer lg:px-8 lg:py-3">
         {pricingReady && !checkoutEnabled && (
-          <p role="status" className="max-w-xl mx-auto mb-2 text-sm text-amber-900">
+          <p role="status" className="max-w-xl lg:max-w-6xl mx-auto mb-2 text-sm text-amber-900">
             Online ordering is not available yet. Please contact the shopkeeper.
           </p>
         )}
-        <div className="max-w-xl mx-auto flex flex-wrap items-center justify-between gap-4">
-          <div>
+        <div className="max-w-xl lg:max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4 lg:flex-nowrap lg:gap-6 lg:rounded-2xl lg:border lg:border-slate-200/80 lg:bg-white/75 lg:px-5 lg:py-3 lg:shadow-sm">
+          <div className="lg:flex lg:min-w-[270px] lg:items-center lg:gap-4">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
               TOTAL AMOUNT
             </div>
@@ -738,6 +738,11 @@ export default function CustomerHomePage() {
                 Canva Studio: {formatCurrency(priceBreakdown.canvaStudioSubtotal)} for {priceBreakdown.canvaStudioPages} page{priceBreakdown.canvaStudioPages === 1 ? '' : 's'}
               </div>
             )}
+          </div>
+
+          <div className="hidden lg:block lg:flex-1 lg:border-x lg:border-slate-200 lg:px-6">
+            <p className="text-sm font-bold text-slate-800">Review your print before checkout</p>
+            <p className="mt-0.5 text-xs text-slate-500">Confirm the document layout and print settings, then continue to payment.</p>
           </div>
 
           <button
@@ -798,9 +803,10 @@ export default function CustomerHomePage() {
               submitting ||
               !priceBreakdown
             }
-            className="btn-shimmer active-press py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] text-white font-bold text-sm shadow-md hover:shadow-lg hover:shadow-emerald-600/20 transition-all duration-150 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none select-none"
+            className="btn-shimmer active-press py-3 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 active:scale-[0.98] text-white font-bold text-sm shadow-md hover:shadow-lg hover:shadow-emerald-600/20 transition-all duration-150 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none select-none lg:min-w-44 lg:justify-center lg:px-7"
           >
-            <span>{isProcessingBatch ? 'Preparing...' : 'Preview'}</span>
+            <span className="lg:hidden">{isProcessingBatch ? 'Preparing...' : 'Preview'}</span>
+            <span className="hidden lg:inline">{isProcessingBatch ? 'Preparing Preview...' : 'Open Preview'}</span>
             <span className="preview-arrow" aria-hidden="true">→</span>
           </button>
         </div>
@@ -925,6 +931,7 @@ export default function CustomerHomePage() {
                   ...current,
                   pageScaling: 'ACTUAL',
                   customScalePercent: 100,
+                  isCanvaStudio: true,
                 }));
                 void checkoutPreparation.prepareUpload([customBatchItem]).catch((error) => {
                   console.error('Failed to prepare customized layout upload:', error);

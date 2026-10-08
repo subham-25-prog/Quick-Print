@@ -5,7 +5,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { Order } from '@/types';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, isCanvasStudioOrder } from '@/lib/utils';
 import {
   AlertCircle,
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
   Copy,
   Check,
   FileText,
+  Sparkles,
 } from '@/components/ui/Icons';
 import { LivePrintVisualizer } from '@/components/customer/LivePrintVisualizer';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
@@ -310,6 +311,14 @@ export default function OrderStatusPage() {
                       <FileText className="w-5 h-5" />
                     </div>
                     <div className="min-w-0 flex-1">
+                      {isCanvasStudioOrder(data.order) && (
+                        <div className="mb-1">
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-2xs">
+                            <Sparkles className="w-3 h-3 text-amber-300 animate-pulse" />
+                            <span>Designed with Canvas Studio</span>
+                          </span>
+                        </div>
+                      )}
                       <p className="text-sm font-bold text-slate-900 truncate">
                         {data.order.file_name}
                       </p>
@@ -372,6 +381,7 @@ export default function OrderStatusPage() {
                 totalAmount={data.order.total_amount}
                 paymentMethod={data.order.payment_method}
                 printSides={data.order.print_sides}
+                isCanvasStudio={isCanvasStudioOrder(data.order)}
               />
             )}
           </>
