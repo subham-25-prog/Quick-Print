@@ -16,6 +16,7 @@ interface CustomerIdentificationCardProps {
   isPhoneRequired: boolean;
   showNotesField: boolean;
   sectionIndexText: string;
+  missingRequiredFields: string[];
 }
 
 export const CustomerIdentificationCard = memo<CustomerIdentificationCardProps>(({
@@ -31,12 +32,22 @@ export const CustomerIdentificationCard = memo<CustomerIdentificationCardProps>(
   isPhoneRequired,
   showNotesField,
   sectionIndexText,
+  missingRequiredFields,
 }) => {
+  const showNameError = missingRequiredFields.includes('your full name');
+  const showPhoneError = missingRequiredFields.includes('your WhatsApp / mobile number');
+
   return (
     <section className="animate-fade-in-up card-hover-lift bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs space-y-3.5 hover:border-slate-300 [animation-delay:180ms] contain-layout">
       <h2 className="text-sm font-bold text-slate-900 select-none">
         {sectionIndexText}
       </h2>
+
+      {missingRequiredFields.length > 0 && (
+        <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">
+          Please fill in all mandatory fields before opening Preview.
+        </p>
+      )}
 
       <div className="space-y-3">
         {showNameField && (
@@ -51,14 +62,18 @@ export const CustomerIdentificationCard = memo<CustomerIdentificationCardProps>(
             </label>
             <div className="relative">
               <input
+                id="customer-name"
                 type="text"
                 value={customerName}
                 onChange={(e) => onCustomerNameChange(e.target.value)}
                 placeholder="Enter your name"
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600 touch-manipulation"
+                aria-invalid={showNameError}
+                aria-describedby={showNameError ? 'customer-name-error' : undefined}
+                className={`w-full pl-9 pr-3.5 py-2.5 rounded-xl border text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600 touch-manipulation ${showNameError ? 'border-rose-500 ring-1 ring-rose-200' : 'border-slate-200'}`}
               />
               <User className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             </div>
+            {showNameError && <p id="customer-name-error" className="mt-1 text-[11px] font-medium text-rose-600">Your full name is required.</p>}
           </div>
         )}
 
@@ -74,14 +89,18 @@ export const CustomerIdentificationCard = memo<CustomerIdentificationCardProps>(
             </label>
             <div className="relative">
               <input
+                id="customer-phone"
                 type="tel"
                 value={customerPhone}
                 onChange={(e) => onCustomerPhoneChange(e.target.value)}
                 placeholder="e.g. 9876543210"
-                className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600 touch-manipulation"
+                aria-invalid={showPhoneError}
+                aria-describedby={showPhoneError ? 'customer-phone-error' : undefined}
+                className={`w-full pl-9 pr-3.5 py-2.5 rounded-xl border text-xs font-medium text-slate-900 bg-slate-50/60 focus:bg-white focus:outline-hidden focus:border-indigo-600 touch-manipulation ${showPhoneError ? 'border-rose-500 ring-1 ring-rose-200' : 'border-slate-200'}`}
               />
               <Phone className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
             </div>
+            {showPhoneError && <p id="customer-phone-error" className="mt-1 text-[11px] font-medium text-rose-600">Your WhatsApp / mobile number is required.</p>}
           </div>
         )}
 

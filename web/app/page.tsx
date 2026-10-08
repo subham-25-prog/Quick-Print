@@ -79,6 +79,7 @@ export default function CustomerHomePage() {
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
+  const [showRequiredFieldsWarning, setShowRequiredFieldsWarning] = useState(false);
 
   // Eager batch merge removed - customers can preview and customize directly in Canva Studio
 
@@ -373,6 +374,29 @@ export default function CustomerHomePage() {
   const isPhoneRequired = showPhoneField && Boolean(pricing.form_fields?.requireCustomerPhone);
   const showNotesField = pricing.form_fields?.allowCustomerNotes !== false;
   const showCustomerInfoSection = showNameField || showPhoneField || showNotesField;
+  const missingRequiredFields = useMemo(() => {
+    const fields: string[] = [];
+    if (isNameRequired && !customerName.trim()) fields.push('your full name');
+    if (isPhoneRequired && !customerPhone.trim()) fields.push('your WhatsApp / mobile number');
+    return fields;
+  }, [isNameRequired, customerName, isPhoneRequired, customerPhone]);
+
+  const validateRequiredFields = useCallback(() => {
+    if (missingRequiredFields.length === 0) {
+      setShowRequiredFieldsWarning(false);
+      return true;
+    }
+
+    setShowRequiredFieldsWarning(true);
+    const firstMissingFieldId = isNameRequired && !customerName.trim()
+      ? 'customer-name'
+      : 'customer-phone';
+    window.setTimeout(() => {
+      document.getElementById(firstMissingFieldId)?.focus();
+    }, 0);
+    alert(`Please fill in the required field${missingRequiredFields.length === 1 ? '' : 's'}: ${missingRequiredFields.join(' and ')}. You must complete ${missingRequiredFields.length === 1 ? 'it' : 'them'} before opening Preview.`);
+    return false;
+  }, [missingRequiredFields, isNameRequired, customerName]);
 
   const handleOpenPayment = useCallback(() => {
     if (!checkoutEnabled || !pricingReady || !priceBreakdown) return;
@@ -382,15 +406,7 @@ export default function CustomerHomePage() {
       return;
     }
 
-    if (isNameRequired && !customerName.trim()) {
-      alert('Please enter your full name for order identification.');
-      return;
-    }
-
-    if (isPhoneRequired && !customerPhone.trim()) {
-      alert('Please enter your WhatsApp / mobile number for order pickup notifications.');
-      return;
-    }
+    if (!validateRequiredFields()) return;
 
     setIsPaymentModalOpen(true);
   }, [
@@ -400,10 +416,7 @@ export default function CustomerHomePage() {
     hasBatch,
     batchFiles.length,
     uploadedFile,
-    isNameRequired,
-    customerName,
-    isPhoneRequired,
-    customerPhone,
+    validateRequiredFields,
   ]);
 
   const handleConfirmOrder = useCallback(
@@ -697,6 +710,7 @@ export default function CustomerHomePage() {
             isPhoneRequired={isPhoneRequired}
             showNotesField={showNotesField}
             sectionIndexText={hasAnyAddons ? '4. Customer Identification' : '3. Customer Identification'}
+            missingRequiredFields={showRequiredFieldsWarning ? missingRequiredFields : []}
           />
         )}
 
@@ -729,6 +743,8 @@ export default function CustomerHomePage() {
           <button
             type="button"
             onClick={async () => {
+              if (!validateRequiredFields()) return;
+
               if (hasBatch) {
                 if (batchFiles.length === 0) return;
                 if (batchFiles.length === 1) {
