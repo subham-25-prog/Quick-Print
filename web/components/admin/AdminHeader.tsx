@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Zap, Lock, Save, Play, Download } from '@/components/ui/Icons';
+import { Zap, Lock, Save } from '@/components/ui/Icons';
 import { startPolling } from '@/lib/polling';
 import { useShopName } from '@/lib/shop-sync';
 
@@ -52,12 +52,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
     });
     return () => { stopped = true; polling.stop(); };
   }, []);
-
-  const handleStartAgent = (e: React.MouseEvent) => {
-    e.preventDefault();
-    // Launch agent via custom Windows protocol
-    window.location.href = 'quickprint://start';
-  };
 
   const navItems = [
     { label: 'Orders & History', href: '/admin', icon: '📋' },
@@ -109,9 +103,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
               </span>
             )}
 
-            {/* Print Agent Status & 1-Click Launch Button */}
-            {dbStatus && (
-              dbStatus.agentOnline ? (
+            {/* Show the connected printer only; setup and launch controls are on Printing Settings. */}
+            {dbStatus?.agentOnline && (
                 dbStatus.printerOnline ? (
                   <Link
                     href="/admin/printing"
@@ -135,28 +128,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                     </span>
                   </Link>
                 )
-              ) : (
-                <div className="flex items-center gap-1.5">
-                  <a
-                    href="/api/admin/agent-download"
-                    download="quickprint-agent.zip"
-                    title="Download QuickPrint Windows Agent setup for this PC"
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 hover:border-indigo-300 transition-all cursor-pointer shadow-2xs active:scale-95"
-                  >
-                    <Download className="w-2.5 h-2.5 text-indigo-600" />
-                    <span>Set up new PC</span>
-                  </a>
-                  <button
-                    type="button"
-                    onClick={handleStartAgent}
-                    title="Click to launch Print Agent on this PC (quickprint://start)"
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 hover:border-slate-300 transition-all cursor-pointer shadow-2xs hover:shadow-xs active:scale-95"
-                  >
-                    <Play className="w-2.5 h-2.5 fill-slate-600 text-slate-600" />
-                    <span>Start Agent</span>
-                  </button>
-                </div>
-              )
             )}
           </div>
 
