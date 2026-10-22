@@ -42,7 +42,7 @@ HEARTBEAT_INTERVAL_MS="1500"
     // the shop user only needs to extract the zip and run it once; it installs
     // dependencies, registers quickprint://, enables logon startup and launches
     // the already-configured agent.
-    for (const fileName of ['install_agent.cmd', 'install_agent.ps1']) {
+    for (const fileName of ['install_agent.cmd', 'install_agent.ps1', 'start_agent.bat']) {
       const installerPath = path.join(process.cwd(), 'public', 'downloads', fileName);
       if (!fs.existsSync(installerPath)) {
         throw new Error(`Agent installer file is missing: ${fileName}`);

@@ -10,6 +10,25 @@ function Fail-Setup([string]$message) {
   exit 1
 }
 
+function Wait-ForAgentConnection([string]$expectedAgentId) {
+  # The background launcher returns as soon as Windows starts it. Confirm the
+  # process both started and authenticated with the shop before claiming setup
+  # succeeded.
+  for ($attempt = 0; $attempt -lt 20; $attempt++) {
+    try {
+      $health = Invoke-RestMethod -Uri 'http://127.0.0.1:9191/' -TimeoutSec 2
+      if ($health.agentId -eq $expectedAgentId -and $health.status -eq 'ONLINE') {
+        return
+      }
+    } catch {
+      # The agent has not opened its local health endpoint yet.
+    }
+    Start-Sleep -Seconds 2
+  }
+
+  Fail-Setup 'The agent did not connect to QuickPrint. Confirm this PC is online, then download a fresh setup package so its shop credentials are current.'
+}
+
 try {
   if (-not (Test-Path -LiteralPath (Join-Path $agentDirectory '.env'))) {
     Fail-Setup 'The configured .env file is missing. Download a fresh package from QuickPrint Printing settings.'
@@ -35,6 +54,13 @@ try {
 
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $agentDirectory 'install_service.ps1') -Launch
   if ($LASTEXITCODE -ne 0) { Fail-Setup 'Automatic startup installation failed.' }
+
+  $agentIdLine = Get-Content -LiteralPath (Join-Path $agentDirectory '.env') |
+    Where-Object { $_ -match '^AGENT_ID=' } |
+    Select-Object -First 1
+  $expectedAgentId = ($agentIdLine -replace '^AGENT_ID="?([^"\r\n]*)"?$', '$1').Trim()
+  if (-not $expectedAgentId) { Fail-Setup 'The configured agent ID is missing from .env.' }
+  Wait-ForAgentConnection $expectedAgentId
 
   Write-Host ''
   Write-Host 'QuickPrint is ready. Connected Windows printers will appear in the Printing settings shortly.' -ForegroundColor Green
