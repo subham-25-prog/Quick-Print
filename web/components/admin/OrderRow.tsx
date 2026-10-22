@@ -311,104 +311,107 @@ export const OrderRow = memo(function OrderRow({
           )}
         </div>
 
-        {/* Column 3: Amount & Status */}
-        <div className="w-full lg:w-[130px] shrink-0 flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center gap-1 select-none pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-          <div className="text-left lg:text-right">
-            <span className="text-xs text-slate-400 block lg:hidden font-bold">Total Amount</span>
-            <div className="text-sm sm:text-base font-black text-slate-900">
-              {formatCurrency(order.total_amount)}
+        {/* Right Section: Amount & Status + Action Buttons in one flexible, non-overlapping flow */}
+        <div className="w-full lg:w-auto shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between lg:justify-end gap-3.5 select-none pt-2.5 lg:pt-0 border-t lg:border-t-0 border-slate-100">
+          {/* Amount & Status Badges */}
+          <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1 shrink-0">
+            <div className="text-left sm:text-right">
+              <span className="text-[10px] text-slate-400 block sm:hidden font-bold uppercase">Total</span>
+              <div className="text-sm sm:text-base font-black text-slate-900 leading-tight">
+                {formatCurrency(order.total_amount)}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <span
+                className={`px-1.5 py-0.5 rounded-md text-[9px] font-extrabold border ${
+                  order.payment_method === 'UPI'
+                    ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                }`}
+              >
+                {order.payment_method}
+              </span>
+
+              <span
+                className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide border ${
+                  isPending
+                    ? 'bg-amber-100 text-amber-800 border-amber-200'
+                    : isPrinting
+                    ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                    : isPrinted
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                    : 'bg-rose-100 text-rose-800 border-rose-200'
+                }`}
+              >
+                {order.order_status.replace(/_/g, ' ')}
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
-            <span
-              className={`px-1.5 py-0.5 rounded-md text-[9px] font-extrabold border ${
-                order.payment_method === 'UPI'
-                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-              }`}
-            >
-              {order.payment_method}
-            </span>
+          {/* Action Buttons: Never constrained, never overlapping */}
+          <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+            {/* Pending Cash Verification Actions */}
+            {isPending && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAcceptCash(order.id);
+                  }}
+                  disabled={actionLoadingKey === `${order.id}_ACCEPT`}
+                  title="Verify cash payment and start printing"
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>{actionLoadingKey === `${order.id}_ACCEPT` ? 'Verifying...' : 'Verify Cash'}</span>
+                </button>
 
-            <span
-              className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wide border ${
-                isPending
-                  ? 'bg-amber-100 text-amber-800 border-amber-200'
-                  : isPrinting
-                  ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
-                  : isPrinted
-                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                  : 'bg-rose-100 text-rose-800 border-rose-200'
-              }`}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRejectCash(order.id);
+                  }}
+                  disabled={actionLoadingKey === `${order.id}_REJECT`}
+                  title="Reject cash order"
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 font-extrabold text-xs flex items-center gap-1 transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
+                >
+                  <X className="w-3 h-3" />
+                  <span>Reject</span>
+                </button>
+              </>
+            )}
+
+            {/* Order Details & Audit History Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectOrderForHistory(order as Order);
+              }}
+              title="View full order details, specifications & history"
+              className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs flex items-center gap-1.5 border border-indigo-200/80 transition-all cursor-pointer active:scale-95 shadow-2xs hover:shadow-xs shrink-0"
             >
-              {order.order_status.replace(/_/g, ' ')}
-            </span>
+              <Clock className="w-3.5 h-3.5" />
+              <span>History</span>
+            </button>
+
+            {/* Delete Order Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteOrder(order.id);
+              }}
+              disabled={actionLoadingKey === `${order.id}_DELETE`}
+              title="Delete order from history"
+              className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
           </div>
-        </div>
-
-        {/* Column 4: Action Buttons */}
-        <div className="w-full lg:w-[150px] shrink-0 flex items-center justify-end gap-1.5 select-none pt-1 lg:pt-0">
-          {/* Pending Cash Verification Actions */}
-          {isPending && (
-            <>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onAcceptCash(order.id);
-                }}
-                disabled={actionLoadingKey === `${order.id}_ACCEPT`}
-                title="Verify cash payment and start printing"
-                className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] flex items-center gap-1 shadow-xs transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>{actionLoadingKey === `${order.id}_ACCEPT` ? '...' : 'Verify'}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onRejectCash(order.id);
-                }}
-                disabled={actionLoadingKey === `${order.id}_REJECT`}
-                title="Reject cash order"
-                className="px-2 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 font-extrabold text-[11px] flex items-center gap-0.5 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-              >
-                <X className="w-3 h-3" />
-                <span>Reject</span>
-              </button>
-            </>
-          )}
-
-          {/* Order Details & Audit History Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelectOrderForHistory(order as Order);
-            }}
-            title="View full order details, specifications & history"
-            className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[11px] flex items-center gap-1.5 border border-indigo-200/80 transition-all cursor-pointer active:scale-95 shadow-2xs hover:shadow-xs"
-          >
-            <Clock className="w-3.5 h-3.5" />
-            <span>History</span>
-          </button>
-
-          {/* Delete Order Button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDeleteOrder(order.id);
-            }}
-            disabled={actionLoadingKey === `${order.id}_DELETE`}
-            title="Delete order from history"
-            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer active:scale-95 disabled:opacity-50"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
         </div>
       </div>
     </div>

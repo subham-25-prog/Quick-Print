@@ -673,8 +673,7 @@ export default function AdminLiveOrdersPage() {
               <div className="hidden lg:flex items-center justify-between px-4 py-2 bg-slate-100/80 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-400 border border-slate-200/70">
                 <div className="w-[240px]">Customer & Order Token</div>
                 <div className="flex-1 px-3">Document, Canvas Origin & Specifications</div>
-                <div className="w-[130px] text-right">Amount & Status</div>
-                <div className="w-[150px] text-right">Actions</div>
+                <div className="shrink-0 text-right pr-2">Amount, Status & Actions</div>
               </div>
 
               {filteredOrders.map((rawOrder) => (
@@ -1130,7 +1129,7 @@ export default function AdminLiveOrdersPage() {
               </div>
 
               {/* Action Bar inside Modal */}
-              <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
+              <div className="flex flex-col gap-3 pt-3 border-t border-slate-100 sm:flex-row sm:items-center sm:justify-between">
                 <button
                   type="button"
                   onClick={() => {
@@ -1144,12 +1143,12 @@ export default function AdminLiveOrdersPage() {
                   <span>Delete From History</span>
                 </button>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
                   <a
                     href={`/api/orders/${selectedOrderForHistory.id}/file`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                    className="min-w-0 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>Download File</span>
@@ -1163,7 +1162,7 @@ export default function AdminLiveOrdersPage() {
                           handleRejectCash(selectedOrderForHistory.id);
                         }}
                         disabled={actionLoadingKey === `${selectedOrderForHistory.id}_REJECT`}
-                        className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
+                        className="min-w-0 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 text-xs font-bold transition-all cursor-pointer disabled:opacity-50"
                       >
                         Reject
                       </button>
@@ -1173,7 +1172,7 @@ export default function AdminLiveOrdersPage() {
                           handleAcceptCash(selectedOrderForHistory.id);
                         }}
                         disabled={actionLoadingKey === `${selectedOrderForHistory.id}_ACCEPT`}
-                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                        className="min-w-0 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span>{actionLoadingKey === `${selectedOrderForHistory.id}_ACCEPT` ? 'Verifying...' : 'Verify Cash & Print'}</span>
@@ -1184,7 +1183,7 @@ export default function AdminLiveOrdersPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedOrderForHistory(null)}
-                    className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-all cursor-pointer"
+                    className="min-w-0 px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-all cursor-pointer"
                   >
                     Close
                   </button>
