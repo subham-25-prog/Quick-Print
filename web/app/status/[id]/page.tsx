@@ -125,7 +125,10 @@ export default function OrderStatusPage() {
           return false;
         }
         const done = ['PRINTED', 'SUBMITTED', 'FAILED', 'REVIEW', 'CANCELLED', 'REJECTED'];
-        return done.includes(result.order.order_status) || done.includes(result.job?.status) ? 4000 : 1000;
+        // A terminal result is already final for the customer. Continuing to
+        // poll after this point can surface a misleading timeout notice after
+        // a document has successfully printed.
+        return done.includes(result.order.order_status) || done.includes(result.job?.status) ? false : 1000;
       },
       onError: (error) => {
         if (!stopped) {
