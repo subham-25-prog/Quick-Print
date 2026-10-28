@@ -23,7 +23,16 @@ function statusText(value: unknown): string {
 }
 
 function numericStatus(value: unknown): number {
-  return typeof value === 'number' ? value : Number.NaN;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : Number.NaN;
+  }
+  return Number.NaN;
+}
+
+function isOffline(value: unknown): boolean {
+  return value === true || value === 1 || (typeof value === 'string' && /^(true|1)$/i.test(value.trim()));
 }
 
 export function getPrinterStatus(printer: WindowsPrinterRecord | undefined): DetectedPrinter['status'] {
@@ -33,7 +42,7 @@ export function getPrinterStatus(printer: WindowsPrinterRecord | undefined): Det
   const errorState = numericStatus(printer.DetectedErrorState);
   const printerStatus = numericStatus(printer.PrinterStatus);
 
-  if (Boolean(printer.WorkOffline) || [6, 7].includes(printerStatus) || queueStatus === 'offline') {
+  if (isOffline(printer.WorkOffline) || [6, 7].includes(printerStatus) || queueStatus === 'offline') {
     return 'OFFLINE';
   }
 
@@ -48,10 +57,10 @@ export function getPrinterStatus(printer: WindowsPrinterRecord | undefined): Det
     return 'ERROR';
   }
 
-  if (new Set(['unknown', 'other']).has(queueStatus)) {
-    return 'UNKNOWN';
-  }
-
+  // A number of Windows drivers report PrinterStatus as Unknown or Other even
+  // while the installed queue is usable. The agent has successfully found the
+  // queue, so do not turn that non-failure into an Offline badge. Explicit
+  // offline and error states above remain authoritative.
   return 'ONLINE';
 }
 
