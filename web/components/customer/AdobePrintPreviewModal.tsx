@@ -5,8 +5,6 @@ import { AdvancedPrintConfig, PaperSize, ColorMode, PrintSides, PricingConfig } 
 import { UploadedFileState } from './FileUploader';
 import { CanvaStudioCanvas, CanvaImageItem } from './CanvaStudioCanvas';
 import {
-  ChevronDown,
-  ChevronUp,
   ChevronLeft,
   ChevronRight,
   HelpCircle,
@@ -161,8 +159,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
   );
   const [modalColorMode, setModalColorMode] = useState<ColorMode>(colorMode || 'BW');
 
-  // More Settings accordion
-  const [showMoreSettings, setShowMoreSettings] = useState<boolean>(false);
   const [modalPaperSize, setModalPaperSize] = useState<PaperSize>(paperSize || 'A4');
   const [scaleMode, setScaleMode] = useState<'FIT' | 'ACTUAL' | 'CUSTOM'>(
     advancedConfig.pageScaling === 'ACTUAL'
@@ -273,7 +269,6 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
     setCurrentPage(1);
     setZoomLevel(100);
     setRotationAngle(advancedConfig.rotationAngle || 0);
-    setShowMoreSettings(false);
   }, [isOpen, copies, colorMode, paperSize, printSides, advancedConfig]);
 
   // Reset Canva applied state when opening fresh documents without applied Canva layout
@@ -1488,30 +1483,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
             </div>
           )}
 
-          {/* 5. More / Fewer Settings Collapsible Toggle */}
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={() => setShowMoreSettings(!showMoreSettings)}
-              className="flex items-center gap-1.5 text-xs text-[#8ab4f8] hover:text-[#aecbfa] font-normal transition-colors cursor-pointer py-1"
-            >
-              {showMoreSettings ? (
-                <>
-                  <span>Fewer settings</span>
-                  <ChevronUp className="w-3.5 h-3.5" />
-                </>
-              ) : (
-                <>
-                  <span>More settings</span>
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Collapsible Section */}
-          {showMoreSettings && (
-            <div className="space-y-5 pt-1 border-t border-[#3c4043]/30">
+          <div className="space-y-5 pt-1 border-t border-[#3c4043]/30">
               {/* Paper Size */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-normal text-[#9aa0a6]">Paper size</label>
@@ -1718,8 +1690,7 @@ export const AdobePrintPreviewModal: React.FC<AdobePrintPreviewModalProps> = ({
                   <option value="SAMPLE">SAMPLE</option>
                 </select>
               </div>
-            </div>
-          )}
+          </div>
         </div>
 
         {/* Footer Actions (Sticky at bottom of sidebar) */}
