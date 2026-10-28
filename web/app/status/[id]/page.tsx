@@ -30,7 +30,7 @@ export default function OrderStatusPage() {
 
   const [data, setData] = useState<{
     order: Order;
-    job: { status: string; submitted_at?: string };
+    job: { status: string; submitted_at?: string; is_test?: boolean } | null;
     agentOnline: boolean;
   } | null>(() => {
     if (typeof window === 'undefined' || !id) return null;
@@ -128,7 +128,11 @@ export default function OrderStatusPage() {
         // A terminal result is already final for the customer. Continuing to
         // poll after this point can surface a misleading timeout notice after
         // a document has successfully printed.
-        return done.includes(result.order.order_status) || done.includes(result.job?.status) ? false : 1000;
+        return done.includes(result.order.order_status) ||
+          done.includes(result.job?.status) ||
+          result.job?.is_test
+          ? false
+          : 1000;
       },
       onError: (error) => {
         if (!stopped) {
@@ -160,6 +164,8 @@ export default function OrderStatusPage() {
     data?.order?.payment_status === 'AWAITING_VERIFICATION' ||
     data?.order?.order_status === 'PAYMENT_VERIFICATION_PENDING' ||
     (data?.order?.payment_status === 'PENDING' && data?.order?.payment_method === 'CASH');
+
+  const isSandboxTestJob = Boolean(data?.job?.is_test);
 
   const isPrinted =
     data?.order?.order_status === 'PRINTED' ||
@@ -215,6 +221,8 @@ export default function OrderStatusPage() {
                 ? 'Document Printed & Ready at Counter'
                 : isHardwarePrinting
                 ? 'Printing on Counter Hardware...'
+                : isSandboxTestJob
+                ? 'Sandbox Payment Verified — Not Sent to Printer'
                 : data?.agentOnline
                 ? 'Shop Printer Connected & Live'
                 : 'Shop Agent Offline (Order Queued)'}
@@ -367,6 +375,22 @@ export default function OrderStatusPage() {
                   </div>
                 </section>
               </>
+            ) : isSandboxTestJob ? (
+              <section className="bg-amber-50 border border-amber-200 rounded-3xl p-6 sm:p-7 shadow-xs space-y-3">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-6 h-6 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <h2 className="text-lg font-black text-amber-950">Sandbox payment confirmed</h2>
+                    <p className="text-sm leading-relaxed text-amber-900">
+                      Cashfree trial payments are verified, but are intentionally never sent to the physical printer.
+                      Use a controlled live payment after configuring live Cashfree credentials to test printing.
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-2xl bg-white/70 border border-amber-100 p-3 text-xs text-amber-950">
+                  Your document and payment result were processed safely. No print job is waiting at the counter.
+                </div>
+              </section>
             ) : (
               /* Live Print Visualizer includes all order specs, price, and copyable order token */
               <LivePrintVisualizer

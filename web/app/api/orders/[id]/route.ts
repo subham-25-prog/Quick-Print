@@ -120,7 +120,10 @@ export async function GET(
 
     const { data: job, error } = await database()
       .from('print_jobs')
-      .select('status, submitted_at')
+      // A sandbox gateway payment is verified like a live payment, but its
+      // test job must never be sent to a physical production printer. Return
+      // that fact to the status page so it does not present a stuck queue.
+      .select('status, submitted_at, is_test')
       .eq('order_id', resolvedOrderId)
       .eq('shop_id', getCurrentShopId())
       .maybeSingle();
