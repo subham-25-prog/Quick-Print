@@ -363,27 +363,13 @@ export default function AdminLiveOrdersPage() {
           {/* Subtle Ambient Decorative Gradient Header Glow */}
           <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500" />
 
-          {/* Section Header: Title, Live Status & Summary Badges */}
+          {/* Section Header & Summary Badges */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
                   <span>Orders & History</span>
                 </h2>
-                
-                {/* Glowing Live Radar Indicator */}
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200/80 shadow-2xs">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                  </span>
-                  <span>LIVE QUEUE</span>
-                </span>
-
-                {/* Real-time sync interval pill */}
-                <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200/60 hidden sm:inline-block">
-                  Auto-sync: 3s
-                </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-500 mt-1">
                 View current live orders and browse completed customer order histories
