@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo, useRef, useDeferredValue, useTransition } from 'react';
-import { startPolling } from '@/lib/polling';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { DeveloperBadge } from '@/components/DeveloperBadge';
 import { Order, OrderStatus, PricingConfig } from '@/types';
@@ -52,7 +51,6 @@ export default function AdminLiveOrdersPage() {
   const [showClearModal, setShowClearModal] = useState(false);
 
   const [isClearing, setIsClearing] = useState(false);
-  const [agentOnline, setAgentOnline] = useState<boolean | null>(null);
   const [selectedOrderForHistory, setSelectedOrderForHistory] = useState<Order | null>(null);
 
   const cashRequest = useRef(false);
@@ -60,21 +58,6 @@ export default function AdminLiveOrdersPage() {
 
   // Set of IDs deleted locally so background polls never resurrect them
   const deletedOrderIdsRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    let stopped = false;
-    const polling = startPolling({
-      intervalMs: 4000,
-      poll: async (signal) => {
-        const response = await fetch('/api/admin/db-status', { signal });
-        if (!response.ok) throw new Error('Could not refresh agent status');
-        const data = await response.json();
-        if (!stopped && !signal.aborted) setAgentOnline(Boolean(data.agentOnline));
-      },
-      onError: () => { if (!stopped) setAgentOnline(false); },
-    });
-    return () => { stopped = true; polling.stop(); };
-  }, []);
 
   useEffect(() => () => { ordersRequest.current?.abort(); }, []);
 
@@ -589,26 +572,15 @@ export default function AdminLiveOrdersPage() {
                 <span>{isRefreshing ? 'Syncing...' : 'Sync'}</span>
               </button>
 
-              {/* Start Print Agent Button */}
-              {agentOnline ? (
-                <div
-                  title="Windows Print Agent is running and connected"
-                  className="px-3.5 py-2 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5 shadow-2xs"
-                >
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Agent Online</span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleStartAgent}
-                  title="Click to launch Print Agent on this PC (quickprint://start)"
-                  className="px-3.5 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-600 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-sm hover:shadow-indigo-500/25"
-                >
-                  <Play className="w-3.5 h-3.5 fill-white" />
-                  <span>Start Print Agent</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleStartAgent}
+                title="Launch Print Agent on this PC"
+                className="px-3.5 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white border border-indigo-600 text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-sm hover:shadow-indigo-500/25"
+              >
+                <Play className="w-3.5 h-3.5 fill-white" />
+                <span>Launch Print Agent</span>
+              </button>
 
               {/* Single Consolidated Clear History Button */}
               <button

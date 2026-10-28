@@ -4,7 +4,6 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Zap, Lock, Save } from '@/components/ui/Icons';
-import { startPolling } from '@/lib/polling';
 import { useShopName } from '@/lib/shop-sync';
 
 interface AdminHeaderProps {
@@ -25,33 +24,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   const pathname = usePathname();
   const router = useRouter();
   const storeName = useShopName(shopName);
-  const [dbStatus, setDbStatus] = React.useState<{
-    connected: boolean;
-    mode: string;
-    message: string;
-    shopName?: string;
-    agentOnline?: boolean;
-    agentName?: string | null;
-    printerOnline?: boolean;
-    printerName?: string | null;
-  } | null>(null);
-
-  React.useEffect(() => {
-    let stopped = false;
-    const polling = startPolling({
-      intervalMs: 1500,
-      poll: async (signal) => {
-        const res = await fetch('/api/admin/db-status', { signal });
-        if (!res.ok) throw new Error('Could not refresh connection status');
-        const data = await res.json();
-        if (!stopped && !signal.aborted) setDbStatus(data);
-      },
-      onError: () => {
-        if (!stopped) setDbStatus({ connected: false, mode: 'UNAVAILABLE', message: 'Offline', agentOnline: false });
-      },
-    });
-    return () => { stopped = true; polling.stop(); };
-  }, []);
 
   const navItems = [
     { label: 'Orders & History', href: '/admin', icon: '📋' },
@@ -87,48 +59,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                 </span>
               </div>
             </Link>
-
-            {/* Cloud DB Status */}
-            {dbStatus && (
-              <span
-                title={dbStatus.message}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                  dbStatus.connected
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    : 'bg-amber-50 text-amber-700 border border-amber-200'
-                }`}
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${dbStatus.connected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                <span>{dbStatus.connected ? 'Cloud DB' : 'DB Offline'}</span>
-              </span>
-            )}
-
-            {/* Show the connected printer only; setup and launch controls are on Printing Settings. */}
-            {dbStatus?.agentOnline && (
-                dbStatus.printerOnline ? (
-                  <Link
-                    href="/admin/printing"
-                    title={`Active Printer: ${dbStatus.printerName || 'Online'}. Click to manage printers.`}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors cursor-pointer"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span className="truncate max-w-[120px] sm:max-w-[160px]">
-                      {dbStatus.printerName || 'Printer Online'}
-                    </span>
-                  </Link>
-                ) : (
-                  <Link
-                    href="/admin/printing"
-                    title={dbStatus.printerName ? `${dbStatus.printerName} is offline. Click to check connection.` : 'No printer connected. Click to manage printers.'}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-colors cursor-pointer"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
-                    <span className="truncate max-w-[120px] sm:max-w-[160px]">
-                      {dbStatus.printerName ? `${dbStatus.printerName} (Offline)` : 'Printer Offline'}
-                    </span>
-                  </Link>
-                )
-            )}
           </div>
 
           {/* Central Nav Tabs, Header Save Button & Lock Button */}
