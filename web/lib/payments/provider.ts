@@ -1,4 +1,5 @@
 type PaymentState = 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED' | 'CANCELLED';
+export type PaymentEnvironment = 'sandbox' | 'live';
 
 export interface PaymentContext {
   id: string;
@@ -8,7 +9,7 @@ export interface PaymentContext {
   currency: string;
   provider: string;
   merchant_id: string;
-  environment: 'live';
+  environment: PaymentEnvironment;
   credential_fingerprint: string;
   provider_link_id?: string;
 }
@@ -30,7 +31,7 @@ export interface VerifiedPayment {
 export interface PaymentProvider {
   readonly name: string;
   readonly merchantId: string;
-  readonly environment: 'live';
+  readonly environment: PaymentEnvironment;
   readonly fingerprint: string;
 
   createPayment(

@@ -2,6 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { readText } from '../http';
 import {
   PaymentContext,
+  PaymentEnvironment,
   PaymentProvider,
   VerifiedPayment,
   assertVerified,
@@ -12,7 +13,7 @@ export class CashfreeProvider implements PaymentProvider {
   readonly name = 'cashfree';
   readonly fingerprint: string;
   readonly merchantId: string;
-  readonly environment: 'live';
+  readonly environment: PaymentEnvironment;
   private secretKey: string;
   private apiVersion: string;
   private transport: typeof fetch;
@@ -20,7 +21,7 @@ export class CashfreeProvider implements PaymentProvider {
 
   constructor(
     merchantId: string,
-    environment: 'live',
+    environment: PaymentEnvironment,
     secretKey: string,
     apiVersion = '2025-01-01',
     transport: typeof fetch = fetch
@@ -31,7 +32,9 @@ export class CashfreeProvider implements PaymentProvider {
     this.apiVersion = apiVersion.trim();
     this.transport = transport;
 
-    this.baseUrl = 'https://api.cashfree.com/pg';
+    this.baseUrl = environment === 'sandbox'
+      ? 'https://sandbox.cashfree.com/pg'
+      : 'https://api.cashfree.com/pg';
 
     this.fingerprint = createHash('sha256')
       .update(`${this.merchantId}:${this.environment}`)

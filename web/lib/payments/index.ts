@@ -1,6 +1,6 @@
 import { PhonePeProvider } from './phonepe';
 import { CashfreeProvider } from './cashfree';
-import { PaymentProvider } from './provider';
+import { PaymentEnvironment, PaymentProvider } from './provider';
 import { database } from '../db';
 import { getCurrentShopId } from '../shop';
 import { HttpError } from '../http';
@@ -15,9 +15,9 @@ export function configuredProvider(): PaymentProvider {
     );
   }
 
-  const mode = process.env.PAYMENT_ENVIRONMENT?.trim();
-  if (mode !== 'live') {
-    throw new HttpError(503, 'Production payment environment is not configured.');
+  const mode = process.env.PAYMENT_ENVIRONMENT?.trim() as PaymentEnvironment | undefined;
+  if (mode !== 'sandbox' && mode !== 'live') {
+    throw new HttpError(503, 'Payment environment must be sandbox or live.');
   }
 
   if (providerName === 'cashfree') {
@@ -40,6 +40,10 @@ export function configuredProvider(): PaymentProvider {
       process.env.CASHFREE_SECRET_KEY!.trim(),
       apiVersion
     );
+  }
+
+  if (mode !== 'live') {
+    throw new HttpError(503, 'PhonePe sandbox is not configured for this installation.');
   }
 
   const requiredFields = [
