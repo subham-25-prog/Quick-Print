@@ -33,7 +33,7 @@ Run generated `shop.sql` for a **new** installation. Existing shops should retai
 
 ## Vercel
 
-Import this repository, Next.js framework, Root Directory `web`, Node 24 LTS, build `npm run build`, output `.next`. Workspace dependencies are installed from the committed root lockfile. The root `vercel.json` applies Next.js defaults. Add the variables in `web/.env.example` to the appropriate environment. Keep production and sandbox projects/credentials separate. Never prefix secrets with NEXT_PUBLIC.
+Import this repository, select the Next.js framework, set Root Directory to `web`, and use Node 24 LTS. Leave the Build Command and Output Directory at their defaults: Vercel's Next.js integration runs the build and discovers `.next` inside the selected root directory. Workspace dependencies are installed from the committed root lockfile. The root `vercel.json` applies Next.js defaults. Add the variables in `web/.env.example` to the appropriate environment. Keep production and sandbox projects/credentials separate. Never prefix secrets with NEXT_PUBLIC.
 
 Set server-only APP_URL to the stable custom domain or production alias, **not** a disposable deployment URL. Redeploy after environment changes. Payment returns and shop QR use this URL. Ensure the webhook URL is reachable without Vercel deployment-login protection; do not place bypass tokens in customer URLs.
 
