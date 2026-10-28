@@ -666,7 +666,7 @@ export default function AdminLiveOrdersPage() {
               <div className="flex-1 min-w-0">
                 <h3 className="text-base font-extrabold text-slate-900">Delete All Orders</h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  This will permanently delete all {orders.length} order(s) and uploaded document files.
+                  Deletes {orders.length} order(s) and their files. Cannot be undone.
                 </p>
               </div>
               <button
@@ -679,21 +679,11 @@ export default function AdminLiveOrdersPage() {
               </button>
             </div>
 
-            {/* Orders Summary to be deleted */}
             <div className="p-3.5 rounded-2xl bg-rose-50/60 border border-rose-200/80 flex items-center justify-between">
-              <div className="text-xs">
-                <span className="font-extrabold text-slate-900 block">Total Orders To Delete</span>
-                <span className="text-[11px] text-slate-500 font-medium">All active and completed orders will be purged</span>
-              </div>
+              <span className="text-xs font-extrabold text-slate-900">Orders to delete</span>
               <span className="px-3 py-1 rounded-xl bg-rose-600 text-white text-xs font-black shadow-xs">
                 {orders.length} Orders
               </span>
-            </div>
-
-            {/* Warning Note */}
-            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200/80 text-[11px] text-amber-800 font-medium">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>This action cannot be undone. Files in cloud storage will also be deleted.</span>
             </div>
 
             {/* Action Buttons */}
